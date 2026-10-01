@@ -11,7 +11,7 @@ Cada tarefa = **1 branch** (`feature/T06-schema-inicial`) = **1 Pull Request**.
 ## Sprint 1 — Setup, cadastro e login (Aula 10)
 
 ### T01 — Criar repositório e branches
-Status: a fazer · Responsável: —
+Status: feito · Responsável: Gustavo Trespach
 Descrição: Criar repositório no GitHub com `main` e `develop`; proteger as duas (merge só via PR com 1 aprovação).
 Aceite: repositório existe; push direto na `main`/`develop` é bloqueado.
 
@@ -21,7 +21,7 @@ Descrição: Criar pastas `supabase/`, `mobile/`, `docs/` e versionar AGENTS.md,
 Aceite: estrutura igual à do AGENTS.md na `develop`.
 
 ### T03 — Inicializar o Supabase
-Status: a fazer · Depende de: T02
+Status: feito · Responsável: Gustavo Trespach · Depende de: T02
 Descrição: Criar o projeto no Supabase; `supabase init` e `supabase link`; `deno.json` em `supabase/functions` com fmt/lint; Edge Function `health` (`verify_jwt = false`).
 Aceite: `supabase start` sobe o ambiente local; `GET /functions/v1/health` retorna `{ "status": "ok" }`; `deno lint` e `deno fmt --check` passam.
 
