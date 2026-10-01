@@ -26,7 +26,7 @@ Descrição: Criar o projeto no Supabase; `supabase init` e `supabase link`; `de
 Aceite: `supabase start` sobe o ambiente local; `GET /functions/v1/health` retorna `{ "status": "ok" }`; `deno lint` e `deno fmt --check` passam.
 
 ### T04 — Inicializar o app
-Status: a fazer · Depende de: T02
+Status: feito · Responsável: Gustavo Trespach · Depende de: T02
 Descrição: Projeto Expo (TypeScript, Expo Router) em `mobile/`, com ESLint e Prettier, e tela inicial provisória.
 Aceite: app abre no Expo Go em Android e iOS.
 
@@ -42,7 +42,7 @@ Aceite: `supabase db reset` cria as tabelas com PK, FK, UNIQUE, CHECK e enums; t
 
 ### T07 — Dados iniciais
 Status: a fazer · Depende de: T06
-Descrição: Migration idempotente com a INSTITUICAO ULBRA (`dominio_email = ulbra.br`); `seed.sql` com dados de desenvolvimento.
+Descrição: Migration idempotente com a INSTITUICAO ULBRA (`dominio_email = rede.ulbra.br`); `seed.sql` com dados de desenvolvimento.
 Aceite: rodar `supabase db reset` duas vezes não duplica; a ULBRA existe também no projeto remoto após `db push`.
 
 ### T08 — Configurar o Supabase Auth
@@ -53,7 +53,7 @@ Aceite: e-mail de confirmação chega via Resend com link válido; usuário não
 ### T09 — Validação de domínio e perfil no cadastro (US02)
 Status: a fazer · Depende de: T06, T07, T08
 Descrição: Auth Hook Before User Created `validar_dominio_institucional` (recusa domínio fora de INSTITUICAO) e trigger `criar_perfil_usuario` (cria USUARIO a partir de `raw_user_meta_data`).
-Aceite: e-mail `@ulbra.br` cria usuário + perfil; outro domínio → erro `DOMINIO_INVALIDO`; e-mail duplicado → erro do Auth; testes pgTAP cobrindo os casos.
+Aceite: e-mail `@rede.ulbra.br` cria usuário + perfil; outro domínio → erro `DOMINIO_INVALIDO`; e-mail duplicado → erro do Auth; testes pgTAP cobrindo os casos.
 
 ### T10 — Cliente Supabase no app
 Status: a fazer · Depende de: T04, T05

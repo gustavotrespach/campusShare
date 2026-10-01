@@ -41,7 +41,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 ## Regras de negócio
 
 **Cadastro e acesso**
-- RN01 — Só é aceito e-mail cujo domínio exista em `INSTITUICAO.dominio_email` (hoje: `ulbra.br`). A regra lê o banco (Auth Hook); nada de domínio fixo no código.
+- RN01 — Só é aceito e-mail cujo domínio exista em `INSTITUICAO.dominio_email` (hoje: `rede.ulbra.br`). A regra lê o banco (Auth Hook); nada de domínio fixo no código.
 - RN02 — Usuário sem e-mail confirmado (`auth.users.email_confirmed_at` nulo) não faz login nem usa o app.
 - RN03 — Senha com no mínimo 8 caracteres; armazenamento (hash bcrypt) feito pelo Supabase Auth.
 
