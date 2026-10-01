@@ -26,7 +26,7 @@ Descrição: Criar o projeto no Supabase; `supabase init` e `supabase link`; `de
 Aceite: `supabase start` sobe o ambiente local; `GET /functions/v1/health` retorna `{ "status": "ok" }`; `deno lint` e `deno fmt --check` passam.
 
 ### T04 — Inicializar o app
-Status: a fazer · Depende de: T02
+Status: feito · Responsável: Gustavo Trespach · Depende de: T02
 Descrição: Projeto Expo (TypeScript, Expo Router) em `mobile/`, com ESLint e Prettier, e tela inicial provisória.
 Aceite: app abre no Expo Go em Android e iOS.
 
