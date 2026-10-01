@@ -42,7 +42,7 @@ Aceite: `supabase db reset` cria as tabelas com PK, FK, UNIQUE, CHECK e enums; t
 
 ### T07 — Dados iniciais
 Status: a fazer · Depende de: T06
-Descrição: Migration idempotente com a INSTITUICAO ULBRA (`dominio_email = ulbra.br`); `seed.sql` com dados de desenvolvimento.
+Descrição: Migration idempotente com a INSTITUICAO ULBRA (`dominio_email = rede.ulbra.br`); `seed.sql` com dados de desenvolvimento.
 Aceite: rodar `supabase db reset` duas vezes não duplica; a ULBRA existe também no projeto remoto após `db push`.
 
 ### T08 — Configurar o Supabase Auth
@@ -53,7 +53,7 @@ Aceite: e-mail de confirmação chega via Resend com link válido; usuário não
 ### T09 — Validação de domínio e perfil no cadastro (US02)
 Status: a fazer · Depende de: T06, T07, T08
 Descrição: Auth Hook Before User Created `validar_dominio_institucional` (recusa domínio fora de INSTITUICAO) e trigger `criar_perfil_usuario` (cria USUARIO a partir de `raw_user_meta_data`).
-Aceite: e-mail `@ulbra.br` cria usuário + perfil; outro domínio → erro `DOMINIO_INVALIDO`; e-mail duplicado → erro do Auth; testes pgTAP cobrindo os casos.
+Aceite: e-mail `@rede.ulbra.br` cria usuário + perfil; outro domínio → erro `DOMINIO_INVALIDO`; e-mail duplicado → erro do Auth; testes pgTAP cobrindo os casos.
 
 ### T10 — Cliente Supabase no app
 Status: a fazer · Depende de: T04, T05

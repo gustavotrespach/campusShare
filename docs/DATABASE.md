@@ -30,7 +30,7 @@ Tipos para as migrations SQL. `PK` = chave primária, `FK` = chave estrangeira.
 |---|---|---|
 | id_instituicao | INT | PK, `generated always as identity` |
 | nome | VARCHAR(120) | obrigatório |
-| dominio_email | VARCHAR(80) | obrigatório, UNIQUE, sem `@` (ex.: `ulbra.br`) |
+| dominio_email | VARCHAR(80) | obrigatório, UNIQUE, sem `@` (ex.: `rede.ulbra.br`) |
 
 ### USUARIO (perfil — 1:1 com `auth.users`)
 | Coluna | Tipo | Regras |
