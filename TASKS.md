@@ -16,7 +16,7 @@ Descrição: Criar repositório no GitHub com `main` e `develop`; proteger as du
 Aceite: repositório existe; push direto na `main`/`develop` é bloqueado.
 
 ### T02 — Estrutura inicial e documentação
-Status: a fazer · Depende de: T01
+Status: feito · Responsável: Gustavo Trespach · Depende de: T01
 Descrição: Criar pastas `supabase/`, `mobile/`, `docs/` e versionar AGENTS.md, README.md, SPEC.md, TASKS.md, MEMORY.md e `docs/*`. Adicionar `.gitignore` (node_modules, .env, `supabase/.temp`, `supabase/functions/.env`, builds).
 Aceite: estrutura igual à do AGENTS.md na `develop`.
 
