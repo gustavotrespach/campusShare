@@ -1,6 +1,7 @@
 -- Dados de desenvolvimento (só local: roda no `supabase db reset`, nunca no remoto).
--- Usuários sem senha: o login de teste depende da configuração do Auth (T08/T09).
--- Até o trigger criar_perfil_usuario existir (T09), o perfil em public.usuario é inserido à mão.
+-- Usuários sem senha (não fazem login); para testar login, cadastre pelo /auth/v1/signup.
+-- O perfil em public.usuario é criado pelo trigger criar_perfil_usuario a partir de
+-- raw_user_meta_data, como num cadastro real.
 
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
@@ -11,32 +12,18 @@ values
   (
     '00000000-0000-0000-0000-000000000000', 'd0000000-0000-0000-0000-000000000001',
     'authenticated', 'authenticated', 'motorista.dev@rede.ulbra.br', '', now(),
-    '{"provider": "email", "providers": ["email"]}', '{"nome_completo": "Marina Motorista"}',
+    '{"provider": "email", "providers": ["email"]}',
+    '{"nome_completo": "Marina Motorista", "genero": "FEMININO", "telefone": "51990000001"}',
     now(), now(), '', '', '', ''
   ),
   (
     '00000000-0000-0000-0000-000000000000', 'd0000000-0000-0000-0000-000000000002',
     'authenticated', 'authenticated', 'passageiro.dev@rede.ulbra.br', '', now(),
-    '{"provider": "email", "providers": ["email"]}', '{"nome_completo": "Paulo Passageiro"}',
+    '{"provider": "email", "providers": ["email"]}',
+    '{"nome_completo": "Paulo Passageiro", "genero": "MASCULINO"}',
     now(), now(), '', '', '', ''
   )
 on conflict (id) do nothing;
-
-insert into public.usuario (
-  id_usuario, id_instituicao, nome_completo, email_institucional, genero, telefone
-)
-select v.id_usuario, i.id_instituicao, v.nome_completo, v.email, v.genero::public.genero_usuario,
-  v.telefone
-from (
-  values
-    ('d0000000-0000-0000-0000-000000000001'::uuid, 'Marina Motorista',
-     'motorista.dev@rede.ulbra.br', 'FEMININO', '51990000001'),
-    ('d0000000-0000-0000-0000-000000000002'::uuid, 'Paulo Passageiro',
-     'passageiro.dev@rede.ulbra.br', 'MASCULINO', null)
-) as v (id_usuario, nome_completo, email, genero, telefone)
-cross join public.instituicao i
-where i.dominio_email = 'rede.ulbra.br'
-on conflict (id_usuario) do nothing;
 
 insert into public.veiculo (
   id_veiculo, id_motorista, modelo, placa, cor, qtd_lugares, motorizacao, consumo_kml

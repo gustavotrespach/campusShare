@@ -9,24 +9,16 @@ select plan(25);
 -- A = a0000000-...-00a · B = b0000000-...-00b
 -- ------------------------------------------------------------
 
-insert into auth.users (id, email)
-values
-  ('a0000000-0000-0000-0000-00000000000a', 'usuario.a@teste.edu.br'),
-  ('b0000000-0000-0000-0000-00000000000b', 'usuario.b@teste.edu.br');
-
+-- A instituição vem antes: o trigger criar_perfil_usuario cria o perfil a partir do domínio
 insert into public.instituicao (nome, dominio_email) values ('Instituição de Teste', 'teste.edu.br');
 insert into public.instituicao (nome, dominio_email) values ('Outra Instituição', 'outra.edu.br');
 
-insert into public.usuario (id_usuario, id_instituicao, nome_completo, email_institucional)
-select u.id, i.id_instituicao, n.nome, u.email
-from auth.users u
-join (
-  values
-    ('a0000000-0000-0000-0000-00000000000a'::uuid, 'Usuário A'),
-    ('b0000000-0000-0000-0000-00000000000b'::uuid, 'Usuário B')
-) as n (id, nome) on n.id = u.id
-cross join public.instituicao i
-where i.dominio_email = 'teste.edu.br';
+insert into auth.users (id, email, raw_user_meta_data)
+values
+  ('a0000000-0000-0000-0000-00000000000a', 'usuario.a@teste.edu.br',
+   '{"nome_completo": "Usuário A"}'),
+  ('b0000000-0000-0000-0000-00000000000b', 'usuario.b@teste.edu.br',
+   '{"nome_completo": "Usuário B"}');
 
 insert into public.veiculo (id_veiculo, id_motorista, modelo, placa, cor, qtd_lugares)
 values

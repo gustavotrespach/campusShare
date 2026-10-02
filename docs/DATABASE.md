@@ -44,7 +44,7 @@ Tipos para as migrations SQL. `PK` = chave primária, `FK` = chave estrangeira.
 | expo_push_token | VARCHAR(100) | opcional; registrado pelo app (T29) |
 | criado_em | TIMESTAMPTZ | default `now()` |
 
-Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a partir de `raw_user_meta_data`. Senha e confirmação de e-mail ficam em `auth.users` (`encrypted_password`, `email_confirmed_at`).
+Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a partir de `raw_user_meta_data`: `id_instituicao` pelo domínio do e-mail, `email_institucional` em minúsculas, `nome_completo` (ausente → parte antes do `@`), `genero` (ausente ou fora do enum → `NAO_INFORMADO`) e `telefone` (em branco → nulo). Usuário cujo domínio não está em INSTITUICAO é recusado também pelo trigger (`DOMINIO_INVALIDO`), cobrindo contas criadas fora do cadastro (painel, Admin API). Senha e confirmação de e-mail ficam em `auth.users` (`encrypted_password`, `email_confirmed_at`).
 
 ### VEICULO
 | Coluna | Tipo | Regras |
@@ -172,8 +172,8 @@ View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome 
 
 | Objeto | Tipo | Papel |
 |---|---|---|
-| `validar_dominio_institucional` | Auth Hook (Before User Created) | RN01 |
-| `criar_perfil_usuario` | Trigger em `auth.users` | Cria a linha de USUARIO |
+| `validar_dominio_institucional` | Auth Hook (Before User Created), `SECURITY DEFINER`, `EXECUTE` só para `supabase_auth_admin` | RN01: domínio exato após o `@`, em minúsculas; recusa com 422 `DOMINIO_INVALIDO` |
+| `criar_perfil_usuario` | Trigger AFTER INSERT em `auth.users`, `SECURITY DEFINER` | Cria a linha de USUARIO |
 | `publicar_carona`, `buscar_caronas`, `detalhar_carona`, `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
 | `reservar_vaga`, `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (RN11, RN14–RN18) |
 | `registrar_pagamento`, `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos (RN13) |
@@ -199,6 +199,7 @@ Pendentes de aprovação do squad (e de atualização do DER):
 
 - Criar sempre com `supabase migration new <descricao>` (ex.: `init`, `rls_base`, `reserva_pagamento`) e escrever o SQL no arquivo gerado.
 - Toda migration que cria tabela também habilita RLS e cria as políticas no mesmo arquivo.
+- Privilégios padrão (migration `privilegios_padrao`): objeto novo nasce sem acesso para `anon`/`authenticated`; a migration concede explicitamente o mínimo (`grant select ...`, `grant execute ...`).
 - Testar com `supabase db reset` (local) antes do PR; aplicar no projeto remoto com `supabase db push` (via deploy da `main`).
 - Nunca editar migration já aplicada na `develop`; criar uma nova. Nunca alterar o schema pelo painel do projeto remoto.
 - **Dados essenciais** (INSTITUICAO ULBRA e PARAMETRO_CUSTO inicial) vão em migration idempotente (`insert ... on conflict do nothing`), porque `seed.sql` só roda localmente.
