@@ -36,7 +36,7 @@ Descrição: `supabase/functions/_shared/` com `AppError`, handler de erro `{ er
 Aceite: payload inválido numa Edge Function → 400 com os campos inválidos; erro não tratado → 500 genérico; teste com `deno test`.
 
 ### T06 — Schema inicial com RLS
-Status: a fazer · Depende de: T03
+Status: feito · Responsável: Gustavo Trespach · Depende de: T03
 Descrição: Migration com INSTITUICAO, USUARIO (FK para `auth.users`), VEICULO e CARONA, enums e constraints conforme `docs/DATABASE.md`; RLS habilitada e políticas das 4 tabelas.
 Aceite: `supabase db reset` cria as tabelas com PK, FK, UNIQUE, CHECK e enums; testes pgTAP provam que um usuário não lê o perfil nem os veículos de outro.
 
