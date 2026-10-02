@@ -89,19 +89,15 @@ select ok(
 -- CHECKs (executados como postgres, que ignora a RLS)
 -- ------------------------------------------------------------
 
-insert into auth.users (id, email)
-values
-  ('a0000000-0000-0000-0000-00000000000a', 'motorista@teste.edu.br'),
-  ('b0000000-0000-0000-0000-00000000000b', 'outro@teste.edu.br');
-
+-- A instituição vem antes: o trigger criar_perfil_usuario cria o perfil a partir do domínio
 insert into public.instituicao (nome, dominio_email) values ('Instituição de Teste', 'teste.edu.br');
 
-insert into public.usuario (id_usuario, id_instituicao, nome_completo, email_institucional)
-select u.id, i.id_instituicao, 'Usuário ' || u.email, u.email
-from auth.users u
-cross join public.instituicao i
-where i.dominio_email = 'teste.edu.br'
-  and u.email like '%@teste.edu.br';
+insert into auth.users (id, email, raw_user_meta_data)
+values
+  ('a0000000-0000-0000-0000-00000000000a', 'motorista@teste.edu.br',
+   '{"nome_completo": "Usuário Motorista"}'),
+  ('b0000000-0000-0000-0000-00000000000b', 'outro@teste.edu.br',
+   '{"nome_completo": "Usuário Outro"}');
 
 insert into public.veiculo (id_veiculo, id_motorista, modelo, placa, cor, qtd_lugares)
 values

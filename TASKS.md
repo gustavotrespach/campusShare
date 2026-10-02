@@ -51,7 +51,7 @@ Descrição: Confirmação de e-mail obrigatória, senha mínima de 8, SMTP do R
 Aceite: e-mail de confirmação chega via Resend com link válido; usuário não confirmado não consegue login.
 
 ### T09 — Validação de domínio e perfil no cadastro (US02)
-Status: a fazer · Depende de: T06, T07, T08
+Status: feito · Responsável: Gustavo Trespach · Depende de: T06, T07, T08
 Descrição: Auth Hook Before User Created `validar_dominio_institucional` (recusa domínio fora de INSTITUICAO) e trigger `criar_perfil_usuario` (cria USUARIO a partir de `raw_user_meta_data`).
 Aceite: e-mail `@rede.ulbra.br` cria usuário + perfil; outro domínio → erro `DOMINIO_INVALIDO`; e-mail duplicado → erro do Auth; testes pgTAP cobrindo os casos.
 

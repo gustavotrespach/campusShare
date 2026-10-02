@@ -68,14 +68,17 @@ await supabase.auth.signUp({
     data: { nome_completo: 'Mariana Souza', genero: 'FEMININO', telefone: '51999999999' },
   },
 });
-// erros: DOMINIO_INVALIDO (hook, 422) · user_already_exists (409) · weak_password (422)
+// erros (AuthApiError: status + code + message):
+//   422 msg 'DOMINIO_INVALIDO' (hook; error_code 'unknown' — use a mensagem como código)
+//   422 user_already_exists (e-mail já confirmado) · 422 weak_password (menos de 8 caracteres)
+// e-mail já cadastrado e ainda não confirmado: o Auth responde 200 sem revelar que a conta existe
 
 // login
 await supabase.auth.signInWithPassword({ email: 'mariana@rede.ulbra.br', password: '********' });
-// erros: invalid_credentials (400 → tratado como 401 genérico) · email_not_confirmed (403)
+// erros: invalid_credentials (400 → tratado como 401 genérico) · email_not_confirmed (400 → mensagem clara)
 ```
 
-Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `criar_perfil_usuario`.
+Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `criar_perfil_usuario` (`genero` ausente ou inválido → `NAO_INFORMADO`; sem `nome_completo` → parte do e-mail antes do `@`). O link do e-mail redireciona para `campusshare://` (ou `exp://...` em desenvolvimento) com a sessão no fragmento da URL.
 
 ## usuarios
 

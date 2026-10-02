@@ -35,6 +35,7 @@
 
 - Funções pequenas, com uma responsabilidade. Mais de ~40 linhas é sinal para quebrar (vale para `plpgsql` também).
 - `async/await` sempre.
+- **Privilégios (migration `privilegios_padrao`):** tabelas, sequences e funções novas criadas pelas migrations nascem **sem** privilégio para `anon`/`authenticated` (e funções sem `EXECUTE` para `PUBLIC`). Toda tabela recebe `grant` explícito só das operações/colunas que o app usa, e **toda função nova recebe `GRANT EXECUTE` explícito só para quem precisa** (`authenticated`, `service_role` ou `supabase_auth_admin`). Mesmo assim, escreva o `revoke ... from public, anon, authenticated` na migration: deixa a intenção visível no PR.
 - **Erros em funções SQL:** `raise exception '<CODIGO>' using errcode = 'PT4xx', hint = '<mensagem para o usuário>'` (ver `docs/API.md`).
 - **Erros em Edge Functions:** lançar `AppError(status, code, message, details?)` de `_shared/erros.ts`. Todo handler é envolvido por `comTratamentoDeErros` (`_shared/resposta.ts`), que responde o preflight de CORS e converte o erro em `{ error: { code, message, details } }`; erro que não é `AppError` vira 500 `ERRO_INTERNO` com mensagem genérica (detalhe só no log).
 - **No app:** chamadas ao Supabase só em `mobile/src/services/`, que convertem qualquer erro em `AppError`. Telas não usam o cliente Supabase direto.
@@ -107,7 +108,7 @@ chore(infra): configura deploy do supabase via github actions
 
 - Título = commit principal; corpo com o modelo abaixo.
 - Pelo menos **1 aprovação** de outro membro antes do merge — inclusive quando o código foi gerado com IA.
-- PR com migration: revisor confere RLS e `grant`/`revoke` das funções.
+- PR com migration: revisor confere RLS e `grant`/`revoke` das tabelas e funções (nada nasce acessível ao app sem `grant` explícito).
 - Merge por **squash**; apagar a branch depois.
 
 ```markdown
