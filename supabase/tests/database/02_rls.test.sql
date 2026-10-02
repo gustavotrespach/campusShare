@@ -83,8 +83,9 @@ select results_eq(
   'A lê só as próprias caronas'
 );
 select results_eq(
-  $$select count(*) from public.instituicao$$,
-  $$values (2::bigint)$$,
+  $$select dominio_email::text from public.instituicao
+    where dominio_email in ('teste.edu.br', 'outra.edu.br') order by 1$$,
+  $$values ('outra.edu.br'::text), ('teste.edu.br'::text)$$,
   'autenticado lê as instituições'
 );
 
