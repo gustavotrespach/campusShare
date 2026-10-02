@@ -52,7 +52,7 @@ Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a par
 | id_veiculo | UUID | PK, default `gen_random_uuid()` |
 | id_motorista | UUID | FK → USUARIO, default `auth.uid()` |
 | modelo | VARCHAR(60) | obrigatório |
-| placa | VARCHAR(8) | obrigatório, UNIQUE, CHECK formato antigo ou Mercosul |
+| placa | VARCHAR(8) | obrigatório, UNIQUE, CHECK formato antigo (`ABC1234`) ou Mercosul (`ABC1D23`), maiúsculas e sem hífen |
 | cor | VARCHAR(30) | obrigatório |
 | qtd_lugares | SMALLINT | CHECK 2 a 8 |
 | motorizacao | VARCHAR(10) | ex.: `1.0`, `1.6` — só sugere o consumo inicial |
@@ -70,7 +70,7 @@ Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a par
 | destino_lat / destino_lng | DECIMAL(9,6) | |
 | distancia_km | DECIMAL(6,2) | nulo até a Sprint 3 |
 | data_hora_partida | TIMESTAMPTZ | no futuro na criação |
-| vagas_disponiveis | SMALLINT | CHECK ≥ 0; ≤ `qtd_lugares − 1` na criação |
+| vagas_disponiveis | SMALLINT | CHECK 0 a 7; ≤ `qtd_lugares − 1` na criação |
 | custo_estimado | DECIMAL(10,2) | nulo até a Sprint 3; teto do preço |
 | custo_total | DECIMAL(10,2) | CHECK > 0; ≤ `custo_estimado` quando houver |
 | tolerancia_min | SMALLINT | CHECK 0 a 30 |
@@ -184,12 +184,15 @@ View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome 
 
 ## Alterações propostas em relação ao DER da Aula 08
 
-Pendentes de aprovação do squad (e de atualização do DER):
+Aprovadas em 02/10/2026 (decorrem do ADR-009; aplicadas na migration `schema_inicial`, T06):
 
 - `USUARIO.id_usuario` passa a ser FK para `auth.users(id)`; **saem** `senha_hash` e `email_verificado` (ficam no Supabase Auth — ADR-009).
+- `USUARIO.expo_push_token` (VARCHAR, opcional): necessário para enviar push (T29).
+
+Pendentes de aprovação do squad (e de atualização do DER):
+
 - `RESERVA.status`: incluir `CANCELADA` e `EXPIRADA`.
 - `PAGAMENTO.status`: valores `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE`.
-- `USUARIO.expo_push_token` (VARCHAR, opcional): necessário para enviar push (T29).
 - `PAGAMENTO.id_externo` (VARCHAR, UNIQUE): id da cobrança no Mercado Pago, usado para idempotência do webhook.
 
 ## Migrations
