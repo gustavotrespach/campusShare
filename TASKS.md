@@ -41,7 +41,7 @@ Descrição: Migration com INSTITUICAO, USUARIO (FK para `auth.users`), VEICULO 
 Aceite: `supabase db reset` cria as tabelas com PK, FK, UNIQUE, CHECK e enums; testes pgTAP provam que um usuário não lê o perfil nem os veículos de outro.
 
 ### T07 — Dados iniciais
-Status: a fazer · Depende de: T06
+Status: feito · Responsável: Gustavo Trespach · Depende de: T06
 Descrição: Migration idempotente com a INSTITUICAO ULBRA (`dominio_email = rede.ulbra.br`); `seed.sql` com dados de desenvolvimento.
 Aceite: rodar `supabase db reset` duas vezes não duplica; a ULBRA existe também no projeto remoto após `db push`.
 
