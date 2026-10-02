@@ -45,7 +45,7 @@ O app pode ser modificado; por isso o backend recalcula e valida tudo:
 ## Segredos
 
 - Edge Functions: local em `supabase/functions/.env` (no `.gitignore`); remoto com `supabase secrets set`. `.env.example` versionado sem valores.
-- SMTP do Resend: configurado no painel do Supabase Auth (e em `config.toml` via `env(...)` para o ambiente local).
+- SMTP do Resend: só no remoto, no bloco `[remotes.producao]` do `config.toml`, com a senha em `env(RESEND_API_KEY)` lida de `supabase/.env` (fora do git) e enviada ao Auth por `supabase config push`. Localmente o SMTP fica desligado e os e-mails caem no Mailpit.
 - No app, só valores com prefixo `EXPO_PUBLIC_`: a URL do projeto e a **anon/publishable key** (pública por natureza — a proteção é a RLS) e a chave do Maps restrita por pacote/bundle no Google Cloud.
 - Chave vazada: revogar/rotacionar imediatamente e registrar no MEMORY.md.
 

@@ -157,11 +157,13 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
-site_url = "http://127.0.0.1:3000"
+# Deep link do app (scheme do Expo): o link de confirmação do e-mail volta para o app.
+site_url = "campusshare://"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-additional_redirect_urls = ["https://127.0.0.1:3000"]
+# exp://** cobre o Expo Go em desenvolvimento (o IP da máquina muda de rede para rede).
+additional_redirect_urls = ["campusshare://**", "exp://**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
@@ -180,7 +182,7 @@ enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
 password_requirements = ""
@@ -197,7 +199,8 @@ password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
-email_sent = 2
+# Plano grátis do Resend: 100 e-mails/dia. 4/h = no máximo 96/dia, nunca estoura a cota.
+email_sent = 4
 # Number of SMS messages that can be sent per hour. Requires auth.sms to be enabled.
 sms_sent = 30
 # Number of anonymous sign-ins that can be made per hour per IP address. Requires enable_anonymous_sign_ins = true.
@@ -224,30 +227,24 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# RN02: login só depois de confirmar o e-mail institucional.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
-max_frequency = "1s"
+max_frequency = "1m0s"
 # Number of characters used in the email OTP.
 otp_length = 6
 # Number of seconds before the email OTP expires (defaults to 1 hour).
-otp_expiry = 3600
+# Validade do link de confirmação: 24 h (docs/SECURITY.md).
+otp_expiry = 86400
 
-# Use a production-ready SMTP server
-# [auth.email.smtp]
-# enabled = true
-# host = "smtp.sendgrid.net"
-# port = 587
-# user = "apikey"
-# pass = "env(SENDGRID_API_KEY)"
-# admin_email = "admin@email.com"
-# sender_name = "Admin"
+# SMTP do Resend só no remoto (bloco [remotes.producao] no fim do arquivo): localmente os e-mails
+# ficam no Mailpit (localhost:54324) e não gastam a cota do Resend.
 
-# Uncomment to customize email template
-# [auth.email.template.invite]
-# subject = "You have been invited"
-# content_path = "./supabase/templates/invite.html"
+[auth.email.template.confirmation]
+subject = "Confirme seu e-mail no CampusShare"
+content_path = "./supabase/templates/confirmacao.html"
 
 # Uncomment to customize notification email template
 # [auth.email.notification.password_changed]
@@ -417,3 +414,34 @@ enabled = true
 # Health check público: não exige JWT para permitir monitoramento sem login.
 [functions.health]
 verify_jwt = false
+
+# ============================================================
+# Projeto remoto (yqovnmlrbpkgwzmlnncb). O CLI aplica este bloco por cima da configuração acima
+# quando o comando roda contra o projeto linkado (config push / config diff).
+# ============================================================
+[remotes.producao]
+project_id = "yqovnmlrbpkgwzmlnncb"
+
+# Resend com o remetente de teste (sem domínio próprio no MVP). A senha é a API key, lida de
+# supabase/.env (fora do git); no remoto ela fica guardada no Auth pelo `config push`.
+[remotes.producao.auth.email.smtp]
+enabled = true
+host = "smtp.resend.com"
+port = 465
+user = "resend"
+pass = "env(RESEND_API_KEY)"
+admin_email = "onboarding@resend.dev"
+sender_name = "CampusShare"
+
+# Valores atuais do remoto, mantidos para o `config push` não mexer no que não é do Auth/T08.
+[remotes.producao.auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[remotes.producao.db.pooler]
+default_pool_size = 15
+max_client_conn = 200
+
+[remotes.producao.storage.analytics]
+enabled = true
+max_namespaces = 10

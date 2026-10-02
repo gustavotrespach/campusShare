@@ -46,7 +46,7 @@ Descrição: Migration idempotente com a INSTITUICAO ULBRA (`dominio_email = red
 Aceite: rodar `supabase db reset` duas vezes não duplica; a ULBRA existe também no projeto remoto após `db push`.
 
 ### T08 — Configurar o Supabase Auth
-Status: a fazer · Depende de: T03
+Status: feito · Responsável: Gustavo Trespach · Depende de: T03
 Descrição: Confirmação de e-mail obrigatória, senha mínima de 8, SMTP do Resend, template do e-mail em pt-BR, URL de redirecionamento (deep link do app) e rate limits — no painel e no `config.toml`.
 Aceite: e-mail de confirmação chega via Resend com link válido; usuário não confirmado não consegue login.
 
