@@ -62,7 +62,7 @@ O serviço do app normaliza os dois formatos (e os erros do Auth) em `AppError {
 ```ts
 // cadastro
 await supabase.auth.signUp({
-  email: 'mariana@ulbra.br',
+  email: 'mariana@rede.ulbra.br',
   password: '********',
   options: {
     data: { nome_completo: 'Mariana Souza', genero: 'FEMININO', telefone: '51999999999' },
@@ -71,7 +71,7 @@ await supabase.auth.signUp({
 // erros: DOMINIO_INVALIDO (hook, 422) · user_already_exists (409) · weak_password (422)
 
 // login
-await supabase.auth.signInWithPassword({ email: 'mariana@ulbra.br', password: '********' });
+await supabase.auth.signInWithPassword({ email: 'mariana@rede.ulbra.br', password: '********' });
 // erros: invalid_credentials (400 → tratado como 401 genérico) · email_not_confirmed (403)
 ```
 

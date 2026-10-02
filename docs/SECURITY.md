@@ -5,7 +5,7 @@
 
 ## Autenticação (Supabase Auth)
 
-- **Cadastro:** o domínio do e-mail é validado contra `INSTITUICAO.dominio_email` pelo Auth Hook **Before User Created** (função SQL `validar_dominio_institucional`), antes de o usuário existir. Comparação em minúsculas, pelo domínio exato após o `@` (`aluno@ulbra.br.fake.com` é recusado).
+- **Cadastro:** o domínio do e-mail é validado contra `INSTITUICAO.dominio_email` pelo Auth Hook **Before User Created** (função SQL `validar_dominio_institucional`), antes de o usuário existir. Comparação em minúsculas, pelo domínio exato após o `@` (`aluno@rede.ulbra.br.fake.com` é recusado).
 - **Confirmação de e-mail:** obrigatória ("Confirm email" ligado). O link é gerado e validado pelo Supabase Auth e enviado pelo SMTP do Resend. Validade do link configurada no Auth (24 h).
 - **Senha:** mínimo 8 caracteres, configurado no Auth. O hash (bcrypt) fica em `auth.users` — o projeto nunca armazena, loga ou retorna senha.
 - **Sessão:** JWT do Supabase (`sub = id_usuario`), access token de 1 h renovado pelo refresh token. No app, a sessão é persistida com adapter seguro baseado em `expo-secure-store` — nunca em AsyncStorage sem criptografia.
