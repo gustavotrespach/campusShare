@@ -31,7 +31,7 @@ Descrição: Projeto Expo (TypeScript, Expo Router) em `mobile/`, com ESLint e P
 Aceite: app abre no Expo Go em Android e iOS.
 
 ### T05 — Padrão de erros e validação
-Status: a fazer · Depende de: T03
+Status: feito · Responsável: Gustavo Trespach · Depende de: T03
 Descrição: `supabase/functions/_shared/` com `AppError`, handler de erro `{ error: { code, message, details } }`, CORS e helper Zod; convenção de `raise exception` nas funções SQL (ver `docs/API.md`).
 Aceite: payload inválido numa Edge Function → 400 com os campos inválidos; erro não tratado → 500 genérico; teste com `deno test`.
 
