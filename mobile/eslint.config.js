@@ -7,7 +7,8 @@ module.exports = defineConfig([
   expoConfig,
   eslintPluginPrettierRecommended,
   {
-    ignores: ['dist/*', '.expo/*'],
+    // database.ts é gerado por `supabase gen types` e precisa ficar idêntico à saída do CLI
+    ignores: ['dist/*', '.expo/*', 'src/types/database.ts'],
   },
   {
     // Regras do docs/CONVENTIONS.md

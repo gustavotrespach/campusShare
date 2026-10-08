@@ -56,7 +56,7 @@ Descrição: Auth Hook Before User Created `validar_dominio_institucional` (recu
 Aceite: e-mail `@rede.ulbra.br` cria usuário + perfil; outro domínio → erro `DOMINIO_INVALIDO`; e-mail duplicado → erro do Auth; testes pgTAP cobrindo os casos.
 
 ### T10 — Cliente Supabase no app
-Status: a fazer · Depende de: T04, T05
+Status: feito · Responsável: Gustavo Trespach · Depende de: T04, T05
 Descrição: `@supabase/supabase-js` em `mobile/src/services/` com URL e anon key do `.env`, sessão persistida em armazenamento seguro (`expo-secure-store`), normalização de erros em `AppError` e tipos gerados (`supabase gen types`).
 Aceite: app chama a Edge Function `health` e exibe o status.
 
