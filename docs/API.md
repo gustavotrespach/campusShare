@@ -78,7 +78,7 @@ await supabase.auth.signInWithPassword({ email: 'mariana@rede.ulbra.br', passwor
 // erros: invalid_credentials (400 → tratado como 401 genérico) · email_not_confirmed (400 → mensagem clara)
 ```
 
-Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `criar_perfil_usuario` (`genero` ausente ou inválido → `NAO_INFORMADO`; sem `nome_completo` → parte do e-mail antes do `@`). O link do e-mail redireciona para `campusshare://` (ou `exp://...` em desenvolvimento) com a sessão no fragmento da URL.
+Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `criar_perfil_usuario` (`genero` ausente ou inválido → `NAO_INFORMADO`; sem `nome_completo` → parte do e-mail antes do `@`). O app envia `emailRedirectTo` = `campusshare://confirmacao` (app instalado) ou `exp://<host>:8081/--/confirmacao` (Expo Go); o link do e-mail volta para essa rota com a sessão no fragmento (`#access_token=...&refresh_token=...&type=signup`) ou com o erro (`#error=access_denied&error_code=otp_expired&...`), e o app chama `auth.setSession`. Redirect com host IP literal é recusado pela allowlist e cai no `site_url`.
 
 ## usuarios
 

@@ -61,7 +61,7 @@ Descrição: `@supabase/supabase-js` em `mobile/src/services/` com URL e publish
 Aceite: app chama a Edge Function `health` e exibe o status.
 
 ### T11 — Tela de cadastro (US02)
-Status: a fazer · Depende de: T09, T10
+Status: feito · Responsável: Gustavo Trespach · Depende de: T09, T10
 Descrição: Formulário com nome, e-mail institucional, senha, gênero e telefone (`auth.signUp` com metadata); aviso "confira seu e-mail" e botão de reenvio (`auth.resend`).
 Aceite: erros do backend aparecem no campo certo; validação local de formato antes de enviar.
 

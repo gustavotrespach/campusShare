@@ -1,4 +1,11 @@
-import { temErros, validarEmail, validarLogin } from '@/utils/validacao';
+import {
+  apenasDigitos,
+  temErros,
+  validarCadastro,
+  validarEmail,
+  validarLogin,
+  validarTelefone,
+} from '@/utils/validacao';
 
 describe('validarEmail (só formato)', () => {
   it.each(['aluno@rede.ulbra.br', 'Nome.Sobrenome@qualquer.edu.br', '  aluno@exemplo.com  '])(
@@ -37,5 +44,61 @@ describe('validarLogin', () => {
 
     expect(erros).toEqual({ email: 'Informe seu e-mail.', senha: 'Informe sua senha.' });
     expect(temErros(erros)).toBe(true);
+  });
+});
+
+describe('validarCadastro', () => {
+  const valido = {
+    nomeCompleto: 'Mariana Souza',
+    email: 'mariana@rede.ulbra.br',
+    senha: '12345678',
+    genero: 'FEMININO' as const,
+    telefone: '',
+  };
+
+  it('formulário completo e telefone vazio não tem erros', () => {
+    expect(validarCadastro(valido)).toEqual({});
+  });
+
+  it('aponta cada campo inválido', () => {
+    const erros = validarCadastro({
+      nomeCompleto: '   ',
+      email: 'mariana@',
+      senha: '1234567',
+      genero: null,
+      telefone: '123',
+    });
+
+    expect(erros).toEqual({
+      nomeCompleto: 'Informe seu nome completo.',
+      email: expect.stringMatching(/e-mail válido/),
+      senha: 'A senha precisa ter pelo menos 8 caracteres.',
+      genero: 'Escolha uma opção.',
+      telefone: expect.stringMatching(/DDD/),
+    });
+  });
+
+  it('nome acima de 120 caracteres é recusado (limite da coluna)', () => {
+    expect(validarCadastro({ ...valido, nomeCompleto: 'a'.repeat(121) }).nomeCompleto).toMatch(
+      /120/,
+    );
+  });
+
+  it('senha com exatamente 8 caracteres passa (RN03)', () => {
+    expect(validarCadastro({ ...valido, senha: 'abcdefgh' }).senha).toBeUndefined();
+  });
+});
+
+describe('telefone', () => {
+  it.each(['(51) 99999-9999', '51 3333-4444', '+55 51 99999-9999'])('aceita %p', (telefone) => {
+    expect(validarTelefone(telefone)).toBeUndefined();
+  });
+
+  it.each(['999999999', '1234', '+55 51 99999-9999 99'])('recusa %p', (telefone) => {
+    expect(validarTelefone(telefone)).toMatch(/DDD/);
+  });
+
+  it('apenasDigitos tira máscara e espaços', () => {
+    expect(apenasDigitos('(51) 99999-9999')).toBe('51999999999');
   });
 });

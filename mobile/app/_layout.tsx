@@ -25,6 +25,8 @@ function Navegacao() {
       <Stack.Protected guard={!logado}>
         <Stack.Screen name="(publico)" />
       </Stack.Protected>
+      {/* Aberta pelo link do e-mail de confirmação, com ou sem sessão (T11) */}
+      <Stack.Screen name="confirmacao" />
     </Stack>
   );
 }
