@@ -21,11 +21,12 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 - [x] T05 — Padrão de erros: `_shared/` com `AppError`, `comTratamentoDeErros`, CORS por lista e `validarCorpo` (Zod 4.6.5) (02/10)
 - [x] T08 — Auth: confirmação obrigatória, senha ≥ 8, template pt-BR, `campusshare://`, SMTP do Resend só no remoto (02/10)
 - [x] T09 — Hook `validar_dominio_institucional` + trigger `criar_perfil_usuario` + migration `privilegios_padrao` (02/10)
+- [x] T10 — App com Expo Router, cliente Supabase (sessão no SecureStore em partes), `AppError`/`normalizarErro`, tipos gerados e `jest-expo` (08/10)
 
 ## Próximos passos
 
-1. Fase 3: cliente Supabase no app (T10), telas de cadastro (T11), login (T12) e perfil (T13).
-2. Adicionar `"scheme": "campusshare"` ao `mobile/app.json` (T11/T12) — sem ele o link de confirmação não abre o app.
+1. Fase 3: login e sessão (T12), cadastro com deep link de confirmação (T11) e perfil (T13), nesta ordem.
+2. Gustavo: renomear `EXPO_PUBLIC_SUPABASE_ANON_KEY` para `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no `mobile/.env` (o app usa o nome do `.env.example`).
 
 ## Decisões a confirmar com o squad
 
@@ -36,6 +37,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 - [ ] **Reembolso em cancelamento:** no MVP (sandbox), apenas registrar status; definir regra para produção.
 - [x] **Estratégia de branches:** `develop` + `feature/T<ID>-...` (adotada na T01, 01/10). `main` e `develop` protegidas: merge só por PR, **0 aprovações** (decisão do Gustavo, que valida e faz o merge sozinho), sem force-push e sem deleção.
 - [x] **Alterações de USUARIO no DER** aprovadas em 02/10: `id_usuario` FK para `auth.users`, sem `senha_hash`/`email_verificado`, com `expo_push_token` (ver `docs/DATABASE.md`). Falta redesenhar o DER da Aula 08. As alterações de RESERVA e PAGAMENTO seguem pendentes.
+- [ ] **Regras de tolerância do trigger `criar_perfil_usuario`** (definidas na T09, 02/10, ainda sem confirmação do squad): `genero` ausente ou fora do enum → `NAO_INFORMADO`; `nome_completo` ausente → parte do e-mail antes do `@`; `telefone` em branco → nulo. Alternativa seria recusar o cadastro com erro de validação.
 - [x] **Destino do link de confirmação de e-mail:** deep link do app, `site_url = campusshare://` (e `exp://**` em desenvolvimento) — Fase 2, 02/10. Falta o app tratar o link (T11/T12).
 
 ## Notas para o próximo agente
@@ -52,6 +54,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 
 ## Histórico
 
+- **08/10/2026** — T10 (Fase 3): Expo Router (`app/`, `main = expo-router/entry`, `scheme = campusshare`); `src/services/` com cliente Supabase (sessão no `expo-secure-store` dividida em partes de até 2000 bytes, auto refresh ligado ao `AppState`), `AppError` + `normalizarErro` (PostgREST, Edge Function, Auth, rede), `invocarFuncao` e `verificarSaude`; tipos gerados em `src/types/database.ts`; `jest-expo` com 31 testes. Lockfile do app regenerado (o patch do `expo` deixava `expo-modules-core` aninhado e quebrava o `jest-expo`).
 - **02/10/2026** — Fase 2 (T05, T08, T09): `_shared/` das Edge Functions (erros, CORS, Zod) aplicado na `health`; Auth com confirmação obrigatória, senha ≥ 8, link de 24 h, template pt-BR e SMTP do Resend no remoto via `[remotes.producao]`; migration `privilegios_padrao` (inclui revoke global de `EXECUTE` para `PUBLIC` em funções do `postgres`); hook `validar_dominio_institucional` (422 `DOMINIO_INVALIDO`) e trigger `criar_perfil_usuario`; testes 01/02 e `seed.sql` passam a criar o perfil pelo trigger. 112 testes pgTAP, 11 `deno test`.
 - **02/10/2026** — Fase 1 (T06, T07): migration `schema_inicial` (enums, 4 tabelas, CHECKs, FK composta carona → veículo do mesmo motorista, RLS com `(select auth.uid())`, grants explícitos sem nada para `anon`); pgTAP de estrutura, CHECKs e RLS; ULBRA (`rede.ulbra.br`) em migration idempotente; `seed.sql` com 2 usuários, 1 veículo e 1 carona. Ajustes da Fase 0: domínio nos docs restantes, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `deno.lock`. Decididos `percentual_taxa = 0.1000` e `preco_litro = 6.29` para a T20.
 - **01/10/2026** — T01 a T04 (Fase 0): `develop` criada e protegida (PR obrigatório, 0 aprovações, por decisão do Gustavo); estrutura `supabase/` + `mobile/` e `.gitignore`; `supabase init` com Edge Function `health` (handler + teste `deno test`); app Expo SDK 57 (TypeScript strict, ESLint + Prettier) com tela "CampusShare". Domínio institucional confirmado: `rede.ulbra.br`.
