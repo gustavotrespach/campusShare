@@ -21,11 +21,12 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 - [x] T05 — Padrão de erros: `_shared/` com `AppError`, `comTratamentoDeErros`, CORS por lista e `validarCorpo` (Zod 4.6.5) (02/10)
 - [x] T08 — Auth: confirmação obrigatória, senha ≥ 8, template pt-BR, `campusshare://`, SMTP do Resend só no remoto (02/10)
 - [x] T09 — Hook `validar_dominio_institucional` + trigger `criar_perfil_usuario` + migration `privilegios_padrao` (02/10)
+- [x] T12 — Login e sessão: `services/auth.ts`, `ProvedorSessao` (Context), rotas `(publico)`/`(autenticado)` com `Stack.Protected`, logout limpando o SecureStore (15/10)
 - [x] T10 — App com Expo Router, cliente Supabase (sessão no SecureStore em partes), `AppError`/`normalizarErro`, tipos gerados e `jest-expo` (08/10)
 
 ## Próximos passos
 
-1. Fase 3: login e sessão (T12), cadastro com deep link de confirmação (T11) e perfil (T13), nesta ordem.
+1. Fase 3: cadastro com deep link de confirmação (T11) e perfil (T13), nesta ordem.
 2. Gustavo: renomear `EXPO_PUBLIC_SUPABASE_ANON_KEY` para `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no `mobile/.env` (o app usa o nome do `.env.example`).
 
 ## Decisões a confirmar com o squad
@@ -46,6 +47,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 - Segredos ficam no `.env` (modelo em `.env.example`). Nunca versionar chaves.
 - Não existe servidor Node.js/Express nem Render: o backend é o projeto Supabase (ADR-009). Tudo que muda o banco vai em `supabase/migrations`.
 - Desenvolvimento local exige Docker (`supabase start`). E-mails do Auth local aparecem no Mailpit (`localhost:54324`); o SMTP do Resend só é ligado no remoto (`[remotes.producao]` no `config.toml`, senha em `supabase/.env`).
+- Depois de `npx expo install` que atualiza o `expo`, confira `ls mobile/node_modules/expo-modules-core`: o npm às vezes o deixa aninhado em `node_modules/expo/` e o `jest-expo` quebra ("Cannot find module 'expo-modules-core'"). Solução usada na T10 e na T12: apagar `node_modules` e `package-lock.json` e rodar `npm install`.
 - Mudou `config.toml`? Local: `supabase stop && supabase start`. Remoto: `supabase config diff` e depois `supabase config push`.
 - Migrations novas: objetos nascem **sem** privilégio para `anon`/`authenticated` (migration `privilegios_padrao`); conceda o mínimo com `grant` explícito e teste o acesso.
 - Resend sem domínio próprio: o remetente `onboarding@resend.dev` só entrega para o e-mail dono da conta do Resend.
@@ -54,6 +56,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 
 ## Histórico
 
+- **15/10/2026** — T12 (Fase 3): `services/auth.ts` (`entrar`, `sair`, `obterSessao`, `observarSessao`), `store/sessao.tsx` (Context), layout com `Stack.Protected` (`(publico)/entrar`, `(autenticado)/index`), componentes `CampoTexto`, `Botao`, `Aviso`, `StatusServidor`; validação local só de formato; testes com o cliente Supabase real e fetch simulado (erros do login, sessão persistida em partes, logout limpa o SecureStore). Ajustes da T10: jest/jest-expo/@types/jest em devDependencies; patches do SDK 57 (expo 57.0.30, expo-router 57.0.28...). 52 testes.
 - **08/10/2026** — T10 (Fase 3): Expo Router (`app/`, `main = expo-router/entry`, `scheme = campusshare`); `src/services/` com cliente Supabase (sessão no `expo-secure-store` dividida em partes de até 2000 bytes, auto refresh ligado ao `AppState`), `AppError` + `normalizarErro` (PostgREST, Edge Function, Auth, rede), `invocarFuncao` e `verificarSaude`; tipos gerados em `src/types/database.ts`; `jest-expo` com 31 testes. Lockfile do app regenerado (o patch do `expo` deixava `expo-modules-core` aninhado e quebrava o `jest-expo`).
 - **02/10/2026** — Fase 2 (T05, T08, T09): `_shared/` das Edge Functions (erros, CORS, Zod) aplicado na `health`; Auth com confirmação obrigatória, senha ≥ 8, link de 24 h, template pt-BR e SMTP do Resend no remoto via `[remotes.producao]`; migration `privilegios_padrao` (inclui revoke global de `EXECUTE` para `PUBLIC` em funções do `postgres`); hook `validar_dominio_institucional` (422 `DOMINIO_INVALIDO`) e trigger `criar_perfil_usuario`; testes 01/02 e `seed.sql` passam a criar o perfil pelo trigger. 112 testes pgTAP, 11 `deno test`.
 - **02/10/2026** — Fase 1 (T06, T07): migration `schema_inicial` (enums, 4 tabelas, CHECKs, FK composta carona → veículo do mesmo motorista, RLS com `(select auth.uid())`, grants explícitos sem nada para `anon`); pgTAP de estrutura, CHECKs e RLS; ULBRA (`rede.ulbra.br`) em migration idempotente; `seed.sql` com 2 usuários, 1 veículo e 1 carona. Ajustes da Fase 0: domínio nos docs restantes, `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `deno.lock`. Decididos `percentual_taxa = 0.1000` e `preco_litro = 6.29` para a T20.
