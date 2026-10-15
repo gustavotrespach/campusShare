@@ -57,7 +57,7 @@ Aceite: e-mail `@rede.ulbra.br` cria usuário + perfil; outro domínio → erro 
 
 ### T10 — Cliente Supabase no app
 Status: feito · Responsável: Gustavo Trespach · Depende de: T04, T05
-Descrição: `@supabase/supabase-js` em `mobile/src/services/` com URL e anon key do `.env`, sessão persistida em armazenamento seguro (`expo-secure-store`), normalização de erros em `AppError` e tipos gerados (`supabase gen types`).
+Descrição: `@supabase/supabase-js` em `mobile/src/services/` com URL e publishable key do `.env`, sessão persistida em armazenamento seguro (`expo-secure-store`), normalização de erros em `AppError` e tipos gerados (`supabase gen types`).
 Aceite: app chama a Edge Function `health` e exibe o status.
 
 ### T11 — Tela de cadastro (US02)
@@ -66,7 +66,7 @@ Descrição: Formulário com nome, e-mail institucional, senha, gênero e telefo
 Aceite: erros do backend aparecem no campo certo; validação local de formato antes de enviar.
 
 ### T12 — Tela de login e sessão (US01)
-Status: a fazer · Depende de: T08, T10
+Status: feito · Responsável: Gustavo Trespach · Depende de: T08, T10
 Descrição: Login com `auth.signInWithPassword`; rotas protegidas redirecionam para o login; botão de sair.
 Aceite: login leva à Home; e-mail não confirmado mostra mensagem clara; senha errada mostra erro genérico; ao reabrir o app continua logado; logout limpa a sessão.
 
