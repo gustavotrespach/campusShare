@@ -15,7 +15,8 @@ async function consultarSaude(): Promise<EstadoSaude> {
   }
 }
 
-export default function TelaInicial() {
+// Diagnóstico da conexão com o backend (Edge Function health), útil no teste pelo Expo Go.
+export function StatusServidor() {
   const [saude, setSaude] = useState<EstadoSaude>({ tipo: 'carregando' });
   const [tentativa, setTentativa] = useState(0);
 
@@ -41,14 +42,13 @@ export default function TelaInicial() {
 
   return (
     <View style={estilos.container}>
-      <Text style={estilos.titulo}>CampusShare</Text>
       {saude.tipo === 'carregando' && <ActivityIndicator />}
       {saude.tipo === 'ok' && <Text style={estilos.ok}>Servidor: {saude.status}</Text>}
       {saude.tipo === 'erro' && (
         <>
           <Text style={estilos.erro}>{saude.mensagem}</Text>
-          <Pressable accessibilityRole="button" onPress={tentarDeNovo} style={estilos.botao}>
-            <Text style={estilos.textoBotao}>Tentar de novo</Text>
+          <Pressable accessibilityRole="button" onPress={tentarDeNovo}>
+            <Text style={estilos.link}>Tentar de novo</Text>
           </Pressable>
         </>
       )}
@@ -57,22 +57,8 @@ export default function TelaInicial() {
 }
 
 const estilos = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    padding: 24,
-  },
-  titulo: { fontSize: 24, fontWeight: 'bold' },
-  ok: { fontSize: 16, color: '#1b7f3b' },
-  erro: { fontSize: 16, color: '#b42318', textAlign: 'center' },
-  botao: {
-    backgroundColor: '#1a56db',
-    borderRadius: 8,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  textoBotao: { color: '#fff', fontSize: 16, fontWeight: '600' },
+  container: { alignItems: 'center', gap: 6 },
+  ok: { fontSize: 13, color: '#1b7f3b' },
+  erro: { fontSize: 13, color: '#b42318', textAlign: 'center' },
+  link: { fontSize: 13, color: '#1a56db', fontWeight: '600' },
 });
