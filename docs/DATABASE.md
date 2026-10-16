@@ -72,7 +72,8 @@ Exclusão: o trigger `impedir_exclusao_veiculo_em_uso` (BEFORE DELETE) recusa ve
 | destino_lat / destino_lng | DECIMAL(9,6) | |
 | distancia_km | DECIMAL(6,2) | nulo até a Sprint 3 |
 | data_hora_partida | TIMESTAMPTZ | no futuro na criação |
-| vagas_disponiveis | SMALLINT | CHECK 0 a 7; ≤ `qtd_lugares − 1` na criação |
+| vagas_ofertadas | SMALLINT | obrigatório, CHECK 1 a 7; fixado na publicação (`n_ocupantes = vagas_ofertadas + 1`, RN11) |
+| vagas_disponiveis | SMALLINT | CHECK 0 a 7 e ≤ `vagas_ofertadas`; ≤ `qtd_lugares − 1` na criação; diminui a cada reserva |
 | custo_estimado | DECIMAL(10,2) | nulo até a Sprint 3; teto do preço |
 | custo_total | DECIMAL(10,2) | CHECK > 0; ≤ `custo_estimado` quando houver |
 | tolerancia_min | SMALLINT | CHECK 0 a 30 |
@@ -82,27 +83,27 @@ Exclusão: o trigger `impedir_exclusao_veiculo_em_uso` (BEFORE DELETE) recusa ve
 ### RESERVA (associativa USUARIO N:N CARONA)
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_reserva | UUID | PK |
-| id_carona | UUID | FK → CARONA |
-| id_passageiro | UUID | FK → USUARIO |
-| valor_individual | DECIMAL(10,2) | rateio calculado na função `reservar_vaga` |
+| id_reserva | UUID | PK, default `gen_random_uuid()` |
+| id_carona | UUID | FK → CARONA, `on delete cascade` |
+| id_passageiro | UUID | FK → USUARIO, `on delete cascade` |
+| valor_individual | DECIMAL(10,2) | obrigatório, CHECK > 0; rateio calculado na função `reservar_vaga` |
 | status | ENUM `PENDENTE`, `CONFIRMADA`, `CANCELADA`, `EXPIRADA` | default `PENDENTE` |
 | criado_em | TIMESTAMPTZ | default `now()`; base para expiração |
 
-Índice único parcial: (`id_carona`, `id_passageiro`) onde status em (`PENDENTE`, `CONFIRMADA`) — impede reserva dupla.
+Índice único parcial `reserva_id_carona_id_passageiro_ativa_key`: (`id_carona`, `id_passageiro`) onde status em (`PENDENTE`, `CONFIRMADA`) — impede reserva dupla (RN14) e permite reservar de novo depois de `CANCELADA`/`EXPIRADA`. Índices em `id_carona` e `id_passageiro` (RLS e consultas por carona).
 
 ### PAGAMENTO (1:1 com RESERVA)
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_pagamento | UUID | PK |
-| id_reserva | UUID | FK → RESERVA, UNIQUE |
-| id_externo | VARCHAR(64) | UNIQUE; id da cobrança no Mercado Pago (idempotência) |
-| valor | DECIMAL(10,2) | = `valor_individual` |
-| taxa_plataforma | DECIMAL(10,2) | `valor × percentual_taxa` |
-| valor_repassado | DECIMAL(10,2) | `valor − taxa_plataforma` |
-| metodo | ENUM `PIX` | |
-| status | ENUM `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE` | |
-| pago_em | TIMESTAMPTZ | preenchido pelo webhook |
+| id_pagamento | UUID | PK, default `gen_random_uuid()` |
+| id_reserva | UUID | FK → RESERVA, UNIQUE, `on delete cascade` |
+| id_externo | VARCHAR(64) | UNIQUE; id da cobrança no Mercado Pago (idempotência); nulo até a cobrança existir |
+| valor | DECIMAL(10,2) | obrigatório, CHECK > 0; = `valor_individual` |
+| taxa_plataforma | DECIMAL(10,2) | obrigatório, CHECK ≥ 0 e ≤ `valor`; `valor × percentual_taxa` |
+| valor_repassado | DECIMAL(10,2) | obrigatório, CHECK = `valor − taxa_plataforma` |
+| metodo | ENUM `PIX` | default `PIX` |
+| status | ENUM `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE` | default `PENDENTE` |
+| pago_em | TIMESTAMPTZ | preenchido pelo webhook; CHECK: obrigatório quando `status = APROVADO` |
 
 ### AVALIACAO
 | Coluna | Tipo | Regras |
@@ -129,12 +130,12 @@ UNIQUE (`id_reserva`, `id_avaliador`).
 ### PARAMETRO_CUSTO
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_parametro | INT | PK |
-| preco_litro | DECIMAL(5,2) | mantido pela equipe |
-| percentual_taxa | DECIMAL(5,4) | ex.: `0.0500` = 5% |
-| atualizado_em | TIMESTAMPTZ | |
+| id_parametro | INT | PK, `generated always as identity` |
+| preco_litro | DECIMAL(5,2) | obrigatório, CHECK > 0; mantido pela equipe |
+| percentual_taxa | DECIMAL(5,4) | obrigatório, CHECK 0 a 1; ex.: `0.0500` = 5% |
+| atualizado_em | TIMESTAMPTZ | default `now()` |
 
-O registro mais recente é o vigente. Sem acesso pelo app (RLS sem políticas).
+O registro mais recente (`atualizado_em`) é o vigente. Valor inicial na migration `reserva_pagamento`, idempotente (só insere com a tabela vazia): `preco_litro = 6.29`, `percentual_taxa = 0.1000` (10%). Sem acesso pelo app (RLS sem políticas, sem grant para `authenticated`).
 
 ## Cardinalidades
 
@@ -163,7 +164,7 @@ RLS habilitada em **todas** as tabelas. Escrita em tabelas com regra de negócio
 | veiculo | só os próprios | todos, só nos próprios |
 | carona | motorista vê as próprias; busca/detalhe via funções | — (funções `publicar_carona`, `cancelar_carona`, `concluir_carona`) |
 | reserva | passageiro vê as próprias; motorista vê as das suas caronas | — (Edge Function `reservar-vaga`, função `cancelar_reserva`) |
-| pagamento | passageiro da reserva | — (Edge Functions) |
+| pagamento | passageiro da reserva (o motorista não vê) | — (Edge Functions) |
 | avaliacao | avaliador e avaliado | — (função `avaliar_participante`) |
 | notificacao | só as próprias | UPDATE da coluna `lida` nas próprias |
 | parametro_custo | — | — |
@@ -192,11 +193,14 @@ Aprovadas em 02/10/2026 (decorrem do ADR-009; aplicadas na migration `schema_ini
 - `USUARIO.id_usuario` passa a ser FK para `auth.users(id)`; **saem** `senha_hash` e `email_verificado` (ficam no Supabase Auth — ADR-009).
 - `USUARIO.expo_push_token` (VARCHAR, opcional): necessário para enviar push (T29).
 
-Pendentes de aprovação do squad (e de atualização do DER):
+Aprovadas em 16/10/2026 (Gustavo, no merge da T20; aplicadas na migration `reserva_pagamento`):
 
 - `RESERVA.status`: incluir `CANCELADA` e `EXPIRADA`.
 - `PAGAMENTO.status`: valores `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE`.
 - `PAGAMENTO.id_externo` (VARCHAR, UNIQUE): id da cobrança no Mercado Pago, usado para idempotência do webhook.
+- `CARONA.vagas_ofertadas` (SMALLINT, obrigatório): vagas oferecidas na publicação, base do rateio (RN11).
+
+O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima.
 
 ## Migrations
 

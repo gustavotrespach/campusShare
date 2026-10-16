@@ -39,11 +39,11 @@ language sql
 as $$
   insert into public.carona (
     id_motorista, id_veiculo, origem, origem_lat, origem_lng, destino, destino_lat, destino_lng,
-    data_hora_partida, vagas_disponiveis, custo_total, tolerancia_min, status
+    data_hora_partida, vagas_ofertadas, vagas_disponiveis, custo_total, tolerancia_min, status
   ) values (
     'a0000000-0000-0000-0000-00000000000a', p_id_veiculo,
     'Centro, Torres', -29.335, -49.727, 'ULBRA Torres', -29.330, -49.740,
-    now() + interval '1 day', case when p_status = 'LOTADA' then 0 else 3 end, 40, 10, p_status
+    now() + interval '1 day', 3, case when p_status = 'LOTADA' then 0 else 3 end, 40, 10, p_status
   );
 $$;
 
