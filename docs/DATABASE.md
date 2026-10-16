@@ -58,6 +58,8 @@ Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a par
 | motorizacao | VARCHAR(10) | ex.: `1.0`, `1.6` — só sugere o consumo inicial |
 | consumo_kml | DECIMAL(4,1) | CHECK > 0; alimenta a sugestão de preço |
 
+Exclusão: o trigger `impedir_exclusao_veiculo_em_uso` (BEFORE DELETE) recusa veículo com carona `ABERTA`/`LOTADA` (`VEICULO_EM_USO`) ou só com caronas `CONCLUIDA`/`CANCELADA` (`VEICULO_COM_HISTORICO`), ambos `PT409`. A FK `carona → veiculo` (NO ACTION) já impediria a exclusão com o erro técnico `23503`; o trigger troca esse erro por um código do domínio. Na exclusão da conta (`auth.users` → `usuario` → `veiculo` em cascata) o trigger não recusa: o perfil já foi removido e as caronas saem na mesma cascata.
+
 ### CARONA
 | Coluna | Tipo | Regras |
 |---|---|---|
@@ -174,6 +176,7 @@ View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome 
 |---|---|---|
 | `validar_dominio_institucional` | Auth Hook (Before User Created), `SECURITY DEFINER`, `EXECUTE` só para `supabase_auth_admin` | RN01: domínio exato após o `@`, em minúsculas; recusa com 422 `DOMINIO_INVALIDO` |
 | `criar_perfil_usuario` | Trigger AFTER INSERT em `auth.users`, `SECURITY DEFINER` | Cria a linha de USUARIO |
+| `impedir_exclusao_veiculo_em_uso` | Trigger BEFORE DELETE em `veiculo`, `SECURITY DEFINER`, sem `EXECUTE` para nenhum papel | Recusa excluir veículo com carona (`VEICULO_EM_USO` / `VEICULO_COM_HISTORICO`, `PT409`) |
 | `publicar_carona`, `buscar_caronas`, `detalhar_carona`, `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
 | `reservar_vaga`, `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (RN11, RN14–RN18) |
 | `registrar_pagamento`, `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos (RN13) |
