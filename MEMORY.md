@@ -21,16 +21,19 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 - [x] T05 — Padrão de erros: `_shared/` com `AppError`, `comTratamentoDeErros`, CORS por lista e `validarCorpo` (Zod 4.6.5) (02/10)
 - [x] T08 — Auth: confirmação obrigatória, senha ≥ 8, template pt-BR, `campusshare://`, SMTP do Resend só no remoto (02/10)
 - [x] T09 — Hook `validar_dominio_institucional` + trigger `criar_perfil_usuario` + migration `privilegios_padrao` (02/10)
+- [x] T13 — Perfil: `services/perfil.ts` (`obterMeuPerfil`, `atualizarPerfil` só com nome/gênero/telefone), tela `(autenticado)/perfil` com e-mail e instituição só leitura; pgTAP de acesso negado em `usuario` completado (16/10)
 - [x] T11 — Cadastro: formulário com validação de formato, erros do backend no campo certo, tela "Confira seu e-mail" com reenvio, rota `/confirmacao` que abre a sessão pelo link (15/10)
 - [x] T12 — Login e sessão: `services/auth.ts`, `ProvedorSessao` (Context), rotas `(publico)`/`(autenticado)` com `Stack.Protected`, logout limpando o SecureStore (15/10)
 - [x] T10 — App com Expo Router, cliente Supabase (sessão no SecureStore em partes), `AppError`/`normalizarErro`, tipos gerados e `jest-expo` (08/10)
 
 ## Próximos passos
 
-1. Fase 3: perfil do usuário (T13).
+1. Fase 3 concluída (T10–T13). Próximo: T14 (deploy do backend via GitHub Actions) e Sprint 2 (veículos, caronas).
 2. Gustavo: renomear `EXPO_PUBLIC_SUPABASE_ANON_KEY` para `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no `mobile/.env` (o app usa o nome do `.env.example`).
 
 ## Decisões a confirmar com o squad
+
+- [x] **View `perfil_publico`** (16/10): movida da T13 para a T30, porque depende de AVALIACAO (média de avaliações). A `docs/API.md` marca a view como ainda não existente.
 
 - [x] **Domínio institucional:** confirmado como `@rede.ulbra.br` (Gustavo, 01/10). Docs atualizados; a T07 deve gravar `dominio_email = rede.ulbra.br`.
 - [ ] **`n_ocupantes` do rateio:** o motorista entra na divisão? Proposta: `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação — assim o valor por passageiro não muda conforme outros reservam.
@@ -39,6 +42,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 - [ ] **Reembolso em cancelamento:** no MVP (sandbox), apenas registrar status; definir regra para produção.
 - [x] **Estratégia de branches:** `develop` + `feature/T<ID>-...` (adotada na T01, 01/10). `main` e `develop` protegidas: merge só por PR, **0 aprovações** (decisão do Gustavo, que valida e faz o merge sozinho), sem force-push e sem deleção.
 - [x] **Alterações de USUARIO no DER** aprovadas em 02/10: `id_usuario` FK para `auth.users`, sem `senha_hash`/`email_verificado`, com `expo_push_token` (ver `docs/DATABASE.md`). Falta redesenhar o DER da Aula 08. As alterações de RESERVA e PAGAMENTO seguem pendentes.
+- [ ] **Antes da demo — avaliar o fluxo PKCE no deep link de confirmação** (Gustavo, 16/10): hoje o app aceita a sessão de qualquer link `campusshare://confirmacao#access_token=...&refresh_token=...` (fluxo implícito) e chama `auth.setSession`. Um link forjado com os tokens de outra conta deixaria o usuário logado nessa outra conta sem perceber (session fixation). Com PKCE (`flowType: 'pkce'` no cliente), o link traz só um `code` que precisa do verificador guardado no aparelho que fez o cadastro (`exchangeCodeForSession`). Ponto de atenção: o cadastro e o clique no link precisam acontecer no mesmo aparelho/instalação. Avaliar junto o template do e-mail e o `config.toml`.
 - [ ] **Regras de tolerância do trigger `criar_perfil_usuario`** (definidas na T09, 02/10, ainda sem confirmação do squad): `genero` ausente ou fora do enum → `NAO_INFORMADO`; `nome_completo` ausente → parte do e-mail antes do `@`; `telefone` em branco → nulo. Alternativa seria recusar o cadastro com erro de validação.
 - [x] **Destino do link de confirmação de e-mail:** deep link do app, `site_url = campusshare://` (e `exp://**` em desenvolvimento) — Fase 2, 02/10. Falta o app tratar o link (T11/T12).
 
@@ -58,6 +62,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 
 ## Histórico
 
+- **16/10/2026** — T13 (Fase 3): `services/perfil.ts` e tela de perfil (e-mail e instituição só leitura; nome, telefone e gênero editáveis); `02_rls.test.sql` ganhou acesso negado para `id_usuario`, `criado_em`, DELETE do próprio perfil e UPDATE como `anon` (116 testes pgTAP); fakes de teste em `mobile/tests/apoio/`. Ajuste da T11: `/confirmacao` sem link mostra "link inválido" com reenvio. Registrada a recomendação de PKCE antes da demo. 97 testes no app.
 - **15/10/2026** — T11 (Fase 3): `cadastrar`, `reenviarConfirmacao` e `confirmarPorLink` em `services/auth.ts` (`emailRedirectTo` de `Linking.createURL('/confirmacao')`); telas `(publico)/cadastro`, `(publico)/confira-email` (reenvio com espera de 60 s) e `confirmacao` (fora dos grupos protegidos); login ganhou "Criar conta" e reenvio para conta não confirmada; gêneros vêm do enum gerado (`Constants`). Descoberto: redirect com IP literal é recusado pelo Auth (ver Notas). 89 testes.
 - **15/10/2026** — T12 (Fase 3): `services/auth.ts` (`entrar`, `sair`, `obterSessao`, `observarSessao`), `store/sessao.tsx` (Context), layout com `Stack.Protected` (`(publico)/entrar`, `(autenticado)/index`), componentes `CampoTexto`, `Botao`, `Aviso`, `StatusServidor`; validação local só de formato; testes com o cliente Supabase real e fetch simulado (erros do login, sessão persistida em partes, logout limpa o SecureStore). Ajustes da T10: jest/jest-expo/@types/jest em devDependencies; patches do SDK 57 (expo 57.0.30, expo-router 57.0.28...). 52 testes.
 - **08/10/2026** — T10 (Fase 3): Expo Router (`app/`, `main = expo-router/entry`, `scheme = campusshare`); `src/services/` com cliente Supabase (sessão no `expo-secure-store` dividida em partes de até 2000 bytes, auto refresh ligado ao `AppState`), `AppError` + `normalizarErro` (PostgREST, Edge Function, Auth, rede), `invocarFuncao` e `verificarSaude`; tipos gerados em `src/types/database.ts`; `jest-expo` com 31 testes. Lockfile do app regenerado (o patch do `expo` deixava `expo-modules-core` aninhado e quebrava o `jest-expo`).

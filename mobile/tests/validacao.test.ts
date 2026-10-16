@@ -4,6 +4,7 @@ import {
   validarCadastro,
   validarEmail,
   validarLogin,
+  validarPerfil,
   validarTelefone,
 } from '@/utils/validacao';
 
@@ -100,5 +101,15 @@ describe('telefone', () => {
 
   it('apenasDigitos tira máscara e espaços', () => {
     expect(apenasDigitos('(51) 99999-9999')).toBe('51999999999');
+  });
+});
+
+describe('validarPerfil', () => {
+  it('nome obrigatório e telefone opcional com DDD', () => {
+    expect(validarPerfil({ nome_completo: 'Mariana', telefone: '' })).toEqual({});
+    expect(validarPerfil({ nome_completo: ' ', telefone: '123' })).toEqual({
+      nome_completo: 'Informe seu nome completo.',
+      telefone: expect.stringMatching(/DDD/),
+    });
   });
 });

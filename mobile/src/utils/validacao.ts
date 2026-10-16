@@ -92,3 +92,21 @@ export function validarCadastro(dados: {
     Object.entries(erros).filter(([, mensagem]) => mensagem !== undefined),
   ) as ErrosDeCampo<CamposCadastro>;
 }
+
+export type CamposPerfil = 'nome_completo' | 'telefone';
+
+export function validarPerfil(dados: {
+  nome_completo: string;
+  telefone: string;
+}): ErrosDeCampo<CamposPerfil> {
+  const erros: ErrosDeCampo<CamposPerfil> = {};
+  const erroNome = validarNome(dados.nome_completo);
+  const erroTelefone = validarTelefone(dados.telefone);
+  if (erroNome) {
+    erros.nome_completo = erroNome;
+  }
+  if (erroTelefone) {
+    erros.telefone = erroTelefone;
+  }
+  return erros;
+}

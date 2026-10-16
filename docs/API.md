@@ -86,7 +86,7 @@ Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `c
 |---|---|---|
 | Tabela | `usuario` — `select` | Só a própria linha (RLS) |
 | Tabela | `usuario` — `update` | Só a própria linha; colunas `nome_completo`, `telefone`, `genero`, `expo_push_token` |
-| View | `perfil_publico` — `select` | Nome e média de avaliações de qualquer usuário (sem e-mail, telefone ou gênero) |
+| View | `perfil_publico` — `select` | Nome e média de avaliações de qualquer usuário (sem e-mail, telefone ou gênero). **Ainda não existe:** criada na T30, junto com AVALIACAO |
 
 ## veiculos
 

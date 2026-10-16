@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 
-select plan(25);
+select plan(29);
 
 -- ------------------------------------------------------------
 -- Dados de teste (como postgres)
@@ -99,6 +99,20 @@ select throws_ok(
     where id_usuario = 'a0000000-0000-0000-0000-00000000000a'$$,
   '42501', null, 'A não altera a própria instituição'
 );
+select throws_ok(
+  $$update public.usuario set id_usuario = 'b0000000-0000-0000-0000-00000000000b'
+    where id_usuario = 'a0000000-0000-0000-0000-00000000000a'$$,
+  '42501', null, 'A não troca o próprio id_usuario (não assume outra identidade)'
+);
+select throws_ok(
+  $$update public.usuario set criado_em = now() - interval '1 year'
+    where id_usuario = 'a0000000-0000-0000-0000-00000000000a'$$,
+  '42501', null, 'A não altera o próprio criado_em'
+);
+select throws_ok(
+  $$delete from public.usuario where id_usuario = 'a0000000-0000-0000-0000-00000000000a'$$,
+  '42501', null, 'A não exclui o próprio perfil direto (exclusão vem do Auth, em cascata)'
+);
 select lives_ok(
   $$update public.usuario set nome_completo = 'Invadido'
     where id_usuario = 'b0000000-0000-0000-0000-00000000000b'$$,
@@ -185,6 +199,11 @@ select set_config('request.jwt.claims', '{"role": "anon"}', true);
 
 select throws_ok($$select 1 from public.instituicao$$, '42501', null, 'anon não lê instituicao');
 select throws_ok($$select 1 from public.usuario$$, '42501', null, 'anon não lê usuario');
+select throws_ok(
+  $$update public.usuario set nome_completo = 'anon'
+    where id_usuario = 'a0000000-0000-0000-0000-00000000000a'$$,
+  '42501', null, 'anon não altera perfil'
+);
 select throws_ok($$select 1 from public.veiculo$$, '42501', null, 'anon não lê veiculo');
 select throws_ok($$select 1 from public.carona$$, '42501', null, 'anon não lê carona');
 

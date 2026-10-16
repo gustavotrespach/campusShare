@@ -111,11 +111,13 @@ export async function reenviarConfirmacao(email: string): Promise<void> {
   }
 }
 
+export const MENSAGEM_LINK_INVALIDO = 'Este link de confirmação não é válido.';
+
 // Abre a sessão a partir do link de confirmação (o app não usa detectSessionInUrl).
 export async function confirmarPorLink(url: string): Promise<Sessao> {
   const link = lerLinkDeConfirmacao(url);
   if (link === null) {
-    throw new AppError(400, 'LINK_INVALIDO', 'Este link de confirmação não é válido.');
+    throw new AppError(400, 'LINK_INVALIDO', MENSAGEM_LINK_INVALIDO);
   }
   try {
     if (link.tipo === 'erro') {
