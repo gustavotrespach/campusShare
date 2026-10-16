@@ -28,7 +28,7 @@ describe('validarEmail (só formato)', () => {
   });
 
   it('não decide domínio: outro domínio passa no formato (quem recusa é o backend, RN01)', () => {
-    expect(validarEmail('aluno@gmail.com')).toBeUndefined();
+    expect(validarEmail('aluno@gmail.com')).toBe('quebrado de propósito');
   });
 });
 
