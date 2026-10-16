@@ -5,7 +5,7 @@
 
 ## Contexto atual
 
-Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na Aula 08; padrões, Git e arquivos para IA definidos na Aula 09. **Backend trocado de Node.js/Express para Supabase direto** (Auth + RLS + funções SQL + Edge Functions — ADR-009). Fundação pronta (T01–T04): Supabase local com Edge Function `health` e app Expo em `mobile/`. Fase 1 (modelo de dados): schema inicial com RLS (T06) e ULBRA em migration (T07); projeto remoto `yqovnmlrbpkgwzmlnncb` (São Paulo) linkado, recebe as migrations por `supabase db push` (conferir com `supabase migration list`). Fase 2 (autenticação no backend): padrão de erros das Edge Functions (T05), Auth com confirmação obrigatória e SMTP do Resend no remoto (T08), hook de domínio + trigger de perfil e privilégios padrão (T09). O remoto recebe a config do Auth por `supabase config push` (bloco `[remotes.producao]` do `config.toml`).
+Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em 16/10). Arquitetura e DER definidos na Aula 08; padrões, Git e arquivos para IA definidos na Aula 09. **Backend trocado de Node.js/Express para Supabase direto** (Auth + RLS + funções SQL + Edge Functions — ADR-009). Fundação pronta (T01–T04): Supabase local com Edge Function `health` e app Expo em `mobile/`. Fase 1 (modelo de dados): schema inicial com RLS (T06) e ULBRA em migration (T07); projeto remoto `yqovnmlrbpkgwzmlnncb` (São Paulo) linkado, recebe as migrations por `supabase db push` (conferir com `supabase migration list`). Fase 2 (autenticação no backend): padrão de erros das Edge Functions (T05), Auth com confirmação obrigatória e SMTP do Resend no remoto (T08), hook de domínio + trigger de perfil e privilégios padrão (T09). O remoto recebe a config do Auth por `supabase config push` (bloco `[remotes.producao]` do `config.toml`). Fase 3 (app conectado, testada no Expo Go/iPhone): Expo Router, cliente Supabase com sessão no SecureStore (T10), login e sessão persistente (T12), cadastro com confirmação por deep link (T11) e perfil (T13), tudo contra o Supabase **local** — o deploy remoto das Edge Functions é a T14.
 
 ## Progresso recente
 
@@ -28,8 +28,9 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 
 ## Próximos passos
 
-1. Fase 3 concluída (T10–T13). Próximo: T14 (deploy do backend via GitHub Actions) e Sprint 2 (veículos, caronas).
-2. Gustavo: renomear `EXPO_PUBLIC_SUPABASE_ANON_KEY` para `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` no `mobile/.env` (o app usa o nome do `.env.example`).
+1. T14 — deploy do backend via GitHub Actions (`db push` + `functions deploy` na `main`), para o app poder apontar para o projeto remoto.
+2. Sprint 2: regras e tela de veículos (T15, T16), publicar e buscar caronas (T17–T19).
+3. Antes da demo (AP2, 22/10): avaliar PKCE no deep link de confirmação (ver "Decisões a confirmar") e testar cadastro/login com o app apontando para o remoto (Resend entrega só para o e-mail do Gustavo).
 
 ## Decisões a confirmar com o squad
 
@@ -62,6 +63,7 @@ Fase de preparação para a Sprint 1 (Aula 10). Arquitetura e DER definidos na A
 
 ## Histórico
 
+- **16/10/2026** — **Fase 3 concluída** (PRs #10 a #13 mergeados): roteiros de teste da T10, T12, T11 e T13 aprovados pelo Gustavo no Expo Go (iPhone) contra o Supabase local. 97 testes no app, 116 pgTAP.
 - **16/10/2026** — T13 (Fase 3): `services/perfil.ts` e tela de perfil (e-mail e instituição só leitura; nome, telefone e gênero editáveis); `02_rls.test.sql` ganhou acesso negado para `id_usuario`, `criado_em`, DELETE do próprio perfil e UPDATE como `anon` (116 testes pgTAP); fakes de teste em `mobile/tests/apoio/`. Ajuste da T11: `/confirmacao` sem link mostra "link inválido" com reenvio. Registrada a recomendação de PKCE antes da demo. 97 testes no app.
 - **15/10/2026** — T11 (Fase 3): `cadastrar`, `reenviarConfirmacao` e `confirmarPorLink` em `services/auth.ts` (`emailRedirectTo` de `Linking.createURL('/confirmacao')`); telas `(publico)/cadastro`, `(publico)/confira-email` (reenvio com espera de 60 s) e `confirmacao` (fora dos grupos protegidos); login ganhou "Criar conta" e reenvio para conta não confirmada; gêneros vêm do enum gerado (`Constants`). Descoberto: redirect com IP literal é recusado pelo Auth (ver Notas). 89 testes.
 - **15/10/2026** — T12 (Fase 3): `services/auth.ts` (`entrar`, `sair`, `obterSessao`, `observarSessao`), `store/sessao.tsx` (Context), layout com `Stack.Protected` (`(publico)/entrar`, `(autenticado)/index`), componentes `CampoTexto`, `Botao`, `Aviso`, `StatusServidor`; validação local só de formato; testes com o cliente Supabase real e fetch simulado (erros do login, sessão persistida em partes, logout limpa o SecureStore). Ajustes da T10: jest/jest-expo/@types/jest em devDependencies; patches do SDK 57 (expo 57.0.30, expo-router 57.0.28...). 52 testes.
