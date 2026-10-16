@@ -155,6 +155,18 @@ await supabase.rpc('publicar_carona', {
 
 A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança.
 
+Leitura direta pelo app (tabelas criadas na T20; INSERT, UPDATE e DELETE recusados com `42501` para `authenticated`):
+
+```ts
+// Passageiro: as próprias reservas. Motorista: as reservas das próprias caronas (mesma consulta; a RLS filtra)
+await supabase
+  .from('reserva')
+  .select('id_reserva, id_carona, id_passageiro, valor_individual, status, criado_em')
+  .eq('id_carona', idCarona);
+```
+
+Colunas de `reserva`: `id_reserva`, `id_carona`, `id_passageiro`, `valor_individual` (reais, 2 casas), `status` (`PENDENTE`, `CONFIRMADA`, `CANCELADA`, `EXPIRADA`), `criado_em`.
+
 ```json
 // POST /functions/v1/reservar-vaga
 { "id_carona": "uuid" }
@@ -173,7 +185,11 @@ O app acompanha a confirmação assinando mudanças da própria reserva via **Re
 | Tipo | Nome | Descrição |
 |---|---|---|
 | Edge Function 🔓 | `webhook-mercado-pago` | Notificação do Mercado Pago (`verify_jwt = false`; assinatura validada) — idempotente |
-| Tabela | `pagamento` — `select` | Status do pagamento das próprias reservas (RLS) |
+| Tabela | `pagamento` — `select` | Status do pagamento das próprias reservas (RLS); só o passageiro, o motorista não vê |
+
+Colunas de `pagamento`: `id_pagamento`, `id_reserva`, `id_externo`, `valor`, `taxa_plataforma`, `valor_repassado`, `metodo` (`PIX`), `status` (`PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE`), `pago_em`. Nenhuma escrita pelo app: o pagamento é criado pela Edge Function `reservar-vaga` e aprovado só pelo webhook (ADR-008).
+
+`parametro_custo` (preço do litro e taxa) não é exposta ao app: só funções SQL e Edge Functions a leem.
 
 ## notificacoes (US06)
 
