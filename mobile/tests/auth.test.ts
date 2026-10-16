@@ -6,6 +6,12 @@ type ServicoAuth = typeof import('@/services/auth');
 
 const mockSecureStore = new Map<string, string>();
 
+const URL_CONFIRMACAO = 'exp://Gustavos-MacBook-Pro.local:8081/--/confirmacao';
+
+jest.mock('@/services/links', () => ({
+  urlDeConfirmacao: () => 'exp://Gustavos-MacBook-Pro.local:8081/--/confirmacao',
+}));
+
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async (chave: string) => mockSecureStore.get(chave) ?? null),
   setItemAsync: jest.fn(async (chave: string, valor: string) => {
@@ -97,7 +103,11 @@ beforeEach(() => {
 describe('entrar — mapeamento de erros do login', () => {
   it('credenciais erradas viram 401 com mensagem genérica', async () => {
     mockFetch.mockResolvedValue(
-      resposta(400, { code: 'invalid_credentials', msg: 'Invalid login credentials' }),
+      resposta(400, {
+        code: 400,
+        error_code: 'invalid_credentials',
+        msg: 'Invalid login credentials',
+      }),
     );
 
     await expect(carregarServico().entrar('aluno@rede.ulbra.br', 'errada')).rejects.toMatchObject({
@@ -109,7 +119,7 @@ describe('entrar — mapeamento de erros do login', () => {
 
   it('e-mail não confirmado mostra mensagem clara pedindo a confirmação', async () => {
     mockFetch.mockResolvedValue(
-      resposta(400, { code: 'email_not_confirmed', msg: 'Email not confirmed' }),
+      resposta(400, { code: 400, error_code: 'email_not_confirmed', msg: 'Email not confirmed' }),
     );
 
     await expect(
@@ -204,5 +214,136 @@ describe('sessão persistente e logout', () => {
 
     expect(eventos).toContain(ID_USUARIO);
     expect(eventos[eventos.length - 1]).toBeNull();
+  });
+});
+
+const DADOS_CADASTRO = {
+  nomeCompleto: '  Mariana Souza ',
+  email: ' Mariana.Souza@REDE.ULBRA.BR',
+  senha: 'Senha123!',
+  genero: 'FEMININO' as const,
+  telefone: '(51) 99999-9999',
+};
+
+function corpoEnviado(indice = 0): Record<string, unknown> {
+  const [, opcoes] = mockFetch.mock.calls[indice] as [string, { body: string }];
+  return JSON.parse(opcoes.body) as Record<string, unknown>;
+}
+
+describe('cadastrar', () => {
+  it('envia metadados do perfil e o redirect do link de confirmação', async () => {
+    mockFetch.mockResolvedValue(resposta(200, { ...SESSAO.user, email_confirmed_at: null }));
+
+    await carregarServico().cadastrar(DADOS_CADASTRO);
+
+    const [url] = mockFetch.mock.calls[0] as [string];
+    expect(url).toContain('/auth/v1/signup');
+    expect(decodeURIComponent(url)).toContain(`redirect_to=${URL_CONFIRMACAO}`);
+    expect(corpoEnviado()).toMatchObject({
+      email: 'mariana.souza@rede.ulbra.br',
+      password: 'Senha123!',
+      data: { nome_completo: 'Mariana Souza', genero: 'FEMININO', telefone: '51999999999' },
+    });
+  });
+
+  it('telefone vazio não é enviado', async () => {
+    mockFetch.mockResolvedValue(resposta(200, { ...SESSAO.user, email_confirmed_at: null }));
+
+    await carregarServico().cadastrar({ ...DADOS_CADASTRO, telefone: ' ' });
+
+    expect(corpoEnviado().data).toEqual({ nome_completo: 'Mariana Souza', genero: 'FEMININO' });
+  });
+
+  it('e-mail já cadastrado e não confirmado (200 sem revelar a conta) resolve como sucesso', async () => {
+    mockFetch.mockResolvedValue(resposta(200, { ...SESSAO.user, identities: [] }));
+
+    await expect(carregarServico().cadastrar(DADOS_CADASTRO)).resolves.toBeUndefined();
+  });
+
+  it.each([
+    [
+      'domínio fora da instituição (hook)',
+      resposta(422, { code: 422, error_code: 'unknown', msg: 'DOMINIO_INVALIDO' }),
+      { status: 422, code: 'DOMINIO_INVALIDO' },
+    ],
+    [
+      'e-mail já confirmado',
+      resposta(422, {
+        code: 422,
+        error_code: 'user_already_exists',
+        msg: 'User already registered',
+      }),
+      { status: 409, code: 'user_already_exists' },
+    ],
+    [
+      'senha fraca',
+      resposta(422, {
+        code: 422,
+        error_code: 'weak_password',
+        msg: 'Password should be at least 8 characters.',
+        weak_password: { reasons: ['length'] },
+      }),
+      { code: 'weak_password' },
+    ],
+  ])('%s vira AppError com o código certo', async (_caso, respostaAuth, esperado) => {
+    mockFetch.mockResolvedValue(respostaAuth);
+
+    await expect(carregarServico().cadastrar(DADOS_CADASTRO)).rejects.toMatchObject(esperado);
+  });
+});
+
+describe('reenviarConfirmacao', () => {
+  it('pede novo e-mail de signup com o mesmo redirect', async () => {
+    mockFetch.mockResolvedValue(resposta(200, {}));
+
+    await carregarServico().reenviarConfirmacao(' Mariana.Souza@rede.ulbra.br ');
+
+    const [url] = mockFetch.mock.calls[0] as [string];
+    expect(url).toContain('/auth/v1/resend');
+    expect(decodeURIComponent(url)).toContain(`redirect_to=${URL_CONFIRMACAO}`);
+    expect(corpoEnviado()).toMatchObject({ email: 'mariana.souza@rede.ulbra.br', type: 'signup' });
+  });
+
+  it('limite de envios vira mensagem em pt-BR', async () => {
+    mockFetch.mockResolvedValue(
+      resposta(429, { code: 429, error_code: 'over_email_send_rate_limit', msg: 'rate limit' }),
+    );
+
+    await expect(carregarServico().reenviarConfirmacao('a@b.com')).rejects.toMatchObject({
+      code: 'over_email_send_rate_limit',
+      message: expect.stringMatching(/aguarde/i),
+    });
+  });
+});
+
+describe('confirmarPorLink', () => {
+  it('abre a sessão com os tokens do fragmento e guarda no SecureStore', async () => {
+    mockFetch.mockImplementation(async (url: string) =>
+      String(url).includes('/auth/v1/user') ? resposta(200, SESSAO.user) : resposta(404, {}),
+    );
+    const url = `${URL_CONFIRMACAO}#access_token=${ACCESS_TOKEN}&refresh_token=refresh-falso&type=signup`;
+
+    const sessao = await carregarServico().confirmarPorLink(url);
+
+    expect(sessao.user.id).toBe(ID_USUARIO);
+    expect(sessao.refresh_token).toBe('refresh-falso');
+    expect((await carregarServico().obterSessao())?.access_token).toBe(ACCESS_TOKEN);
+  });
+
+  it('link expirado ou já usado vira mensagem clara, sem chamar o servidor', async () => {
+    const url =
+      'campusshare:#error=access_denied&error_code=otp_expired&error_description=Email+link+is+invalid+or+has+expired';
+
+    await expect(carregarServico().confirmarPorLink(url)).rejects.toMatchObject({
+      code: 'otp_expired',
+      message: expect.stringMatching(/expirou/),
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it('link sem tokens é recusado', async () => {
+    await expect(
+      carregarServico().confirmarPorLink('campusshare://confirmacao'),
+    ).rejects.toMatchObject({ code: 'LINK_INVALIDO' });
   });
 });

@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -14,12 +15,15 @@ export default function TelaEntrar() {
   const [errosCampo, setErrosCampo] = useState<ErrosDeCampo<'email' | 'senha'>>({});
   const [erroGeral, setErroGeral] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
+  // Conta ainda não confirmada: oferece o reenvio do link
+  const [naoConfirmado, setNaoConfirmado] = useState(false);
 
   // Sucesso não navega daqui: a sessão muda e o layout raiz troca para a Home.
   const aoEntrar = async () => {
     const erros = validarLogin({ email, senha });
     setErrosCampo(erros);
     setErroGeral(null);
+    setNaoConfirmado(false);
     if (temErros(erros)) {
       return;
     }
@@ -27,7 +31,9 @@ export default function TelaEntrar() {
     try {
       await entrar(email, senha);
     } catch (falha) {
-      setErroGeral(normalizarErro(falha).message);
+      const erro = normalizarErro(falha);
+      setErroGeral(erro.message);
+      setNaoConfirmado(erro.code === 'email_not_confirmed');
       setEnviando(false);
     }
   };
@@ -71,6 +77,23 @@ export default function TelaEntrar() {
         />
 
         <Botao titulo="Entrar" carregando={enviando} onPress={aoEntrar} />
+        {naoConfirmado ? (
+          <Botao
+            titulo="Reenviar link de confirmação"
+            variante="secundario"
+            onPress={() =>
+              router.push({
+                pathname: '/confira-email',
+                params: { email: email.trim().toLowerCase() },
+              })
+            }
+          />
+        ) : null}
+        <Botao
+          titulo="Criar conta"
+          variante="secundario"
+          onPress={() => router.push('/cadastro')}
+        />
       </ScrollView>
     </KeyboardAvoidingView>
   );
