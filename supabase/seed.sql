@@ -37,7 +37,8 @@ on conflict (id_veiculo) do nothing;
 -- Partida daqui a 3 dias às 07:30 de Brasília (10:30 UTC)
 insert into public.carona (
   id_carona, id_motorista, id_veiculo, origem, origem_lat, origem_lng, destino, destino_lat,
-  destino_lng, data_hora_partida, vagas_disponiveis, custo_total, tolerancia_min, status
+  destino_lng, data_hora_partida, vagas_ofertadas, vagas_disponiveis, custo_total, tolerancia_min,
+  status
 )
 values (
   'd2000000-0000-0000-0000-000000000001', 'd0000000-0000-0000-0000-000000000001',
@@ -45,6 +46,6 @@ values (
   'Centro, Torres - RS', -29.335300, -49.726800,
   'ULBRA Torres - RS', -29.329000, -49.736500,
   date_trunc('day', now() at time zone 'utc') at time zone 'utc' + interval '3 days 10 hours 30 minutes',
-  3, 24.00, 10, 'ABERTA'
+  3, 3, 24.00, 10, 'ABERTA'
 )
 on conflict (id_carona) do nothing;

@@ -29,15 +29,15 @@ values
 
 insert into public.carona (
   id_carona, id_motorista, id_veiculo, origem, origem_lat, origem_lng, destino, destino_lat,
-  destino_lng, data_hora_partida, vagas_disponiveis, custo_total, tolerancia_min
+  destino_lng, data_hora_partida, vagas_ofertadas, vagas_disponiveis, custo_total, tolerancia_min
 )
 values
   ('a2000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-00000000000a',
    'a1000000-0000-0000-0000-000000000001', 'Centro', -29.335, -49.727, 'ULBRA', -29.330,
-   -49.740, now() + interval '1 day', 3, 40, 10),
+   -49.740, now() + interval '1 day', 3, 3, 40, 10),
   ('b2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-00000000000b',
    'b1000000-0000-0000-0000-000000000001', 'Centro', -29.335, -49.727, 'ULBRA', -29.330,
-   -49.740, now() + interval '1 day', 3, 40, 10);
+   -49.740, now() + interval '1 day', 3, 3, 40, 10);
 
 -- ------------------------------------------------------------
 -- Como o usuário A (authenticated)
@@ -144,9 +144,11 @@ select lives_ok(
 select throws_ok(
   $$insert into public.carona (
       id_motorista, id_veiculo, origem, origem_lat, origem_lng, destino, destino_lat,
-      destino_lng, data_hora_partida, vagas_disponiveis, custo_total, tolerancia_min)
+      destino_lng, data_hora_partida, vagas_ofertadas, vagas_disponiveis, custo_total,
+      tolerancia_min)
     values ('a0000000-0000-0000-0000-00000000000a', 'a1000000-0000-0000-0000-000000000001',
-      'Centro', -29.335, -49.727, 'ULBRA', -29.330, -49.740, now() + interval '1 day', 3, 40, 10)$$,
+      'Centro', -29.335, -49.727, 'ULBRA', -29.330, -49.740, now() + interval '1 day', 3, 3, 40,
+      10)$$,
   '42501', null, 'A não insere carona direto'
 );
 select throws_ok(
