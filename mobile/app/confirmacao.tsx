@@ -6,7 +6,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
 import { CampoTexto } from '@/components/CampoTexto';
-import { confirmarPorLink, reenviarConfirmacao } from '@/services/auth';
+import { confirmarPorLink, MENSAGEM_LINK_INVALIDO, reenviarConfirmacao } from '@/services/auth';
 import { normalizarErro } from '@/services/erros';
 import { useSessao } from '@/store/sessao';
 import { validarEmail } from '@/utils/validacao';
@@ -17,7 +17,7 @@ export default function TelaConfirmacao() {
   const url = Linking.useLinkingURL();
   const { sessao } = useSessao();
   const processada = useRef<string | null>(null);
-  const [erro, setErro] = useState<string | null>(null);
+  const [erroDoLink, setErroDoLink] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [erroEmail, setErroEmail] = useState<string | undefined>();
   const [reenvio, setReenvio] = useState<string | null>(null);
@@ -33,7 +33,7 @@ export default function TelaConfirmacao() {
         await confirmarPorLink(url);
         router.replace('/');
       } catch (falha) {
-        setErro(normalizarErro(falha).message);
+        setErroDoLink(normalizarErro(falha).message);
       }
     };
     void confirmar();
@@ -55,6 +55,10 @@ export default function TelaConfirmacao() {
       setEnviando(false);
     }
   };
+
+  // Sem URL (rota aberta sem link) não há o que confirmar: mostra o erro em vez de esperar para sempre.
+  // O valor inicial do useLinkingURL é síncrono, então null aqui não é "ainda carregando".
+  const erro = url === null ? MENSAGEM_LINK_INVALIDO : erroDoLink;
 
   if (!erro) {
     return (
