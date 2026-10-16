@@ -55,7 +55,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 **Preço e rateio**
 - RN09 — Custo estimado: `custo_estimado = (distancia_km ÷ consumo_kml) × preco_litro`. Distância pela Directions API; consumo do VEICULO; preço do litro em `PARAMETRO_CUSTO`.
 - RN10 — **Teto:** `custo_total` definido pelo motorista pode ser menor ou igual a `custo_estimado`, **nunca maior**. Mantém o produto como divisão de despesas, não transporte remunerado.
-- RN11 — Rateio: `valor_individual = custo_total ÷ n_ocupantes`, calculado **no backend** (função SQL `reservar_vaga`) e gravado na RESERVA.
+- RN11 — Rateio: `valor_individual = custo_total ÷ n_ocupantes`, calculado **no backend** (função SQL `reservar_vaga`) e gravado na RESERVA. `n_ocupantes = vagas oferecidas + 1`: o motorista também entra na divisão do custo, e o número é fixado na publicação, para o valor por passageiro não mudar conforme outros reservam (decisão do Gustavo, 16/10).
 - RN12 — Precificação por etapas: na Sprint 2 o motorista digita `custo_total` (sem teto, pois ainda não há `custo_estimado`); o teto entra na Sprint 3 junto com a sugestão.
 - RN13 — Taxa: `taxa_plataforma = valor × percentual_taxa`; `valor_repassado = valor − taxa_plataforma`. Ambos gravados em PAGAMENTO.
 

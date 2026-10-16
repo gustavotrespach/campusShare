@@ -17,7 +17,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | Dia | Trilha A — caronas | Trilha B — reserva e pagamento | Geral |
 |---|---|---|---|
 | 16–17/10 | T15 (veículos: falta o trigger `VEICULO_EM_USO`) | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) | T14 (deploy + CI) |
-| 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) | T21 (reserva com rateio) — **precisa da decisão de `n_ocupantes`** | |
+| 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) | T21 (reserva com rateio) | |
 | 18–19/10 | T18 (buscar caronas) | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
 | 19–20/10 | T19 (telas de publicar e buscar) | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) | |
@@ -142,7 +142,7 @@ Aceite: migration aplicada, testes de RLS passando e `docs/DATABASE.md` conferid
 Status: a fazer · Depende de: T18, T20
 Descrição: Função SQL `reservar_vaga(p_id_carona, p_id_passageiro)` — `SELECT ... FOR UPDATE`, calcula `valor_individual` (RN11), valida RN14 e RN18, cria reserva `PENDENTE` e decrementa vagas; executável só pela `service_role`.
 Aceite: teste de concorrência — duas chamadas simultâneas na última vaga, só uma passa; RN14 e RN18 cobertas em pgTAP.
-Nota (16/10): **bloqueada até o squad decidir `n_ocupantes`** (ver "Decisões a confirmar" no MEMORY.md).
+Nota (16/10): `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação — decisão do Gustavo registrada na RN11 do `SPEC.md`.
 
 ### T22 — Edge Function de reserva + cobrança Pix sandbox (US04)
 Status: a fazer · Depende de: T21
@@ -198,4 +198,4 @@ Aceite: só participantes avaliam, uma vez cada, após a conclusão.
 Status: a fazer · Depende de: T19, T25 (até 16/10: T25, T29)
 Descrição: Gerar builds Android (APK) e iOS pelo EAS e roteiro da demo.
 Aceite: app instalado em pelo menos 2 celulares reais, fluxo completo cadastro → carona → reserva → pagamento sandbox funcionando.
-Nota (16/10): o projeto EAS será criado com o nome `campusshare` só nesta tarefa. Build de iOS instalável em aparelho exige conta paga do Apple Developer Program, fora do orçamento zero; para a demo, considerar APK no Android e Expo Go no iPhone. Definir no prompt da tarefa.
+Nota (16/10): o projeto EAS será criado com o nome `campusshare` só nesta tarefa. Build de iOS instalável em aparelho exige conta paga do Apple Developer Program, fora do orçamento zero; para a demo, decidido (16/10): APK no Android e Expo Go no iPhone.

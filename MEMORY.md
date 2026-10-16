@@ -32,8 +32,8 @@ Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em
 
 1. T14 — deploy do backend e CI via GitHub Actions (em andamento, Fase 4), para o app poder apontar para o projeto remoto.
 2. Trilha A (caronas): T15 → T16, T17 → T18 → T19.
-3. Trilha B (reserva e pagamento): T20 → T21 → T22 → T23 → T25. A T21 depende da decisão de `n_ocupantes`; a T22, das credenciais de teste do Mercado Pago (Gustavo).
-4. T31 — build e roteiro da demo (depende agora de T19 e T25, não mais de T29).
+3. Trilha B (reserva e pagamento): T20 → T21 → T22 → T23 → T25. A T22 depende das credenciais de teste do Mercado Pago, que o Gustavo vai criar e repassar quando a tarefa chegar.
+4. T31 — build e roteiro da demo (depende agora de T19 e T25, não mais de T29): APK no Android e Expo Go no iPhone.
 5. Testar cadastro/login com o app apontando para o remoto (Resend entrega só para o e-mail do Gustavo).
 
 **Depois da AP2:** T24, T26–T30 e o PKCE no deep link de confirmação, para completar o app.
@@ -43,7 +43,9 @@ Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em
 - [x] **View `perfil_publico`** (16/10): movida da T13 para a T30, porque depende de AVALIACAO (média de avaliações). A `docs/API.md` marca a view como ainda não existente.
 
 - [x] **Domínio institucional:** confirmado como `@rede.ulbra.br` (Gustavo, 01/10). Docs atualizados; a T07 deve gravar `dominio_email = rede.ulbra.br`.
-- [ ] **`n_ocupantes` do rateio — bloqueia a T21 (demo AP2):** o motorista entra na divisão? Proposta: `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação — assim o valor por passageiro não muda conforme outros reservam.
+- [x] **`n_ocupantes` do rateio** (Gustavo, 16/10): o motorista entra na divisão do custo da gasolina. `n_ocupantes = vagas oferecidas + 1`, fixado na publicação, para o valor por passageiro não mudar conforme outros reservam. Registrado na RN11 do `SPEC.md`.
+- [x] **Demo da AP2 no iPhone** (Gustavo, 16/10): sem conta paga da Apple, a demo usa APK nos celulares Android e Expo Go no iPhone. O Gustavo vai tentar conseguir um Android para o dia.
+- [ ] **Credenciais de teste do Mercado Pago:** o Gustavo está criando a conta de desenvolvedor e repassa os dados quando a T22 começar (via `supabase secrets set`, nunca no repositório).
 - [ ] **Prazo de expiração da reserva PENDENTE:** proposta de 15 minutos. Só é necessário na T24, adiada para depois da AP2.
 - [x] **Parâmetros de custo iniciais** (Gustavo, 02/10): `percentual_taxa = 0.1000` (10%) e `preco_litro = 6.29`. Entram na migration idempotente de PARAMETRO_CUSTO da T20.
 - [ ] **Reembolso em cancelamento:** no MVP (sandbox), apenas registrar status; definir regra para produção.
