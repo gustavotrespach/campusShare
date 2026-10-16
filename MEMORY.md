@@ -5,7 +5,7 @@
 
 ## Contexto atual
 
-Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em 16/10). Arquitetura e DER definidos na Aula 08; padrões, Git e arquivos para IA definidos na Aula 09. **Backend trocado de Node.js/Express para Supabase direto** (Auth + RLS + funções SQL + Edge Functions — ADR-009). Fundação pronta (T01–T04): Supabase local com Edge Function `health` e app Expo em `mobile/`. Fase 1 (modelo de dados): schema inicial com RLS (T06) e ULBRA em migration (T07); projeto remoto `yqovnmlrbpkgwzmlnncb` (São Paulo) linkado, recebe as migrations por `supabase db push` (conferir com `supabase migration list`). Fase 2 (autenticação no backend): padrão de erros das Edge Functions (T05), Auth com confirmação obrigatória e SMTP do Resend no remoto (T08), hook de domínio + trigger de perfil e privilégios padrão (T09). O remoto recebe a config do Auth por `supabase config push` (bloco `[remotes.producao]` do `config.toml`). Fase 3 (app conectado, testada no Expo Go/iPhone): Expo Router, cliente Supabase com sessão no SecureStore (T10), login e sessão persistente (T12), cadastro com confirmação por deep link (T11) e perfil (T13), tudo contra o Supabase **local** — o deploy remoto das Edge Functions é a T14.
+Sprint 1 concluída: backend e app de autenticação prontos e publicados (Fases 0 a 4 concluídas em 16/10). Arquitetura e DER definidos na Aula 08; padrões, Git e arquivos para IA definidos na Aula 09. **Backend trocado de Node.js/Express para Supabase direto** (Auth + RLS + funções SQL + Edge Functions — ADR-009). Fundação pronta (T01–T04): Supabase local com Edge Function `health` e app Expo em `mobile/`. Fase 1 (modelo de dados): schema inicial com RLS (T06) e ULBRA em migration (T07); projeto remoto `yqovnmlrbpkgwzmlnncb` (São Paulo) linkado; desde a T14 recebe migrations e Edge Functions só pelo workflow `Deploy` (conferir com `supabase migration list`). Fase 2 (autenticação no backend): padrão de erros das Edge Functions (T05), Auth com confirmação obrigatória e SMTP do Resend no remoto (T08), hook de domínio + trigger de perfil e privilégios padrão (T09). O remoto recebe a config do Auth por `supabase config push` (bloco `[remotes.producao]` do `config.toml`). Fase 3 (app conectado, testada no Expo Go/iPhone): Expo Router, cliente Supabase com sessão no SecureStore (T10), login e sessão persistente (T12), cadastro com confirmação por deep link (T11) e perfil (T13), testados contra o Supabase local. Fase 4 (T14): GitHub Actions com `CI` em todo PR (pgTAP + tipos gerados, `deno fmt/lint/test`, lint/typecheck/jest do app) e `Deploy` na `main` (`db push`, `functions deploy`, checagem da `health`); app testado no Expo Go contra o remoto.
 
 ## Progresso recente
 
@@ -21,6 +21,7 @@ Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em
 - [x] T05 — Padrão de erros: `_shared/` com `AppError`, `comTratamentoDeErros`, CORS por lista e `validarCorpo` (Zod 4.6.5) (02/10)
 - [x] T08 — Auth: confirmação obrigatória, senha ≥ 8, template pt-BR, `campusshare://`, SMTP do Resend só no remoto (02/10)
 - [x] T09 — Hook `validar_dominio_institucional` + trigger `criar_perfil_usuario` + migration `privilegios_padrao` (02/10)
+- [x] T14 — Deploy e CI: workflows `CI` (`banco`, `edge-functions`, `app`) e `Deploy` (só na `main`), release #18 publicada, `health` remota 200, app testado contra o remoto (16/10)
 - [x] T13 — Perfil: `services/perfil.ts` (`obterMeuPerfil`, `atualizarPerfil` só com nome/gênero/telefone), tela `(autenticado)/perfil` com e-mail e instituição só leitura; pgTAP de acesso negado em `usuario` completado (16/10)
 - [x] T11 — Cadastro: formulário com validação de formato, erros do backend no campo certo, tela "Confira seu e-mail" com reenvio, rota `/confirmacao` que abre a sessão pelo link (15/10)
 - [x] T12 — Login e sessão: `services/auth.ts`, `ProvedorSessao` (Context), rotas `(publico)`/`(autenticado)` com `Stack.Protected`, logout limpando o SecureStore (15/10)
@@ -30,11 +31,10 @@ Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em
 
 **Foco até a AP2 (22/10)** — decisão do Gustavo em 16/10; plano por dia em "Foco até a AP2" no `TASKS.md`.
 
-1. T14 — deploy do backend e CI via GitHub Actions (em andamento, Fase 4), para o app poder apontar para o projeto remoto.
-2. Trilha A (caronas): T15 → T16, T17 → T18 → T19.
-3. Trilha B (reserva e pagamento): T20 → T21 → T22 → T23 → T25. A T22 depende das credenciais de teste do Mercado Pago, que o Gustavo vai criar e repassar quando a tarefa chegar.
-4. T31 — build e roteiro da demo (depende agora de T19 e T25, não mais de T29): APK no Android e Expo Go no iPhone.
-5. Testar cadastro/login com o app apontando para o remoto (Resend entrega só para o e-mail do Gustavo).
+1. Trilha A (caronas): T15 → T16, T17 → T18 → T19.
+2. Trilha B (reserva e pagamento): T20 → T21 → T22 → T23 → T25. A T22 depende das credenciais de teste do Mercado Pago, que o Gustavo vai criar e repassar quando a tarefa chegar. O webhook só é alcançável no remoto: o teste ponta a ponta passa por uma release na `main`.
+3. T31 — build e roteiro da demo (depende agora de T19 e T25, não mais de T29): APK no Android e Expo Go no iPhone.
+4. Recomendado (Gustavo, no GitHub): marcar `banco`, `edge-functions` e `app` como checks obrigatórios na `develop` e na `main`.
 
 **Depois da AP2:** T24, T26–T30 e o PKCE no deep link de confirmação, para completar o app.
 
@@ -63,7 +63,10 @@ Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em
 - Desenvolvimento local exige Docker (`supabase start`). E-mails do Auth local aparecem no Mailpit (`localhost:54324`); o SMTP do Resend só é ligado no remoto (`[remotes.producao]` no `config.toml`, senha em `supabase/.env`).
 - **Link de confirmação no Expo Go:** o Auth (GoTrue v2.197) recusa, na allowlist com curinga (`exp://**`), redirect cujo host é IP literal (`exp://192.168.x.x:8081/...` cai no `site_url`). Hosts com nome passam. Por isso, para testar o deep link no Expo Go, suba o Expo anunciando o nome Bonjour do Mac: `REACT_NATIVE_PACKAGER_HOSTNAME=$(scutil --get LocalHostName).local npx expo start`. No app instalado (`campusshare://confirmacao`) não há esse problema. Alternativa futura: `npx expo start --tunnel` (`*.exp.direct`).
 - Depois de `npx expo install` que atualiza o `expo`, confira `ls mobile/node_modules/expo-modules-core`: o npm às vezes o deixa aninhado em `node_modules/expo/` e o `jest-expo` quebra ("Cannot find module 'expo-modules-core'"). Solução usada na T10 e na T12: apagar `node_modules` e `package-lock.json` e rodar `npm install`.
-- Mudou `config.toml`? Local: `supabase stop && supabase start`. Remoto: `supabase config diff` e depois `supabase config push`.
+- Mudou `config.toml`? Local: `supabase stop && supabase start`. Remoto: `supabase config diff` e depois `supabase config push` (manual, pelo Gustavo: precisa da senha do Resend, que não vai para o GitHub). Desde a reativação do projeto, o `config diff` mostra diferenças de storage no remoto (`analytics.enabled`, `vector.enabled`): revisar antes do próximo `config push`.
+- **Deploy (T14):** migrations e Edge Functions chegam ao remoto **só** pelo workflow `Deploy`, disparado pelo merge na `main` (PR `develop` → `main` com título `release: <descrição>`). Nunca rodar `db push` ou `functions deploy` da máquina. Reexecutar: `gh workflow run deploy.yml --ref main` (em outra branch o job `deploy` fica como pulado). Segredos do GitHub: `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `SUPABASE_PROJECT_ID` (`docs/SECURITY.md`). Segredos das Edge Functions (`CORS_ORIGENS_PERMITIDAS`, Mercado Pago…) continuam por `supabase secrets set`, manual.
+- **CI (T14):** o job `banco` compara `mobile/src/types/database.ts` com `supabase gen types typescript --local`; migration nova sem regenerar os tipos quebra o PR. O typecheck do CI roda sem `.expo/types` (tipagem das rotas mais frouxa que a local). Versões fixas nos dois workflows: CLI 2.119.0, Deno 2.9.7, Node 24; ao atualizar o CLI local, atualize os `.yml` juntos.
+- Testar o app contra o remoto: trocar `EXPO_PUBLIC_SUPABASE_URL` e a publishable key no `mobile/.env` (guardar os valores locais antes) e `npx expo start --clear`. Cadastro completo no remoto só com autorização do Gustavo (Resend: só o e-mail dele, 4 por hora).
 - Migrations novas: objetos nascem **sem** privilégio para `anon`/`authenticated` (migration `privilegios_padrao`); conceda o mínimo com `grant` explícito e teste o acesso.
 - Resend sem domínio próprio: o remetente `onboarding@resend.dev` só entrega para o e-mail dono da conta do Resend.
 - `seed.sql` só roda localmente; dados essenciais (ULBRA, PARAMETRO_CUSTO) vão em migration.
@@ -71,6 +74,7 @@ Sprint 1 com backend e app de autenticação prontos (Fases 0 a 3 concluídas em
 
 ## Histórico
 
+- **16/10/2026** — **Fase 4 concluída** (T14, PRs #16 e #18): `.github/workflows/ci.yml` (PR para `develop`/`main` e push na `develop`; jobs `banco` com 116 pgTAP e diff dos tipos gerados, `edge-functions` com 11 `deno test`, `app` com 97 testes) e `deploy.yml` (push na `main`; reaproveita o CI por `workflow_call`, depois `link`, `db push`, `functions deploy` e `health` com 5 tentativas). CI vermelho comprovado no PR descartável #17. Primeiro deploy (release #18): banco já em dia, `health` publicada, HTTP 200. Verificado no remoto: cadastro `@gmail.com` → 422 `DOMINIO_INVALIDO`; Gustavo testou o app no Expo Go contra o remoto (login, perfil, bloqueio de domínio).
 - **16/10/2026** — Escopo da demo AP2 definido pelo Gustavo: entram T14, T15–T23, T25 e T31; ficam para depois T24, T26–T30 e o PKCE. `TASKS.md` ganhou a seção "Foco até a AP2", o status `adiada (pós-AP2)` e notas nas tarefas da demo (o que já existe na T15, coordenadas sem mapa na T19, credenciais do Mercado Pago na T22, iOS na T31). A T31 passou a depender de T19 e T25.
 - **16/10/2026** — **Fase 3 concluída** (PRs #10 a #13 mergeados): roteiros de teste da T10, T12, T11 e T13 aprovados pelo Gustavo no Expo Go (iPhone) contra o Supabase local. 97 testes no app, 116 pgTAP.
 - **16/10/2026** — T13 (Fase 3): `services/perfil.ts` e tela de perfil (e-mail e instituição só leitura; nome, telefone e gênero editáveis); `02_rls.test.sql` ganhou acesso negado para `id_usuario`, `criado_em`, DELETE do próprio perfil e UPDATE como `anon` (116 testes pgTAP); fakes de teste em `mobile/tests/apoio/`. Ajuste da T11: `/confirmacao` sem link mostra "link inválido" com reenvio. Registrada a recomendação de PKCE antes da demo. 97 testes no app.

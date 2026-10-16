@@ -99,9 +99,10 @@ Descrição: Tela de perfil lendo/atualizando a tabela `usuario` (só colunas li
 Aceite: usuário edita nome, telefone e gênero; não consegue alterar e-mail nem instituição; testes de RLS passam.
 
 ### T14 — Deploy do backend
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T09
+Status: feito · Responsável: Gustavo Trespach · Depende de: T09
 Descrição: GitHub Actions na `main` rodando `supabase db push` e `supabase functions deploy`; segredos com `supabase secrets set`.
 Aceite: `health` responde no projeto remoto; cadastro e login funcionam com o app apontando para o projeto.
+Nota (16/10): workflows `CI` (todo PR: `banco`, `edge-functions`, `app`) e `Deploy` (push na `main`) em `.github/workflows/`. Primeiro deploy pela release #18 (`health` HTTP 200); app testado no Expo Go contra o remoto (login, perfil, bloqueio de `@gmail.com`). `config push` e `secrets set` continuam manuais (`docs/architecture.md`).
 
 ---
 
