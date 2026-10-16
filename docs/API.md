@@ -103,7 +103,9 @@ DELETE recusado pelo trigger `impedir_exclusao_veiculo_em_uso` quando o veículo
 | 409 | `VEICULO_EM_USO` | Este veículo está em uma carona ativa. Cancele ou conclua a carona antes de excluí-lo. | Alguma carona `ABERTA` ou `LOTADA` com o veículo |
 | 409 | `VEICULO_COM_HISTORICO` | Este veículo tem caronas registradas no histórico e não pode ser excluído. | Só caronas `CONCLUIDA`/`CANCELADA` |
 
-DELETE ou UPDATE no veículo de outro motorista não falha, mas não afeta nenhuma linha (RLS).
+DELETE ou UPDATE no veículo de outro motorista não falha, mas não afeta nenhuma linha (RLS). O app trata a resposta vazia como "Veículo não encontrado.".
+
+Placa já cadastrada (em qualquer conta) no INSERT ou UPDATE: HTTP 409 com `code = 23505` e `veiculo_placa_key` na `message`. O service `veiculos.ts` traduz para `PLACA_DUPLICADA`, "Esta placa já está cadastrada.", mostrado no campo da placa.
 
 ```ts
 await supabase.from('veiculo').insert({

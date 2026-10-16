@@ -33,6 +33,7 @@ export default function TelaHome() {
       <StatusServidor />
       {erro ? <Aviso mensagem={erro} /> : null}
       <Botao titulo="Meu perfil" onPress={() => router.push('/perfil')} />
+      <Botao titulo="Meus veículos" onPress={() => router.push('/veiculos')} />
       <Botao titulo="Sair" variante="secundario" carregando={saindo} onPress={aoSair} />
     </View>
   );

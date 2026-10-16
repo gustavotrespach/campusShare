@@ -6,6 +6,7 @@ import {
   validarLogin,
   validarPerfil,
   validarTelefone,
+  validarVeiculo,
 } from '@/utils/validacao';
 
 describe('validarEmail (só formato)', () => {
@@ -111,5 +112,39 @@ describe('validarPerfil', () => {
       nome_completo: 'Informe seu nome completo.',
       telefone: expect.stringMatching(/DDD/),
     });
+  });
+});
+
+describe('validarVeiculo', () => {
+  const valido = { modelo: 'Chevrolet Onix', placa: 'abc-1d23', cor: 'Prata', consumo_kml: '13,0' };
+
+  it('sem erros com os campos preenchidos (consumo opcional)', () => {
+    expect(validarVeiculo(valido)).toEqual({});
+    expect(validarVeiculo({ ...valido, consumo_kml: '' })).toEqual({});
+  });
+
+  it('aponta cada campo obrigatório vazio', () => {
+    expect(validarVeiculo({ modelo: ' ', placa: '', cor: '', consumo_kml: '' })).toEqual({
+      modelo: 'Informe o modelo.',
+      placa: 'Informe a placa.',
+      cor: 'Informe a cor.',
+    });
+  });
+
+  it('recusa placa fora do formato, consumo inválido e textos acima do tamanho da coluna', () => {
+    const erros = validarVeiculo({
+      modelo: 'M'.repeat(61),
+      placa: 'AB12345',
+      cor: 'C'.repeat(31),
+      consumo_kml: '0',
+    });
+
+    expect(erros).toEqual({
+      modelo: 'Use no máximo 60 caracteres.',
+      placa: expect.stringMatching(/Placa inválida/),
+      cor: 'Use no máximo 30 caracteres.',
+      consumo_kml: expect.stringMatching(/km\/l/),
+    });
+    expect(temErros(erros)).toBe(true);
   });
 });
