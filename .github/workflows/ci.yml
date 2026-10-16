@@ -1,0 +1,93 @@
+# CI: testes do banco, das Edge Functions e do app em todo PR para develop/main e em push na develop.
+# Também é chamado pelo deploy.yml (workflow_call), para o deploy só acontecer com os testes verdes.
+# Os nomes dos jobs (banco, edge-functions, app) são usados como checks obrigatórios: não renomear.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # Só cancela execuções antigas de PR; quando chamado pelo deploy, nunca cancela.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  SUPABASE_CLI_VERSION: 2.119.0
+  DENO_VERSION: 2.9.7
+  NODE_VERSION: 24
+
+jobs:
+  banco:
+    name: banco
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: supabase/setup-cli@v3
+        with:
+          version: ${{ env.SUPABASE_CLI_VERSION }}
+
+      # Os testes pgTAP e o gen types só precisam do Postgres: o resto da stack fica de fora.
+      - name: Sobe o Postgres local com migrations e seed
+        run: >-
+          supabase start
+          -x gotrue,realtime,storage-api,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor
+
+      - name: Testes pgTAP (RLS, funções, privilégios)
+        run: supabase test db
+
+      - name: Tipos do app em dia com o schema
+        run: |
+          supabase gen types typescript --local > /tmp/database.ts
+          diff -u mobile/src/types/database.ts /tmp/database.ts || {
+            echo "::error::mobile/src/types/database.ts desatualizado: rode 'supabase gen types typescript --local > mobile/src/types/database.ts'"
+            exit 1
+          }
+
+  edge-functions:
+    name: edge-functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: supabase/functions
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      - run: deno fmt --check
+      - run: deno lint
+      # Mesmo comando de antes de todo commit: sem flags de permissão (ver _shared/cors.ts)
+      - run: deno test
+
+  app:
+    name: app
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test -- --ci

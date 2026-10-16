@@ -49,6 +49,19 @@ O app pode ser modificado; por isso o backend recalcula e valida tudo:
 - No app, só valores com prefixo `EXPO_PUBLIC_`: a URL do projeto e a **anon/publishable key** (pública por natureza — a proteção é a RLS) e a chave do Maps restrita por pacote/bundle no Google Cloud.
 - Chave vazada: revogar/rotacionar imediatamente e registrar no MEMORY.md.
 
+### Segredos do GitHub Actions (deploy, T14)
+
+Cadastrados em GitHub → Settings → Secrets and variables → Actions → *Repository secrets*. Só o workflow **Deploy** os usa, como `${{ secrets.NOME }}`; nunca são impressos nem gravados em arquivo.
+
+| Segredo | Para que serve | Onde gerar ou rotacionar |
+|---|---|---|
+| `SUPABASE_ACCESS_TOKEN` | Autentica o Supabase CLI na API de gerenciamento (`link`, `functions deploy`) | Painel do Supabase → Account → Access Tokens. Para rotacionar: gerar um novo, atualizar o segredo e revogar o antigo |
+| `SUPABASE_DB_PASSWORD` | Senha do banco remoto, usada por `link` e `db push` | Painel do projeto → Project Settings → Database → *Reset database password*. Redefinir não afeta o app (que usa a publishable key), só exige atualizar o segredo e o `supabase link` local |
+| `SUPABASE_PROJECT_ID` | Ref do projeto remoto (`yqovnmlrbpkgwzmlnncb`); não é segredo, mas fica junto para o workflow não ter o ref fixo | Painel do projeto → Project Settings → General |
+
+- A chave do Resend (`RESEND_API_KEY`) **não** vai para o GitHub: o `supabase config push` (Auth/SMTP) continua manual, rodado da máquina do Gustavo.
+- Segredos das Edge Functions (`supabase secrets set`) também ficam fora do workflow. Hoje a única variável é `CORS_ORIGENS_PERMITIDAS`, que o app nativo não usa; se um cliente web precisar dela: `supabase secrets set CORS_ORIGENS_PERMITIDAS=https://<origem> --project-ref yqovnmlrbpkgwzmlnncb`.
+
 ## Validação de entrada
 
 - Edge Functions: todo body e query validados com **Zod** antes de qualquer chamada ao banco.

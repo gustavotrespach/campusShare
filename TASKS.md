@@ -99,7 +99,7 @@ Descrição: Tela de perfil lendo/atualizando a tabela `usuario` (só colunas li
 Aceite: usuário edita nome, telefone e gênero; não consegue alterar e-mail nem instituição; testes de RLS passam.
 
 ### T14 — Deploy do backend
-Status: a fazer · Depende de: T09
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T09
 Descrição: GitHub Actions na `main` rodando `supabase db push` e `supabase functions deploy`; segredos com `supabase secrets set`.
 Aceite: `health` responde no projeto remoto; cadastro e login funcionam com o app apontando para o projeto.
 

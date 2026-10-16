@@ -68,6 +68,10 @@ E-mails enviados pelo Auth local (confirmação de cadastro) aparecem no Mailpit
 - Em produção, os segredos das Edge Functions são definidos com `supabase secrets set`.
 - O SMTP do Resend é configurado no Supabase Auth (painel → Authentication → SMTP), não em variável do app.
 
+## CI e deploy
+
+Todo PR roda os checks **`banco`**, **`edge-functions`** e **`app`** (GitHub Actions, `.github/workflows/ci.yml`). O merge na `main` (release `develop` → `main`) publica migrations e Edge Functions no projeto Supabase remoto (`.github/workflows/deploy.yml`). Detalhes, release e reexecução em `docs/architecture.md` → "CI e deploy"; segredos em `docs/SECURITY.md`.
+
 ## Documentação
 
 | Arquivo | Para quê |
