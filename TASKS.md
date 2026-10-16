@@ -16,7 +16,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 
 | Dia | Trilha A — caronas | Trilha B — reserva e pagamento | Geral |
 |---|---|---|---|
-| 16–17/10 | T15 (veículos: falta o trigger `VEICULO_EM_USO`) | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) | T14 (deploy + CI) |
+| 16–17/10 | T15 (veículos: trigger `VEICULO_EM_USO`) — feito | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) | T14 (deploy + CI) |
 | 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) | T21 (reserva com rateio) | |
 | 18–19/10 | T18 (buscar caronas) | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
 | 19–20/10 | T19 (telas de publicar e buscar) | T23 (webhook de pagamento) | |
@@ -109,10 +109,10 @@ Nota (16/10): workflows `CI` (todo PR: `banco`, `edge-functions`, `app`) e `Depl
 ## Sprint 2 — Veículos, caronas, reservas e pagamento
 
 ### T15 — Regras de veículos
-Status: a fazer · Depende de: T06
+Status: feito · Responsável: Gustavo Trespach · Depende de: T06
 Descrição: Políticas RLS de CRUD dos próprios veículos, CHECK de placa (antigo e Mercosul) e trigger que impede excluir veículo com carona ABERTA (`VEICULO_EM_USO`).
 Aceite: usuário só vê e altera os próprios veículos (pgTAP); placa inválida é recusada.
-Nota (16/10): a RLS de `veiculo` e o CHECK de placa já entraram na T06 (`schema_inicial`). Falta o trigger `VEICULO_EM_USO` e conferir se os testes pgTAP existentes cobrem o aceite.
+Nota (16/10): a RLS de `veiculo` e o CHECK de placa já entraram na T06 (`schema_inicial`). A T15 adicionou a migration `regras_veiculos` (trigger `impedir_exclusao_veiculo_em_uso`: `VEICULO_EM_USO` com carona ABERTA/LOTADA, `VEICULO_COM_HISTORICO` só com histórico) e o pgTAP `06_veiculos`.
 
 ### T16 — Tela de veículos
 Status: a fazer · Depende de: T15, T10

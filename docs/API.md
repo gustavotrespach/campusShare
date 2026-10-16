@@ -39,7 +39,7 @@ O serviço do app normaliza os dois formatos (e os erros do Auth) em `AppError {
 | 401 | Sem sessão, JWT inválido, credenciais incorretas, assinatura de webhook inválida |
 | 403 | Autenticado, mas sem permissão (RLS ou dono do recurso) |
 | 404 | Recurso não encontrado |
-| 409 | Conflito (e-mail duplicado, carona lotada, reserva dupla) |
+| 409 | Conflito (e-mail duplicado, carona lotada, reserva dupla, veículo em uso) |
 | 422 | Regra de negócio violada (domínio, teto de preço, somente mulheres) |
 | 500 | Erro inesperado (mensagem genérica; detalhe só no log) |
 
@@ -94,7 +94,16 @@ Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `c
 |---|---|---|
 | Tabela | `veiculo` — `select/insert/update/delete` | Só os do próprio usuário (RLS; `id_motorista` preenchido com `auth.uid()` por default) |
 
-Constraints no banco: placa no padrão antigo ou Mercosul, `qtd_lugares` de 2 a 8, `consumo_kml > 0`. DELETE recusado (`VEICULO_EM_USO`, 409) se houver carona ABERTA com o veículo.
+Constraints no banco: placa no padrão antigo ou Mercosul (maiúsculas, sem hífen) e única, `qtd_lugares` de 2 a 8, `consumo_kml > 0`.
+
+DELETE recusado pelo trigger `impedir_exclusao_veiculo_em_uso` quando o veículo tem caronas:
+
+| HTTP | `message` (código) | `hint` (frase para o usuário) | Quando |
+|---|---|---|---|
+| 409 | `VEICULO_EM_USO` | Este veículo está em uma carona ativa. Cancele ou conclua a carona antes de excluí-lo. | Alguma carona `ABERTA` ou `LOTADA` com o veículo |
+| 409 | `VEICULO_COM_HISTORICO` | Este veículo tem caronas registradas no histórico e não pode ser excluído. | Só caronas `CONCLUIDA`/`CANCELADA` |
+
+DELETE ou UPDATE no veículo de outro motorista não falha, mas não afeta nenhuma linha (RLS).
 
 ```ts
 await supabase.from('veiculo').insert({
