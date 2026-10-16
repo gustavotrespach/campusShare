@@ -142,7 +142,7 @@ valor_repassado  = valor − taxa_plataforma
 2. O CI roda no PR. Depois do merge, o workflow **Deploy** roda sozinho na `main`.
 3. Acompanhe em Actions → Deploy (ou `gh run watch`) e confira a `health` remota.
 
-**Reexecutar o deploy sem novo merge:** Actions → Deploy → *Run workflow* (branch `main`), ou `gh workflow run deploy.yml --ref main`. Útil depois de reativar o projeto pausado ou se um deploy falhou por instabilidade.
+**Reexecutar o deploy sem novo merge:** Actions → Deploy → *Run workflow* (branch `main`), ou `gh workflow run deploy.yml --ref main`. Útil depois de reativar o projeto pausado ou se um deploy falhou por instabilidade. **A execução manual só publica a partir da `main`:** o job `deploy` tem `if: github.ref == 'refs/heads/main'`, então, se outra branch for escolhida por engano, só os testes rodam e o `deploy` aparece como *skipped*.
 
 ## Planejamento por sprint
 

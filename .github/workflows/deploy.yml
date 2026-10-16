@@ -24,6 +24,9 @@ jobs:
   deploy:
     name: deploy
     needs: testes
+    # workflow_dispatch deixa escolher a branch: só a main publica no projeto remoto.
+    # Em outra branch, os testes rodam e este job aparece como "skipped".
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
