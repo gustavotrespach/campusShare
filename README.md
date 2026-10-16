@@ -7,7 +7,7 @@ App de caronas universitárias para Android e iOS. Só alunos com e-mail institu
 
 ## Funcionalidades do MVP
 
-- Cadastro restrito ao domínio `@ulbra.br`, com confirmação por e-mail
+- Cadastro restrito ao domínio `@rede.ulbra.br`, com confirmação por e-mail
 - Login com Supabase Auth (sessão JWT)
 - Cadastro de veículo e publicação de carona com horário exato de partida
 - Busca de caronas por proximidade, com filtro "somente mulheres"
@@ -61,12 +61,16 @@ E-mails enviados pelo Auth local (confirmação de cadastro) aparecem no Mailpit
 | `MP_WEBHOOK_SECRET` | Edge Functions | Validação da assinatura do webhook |
 | `EXPO_ACCESS_TOKEN` | Edge Functions | Envio de push pela Expo (opcional) |
 | `EXPO_PUBLIC_SUPABASE_URL` | mobile | URL do projeto Supabase |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | mobile | Chave pública (anon/publishable) — a proteção vem da RLS |
+| `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | mobile | Chave pública (anon/publishable) — a proteção vem da RLS |
 | `EXPO_PUBLIC_GOOGLE_MAPS_KEY` | mobile | Exibição do mapa |
 
 - `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` são injetadas automaticamente nas Edge Functions.
 - Em produção, os segredos das Edge Functions são definidos com `supabase secrets set`.
 - O SMTP do Resend é configurado no Supabase Auth (painel → Authentication → SMTP), não em variável do app.
+
+## CI e deploy
+
+Todo PR roda os checks **`banco`**, **`edge-functions`** e **`app`** (GitHub Actions, `.github/workflows/ci.yml`). O merge na `main` (release `develop` → `main`) publica migrations e Edge Functions no projeto Supabase remoto (`.github/workflows/deploy.yml`). Detalhes, release e reexecução em `docs/architecture.md` → "CI e deploy"; segredos em `docs/SECURITY.md`.
 
 ## Documentação
 

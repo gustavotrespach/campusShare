@@ -62,20 +62,23 @@ O serviço do app normaliza os dois formatos (e os erros do Auth) em `AppError {
 ```ts
 // cadastro
 await supabase.auth.signUp({
-  email: 'mariana@ulbra.br',
+  email: 'mariana@rede.ulbra.br',
   password: '********',
   options: {
     data: { nome_completo: 'Mariana Souza', genero: 'FEMININO', telefone: '51999999999' },
   },
 });
-// erros: DOMINIO_INVALIDO (hook, 422) · user_already_exists (409) · weak_password (422)
+// erros (AuthApiError: status + code + message):
+//   422 msg 'DOMINIO_INVALIDO' (hook; error_code 'unknown' — use a mensagem como código)
+//   422 user_already_exists (e-mail já confirmado) · 422 weak_password (menos de 8 caracteres)
+// e-mail já cadastrado e ainda não confirmado: o Auth responde 200 sem revelar que a conta existe
 
 // login
-await supabase.auth.signInWithPassword({ email: 'mariana@ulbra.br', password: '********' });
-// erros: invalid_credentials (400 → tratado como 401 genérico) · email_not_confirmed (403)
+await supabase.auth.signInWithPassword({ email: 'mariana@rede.ulbra.br', password: '********' });
+// erros: invalid_credentials (400 → tratado como 401 genérico) · email_not_confirmed (400 → mensagem clara)
 ```
 
-Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `criar_perfil_usuario`.
+Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `criar_perfil_usuario` (`genero` ausente ou inválido → `NAO_INFORMADO`; sem `nome_completo` → parte do e-mail antes do `@`). O app envia `emailRedirectTo` = `campusshare://confirmacao` (app instalado) ou `exp://<host>:8081/--/confirmacao` (Expo Go); o link do e-mail volta para essa rota com a sessão no fragmento (`#access_token=...&refresh_token=...&type=signup`) ou com o erro (`#error=access_denied&error_code=otp_expired&...`), e o app chama `auth.setSession`. Redirect com host IP literal é recusado pela allowlist e cai no `site_url`.
 
 ## usuarios
 
@@ -83,7 +86,7 @@ Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `c
 |---|---|---|
 | Tabela | `usuario` — `select` | Só a própria linha (RLS) |
 | Tabela | `usuario` — `update` | Só a própria linha; colunas `nome_completo`, `telefone`, `genero`, `expo_push_token` |
-| View | `perfil_publico` — `select` | Nome e média de avaliações de qualquer usuário (sem e-mail, telefone ou gênero) |
+| View | `perfil_publico` — `select` | Nome e média de avaliações de qualquer usuário (sem e-mail, telefone ou gênero). **Ainda não existe:** criada na T30, junto com AVALIACAO |
 
 ## veiculos
 

@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirme seu e-mail no CampusShare</title>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #f4f5f7; font-family: Arial, Helvetica, sans-serif; color: #1f2933;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f5f7; padding: 24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 480px; background-color: #ffffff; border-radius: 8px; padding: 32px 24px;">
+            <tr>
+              <td>
+                <h1 style="margin: 0 0 16px; font-size: 22px; color: #1f2933;">Bem-vindo(a) ao CampusShare!</h1>
+                <p style="margin: 0 0 16px; font-size: 16px; line-height: 24px;">
+                  Falta só um passo para ativar sua conta: confirme que o e-mail
+                  <strong>{{ .Email }}</strong> é seu.
+                </p>
+                <p style="margin: 0 0 24px; text-align: center;">
+                  <a href="{{ .ConfirmationURL }}" style="display: inline-block; background-color: #1a56db; color: #ffffff; text-decoration: none; font-size: 16px; font-weight: bold; padding: 12px 24px; border-radius: 6px;">Confirmar meu e-mail</a>
+                </p>
+                <p style="margin: 0 0 8px; font-size: 14px; line-height: 20px; color: #52606d;">
+                  Se o botão não funcionar, copie e cole este endereço no navegador do celular:
+                </p>
+                <p style="margin: 0 0 24px; font-size: 13px; line-height: 18px; word-break: break-all;">
+                  <a href="{{ .ConfirmationURL }}" style="color: #1a56db;">{{ .ConfirmationURL }}</a>
+                </p>
+                <p style="margin: 0 0 8px; font-size: 14px; line-height: 20px; color: #52606d;">
+                  O link vale por 24 horas. Se expirar, peça um novo na tela de cadastro do app.
+                </p>
+                <p style="margin: 0; font-size: 14px; line-height: 20px; color: #52606d;">
+                  Não foi você que se cadastrou? Pode ignorar esta mensagem: sem a confirmação,
+                  ninguém consegue entrar com este e-mail.
+                </p>
+              </td>
+            </tr>
+          </table>
+          <p style="margin: 16px 0 0; font-size: 12px; color: #7b8794;">
+            CampusShare — caronas entre estudantes da sua instituição.
+          </p>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

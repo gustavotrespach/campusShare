@@ -8,7 +8,7 @@
 CampusShare é um app de caronas entre estudantes da mesma instituição (ULBRA — Campus Torres).
 Dois diferenciais sustentam o produto:
 
-1. **Segurança:** só entra quem confirma um e-mail do domínio institucional (`@ulbra.br`).
+1. **Segurança:** só entra quem confirma um e-mail do domínio institucional (`@rede.ulbra.br`).
 2. **Sem constrangimento com dinheiro:** o valor é rateado e pago dentro do app (Pix).
 
 O mesmo usuário pode ser motorista ou passageiro. Não existem tipos de conta separados.

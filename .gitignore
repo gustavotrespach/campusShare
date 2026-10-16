@@ -1,0 +1,19 @@
+# Dependências
+node_modules/
+
+# Segredos: só o modelo .env.example é versionado
+.env
+.env.*
+!.env.example
+
+# Builds e caches
+dist/
+.expo/
+coverage/
+
+# Supabase CLI (estado local)
+supabase/.temp/
+supabase/.branches/
+
+# Sistema operacional
+.DS_Store

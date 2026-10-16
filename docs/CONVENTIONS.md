@@ -35,10 +35,11 @@
 
 - Funções pequenas, com uma responsabilidade. Mais de ~40 linhas é sinal para quebrar (vale para `plpgsql` também).
 - `async/await` sempre.
+- **Privilégios (migration `privilegios_padrao`):** tabelas, sequences e funções novas criadas pelas migrations nascem **sem** privilégio para `anon`/`authenticated` (e funções sem `EXECUTE` para `PUBLIC`). Toda tabela recebe `grant` explícito só das operações/colunas que o app usa, e **toda função nova recebe `GRANT EXECUTE` explícito só para quem precisa** (`authenticated`, `service_role` ou `supabase_auth_admin`). Mesmo assim, escreva o `revoke ... from public, anon, authenticated` na migration: deixa a intenção visível no PR.
 - **Erros em funções SQL:** `raise exception '<CODIGO>' using errcode = 'PT4xx', hint = '<mensagem para o usuário>'` (ver `docs/API.md`).
-- **Erros em Edge Functions:** lançar `AppError(status, code, message)` de `_shared/erros.ts`; o handler comum converte em `{ error: { code, message, details } }`.
+- **Erros em Edge Functions:** lançar `AppError(status, code, message, details?)` de `_shared/erros.ts`. Todo handler é envolvido por `comTratamentoDeErros` (`_shared/resposta.ts`), que responde o preflight de CORS e converte o erro em `{ error: { code, message, details } }`; erro que não é `AppError` vira 500 `ERRO_INTERNO` com mensagem genérica (detalhe só no log).
 - **No app:** chamadas ao Supabase só em `mobile/src/services/`, que convertem qualquer erro em `AppError`. Telas não usam o cliente Supabase direto.
-- Validação de entrada com **Zod** nas Edge Functions; funções SQL validam os próprios parâmetros; o banco garante formatos com `CHECK`.
+- Validação de entrada com **Zod** nas Edge Functions (`validarCorpo(req, schema)` de `_shared/validacao.ts`, que responde 400 `PAYLOAD_INVALIDO` com `details.campos`); funções SQL validam os próprios parâmetros; o banco garante formatos com `CHECK`.
 - Regra que precisa de transação vai para **uma** função SQL — não encadear várias chamadas do app/Edge Function esperando atomicidade.
 - Dinheiro em **centavos (inteiro)** no TypeScript; `numeric(10,2)` no banco. Nunca `number` com casas decimais para cálculo.
 - Datas em UTC no banco; conversão para `America/Sao_Paulo` só na exibição.
@@ -55,7 +56,7 @@ supabase/
 │   ├── 20260925120000_init.sql                  # tabelas base + RLS
 │   └── 20261001120000_reserva_pagamento.sql     # tabelas + RLS + funções do módulo
 ├── functions/
-│   ├── _shared/            # supabase-client.ts, erros.ts, cors.ts, schemas.ts
+│   ├── _shared/            # erros.ts, resposta.ts, cors.ts, validacao.ts (+ testes)
 │   └── reservar-vaga/
 │       ├── index.ts
 │       └── index.test.ts   # deno test
@@ -107,7 +108,7 @@ chore(infra): configura deploy do supabase via github actions
 
 - Título = commit principal; corpo com o modelo abaixo.
 - Pelo menos **1 aprovação** de outro membro antes do merge — inclusive quando o código foi gerado com IA.
-- PR com migration: revisor confere RLS e `grant`/`revoke` das funções.
+- PR com migration: revisor confere RLS e `grant`/`revoke` das tabelas e funções (nada nasce acessível ao app sem `grant` explícito).
 - Merge por **squash**; apagar a branch depois.
 
 ```markdown

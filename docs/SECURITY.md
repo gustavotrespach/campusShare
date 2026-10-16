@@ -5,10 +5,10 @@
 
 ## Autenticação (Supabase Auth)
 
-- **Cadastro:** o domínio do e-mail é validado contra `INSTITUICAO.dominio_email` pelo Auth Hook **Before User Created** (função SQL `validar_dominio_institucional`), antes de o usuário existir. Comparação em minúsculas, pelo domínio exato após o `@` (`aluno@ulbra.br.fake.com` é recusado).
+- **Cadastro:** o domínio do e-mail é validado contra `INSTITUICAO.dominio_email` pelo Auth Hook **Before User Created** (função SQL `validar_dominio_institucional`), antes de o usuário existir. Comparação em minúsculas, pelo domínio exato após o `@` (`aluno@rede.ulbra.br.fake.com` é recusado).
 - **Confirmação de e-mail:** obrigatória ("Confirm email" ligado). O link é gerado e validado pelo Supabase Auth e enviado pelo SMTP do Resend. Validade do link configurada no Auth (24 h).
 - **Senha:** mínimo 8 caracteres, configurado no Auth. O hash (bcrypt) fica em `auth.users` — o projeto nunca armazena, loga ou retorna senha.
-- **Sessão:** JWT do Supabase (`sub = id_usuario`), access token de 1 h renovado pelo refresh token. No app, a sessão é persistida com adapter seguro baseado em `expo-secure-store` — nunca em AsyncStorage sem criptografia.
+- **Sessão:** JWT do Supabase (`sub = id_usuario`), access token de 1 h renovado pelo refresh token. No app, a sessão é persistida com adapter seguro baseado em `expo-secure-store` (`mobile/src/services/armazenamento-seguro.ts`): como o SecureStore limita cada valor a ~2048 bytes, a sessão é dividida em partes de até 2000 bytes, todas no próprio SecureStore — nunca em AsyncStorage sem criptografia.
 - **Login:** mensagem genérica para e-mail ou senha errados (`invalid_credentials`). Usuário não confirmado é bloqueado pelo Auth (`email_not_confirmed`) e o app mostra mensagem clara.
 - **Rate limit:** limites nativos do Supabase Auth para cadastro, login e reenvio de e-mail (revisar em Authentication → Rate Limits).
 
@@ -45,9 +45,22 @@ O app pode ser modificado; por isso o backend recalcula e valida tudo:
 ## Segredos
 
 - Edge Functions: local em `supabase/functions/.env` (no `.gitignore`); remoto com `supabase secrets set`. `.env.example` versionado sem valores.
-- SMTP do Resend: configurado no painel do Supabase Auth (e em `config.toml` via `env(...)` para o ambiente local).
+- SMTP do Resend: só no remoto, no bloco `[remotes.producao]` do `config.toml`, com a senha em `env(RESEND_API_KEY)` lida de `supabase/.env` (fora do git) e enviada ao Auth por `supabase config push`. Localmente o SMTP fica desligado e os e-mails caem no Mailpit.
 - No app, só valores com prefixo `EXPO_PUBLIC_`: a URL do projeto e a **anon/publishable key** (pública por natureza — a proteção é a RLS) e a chave do Maps restrita por pacote/bundle no Google Cloud.
 - Chave vazada: revogar/rotacionar imediatamente e registrar no MEMORY.md.
+
+### Segredos do GitHub Actions (deploy, T14)
+
+Cadastrados em GitHub → Settings → Secrets and variables → Actions → *Repository secrets*. Só o workflow **Deploy** os usa, como `${{ secrets.NOME }}`; nunca são impressos nem gravados em arquivo.
+
+| Segredo | Para que serve | Onde gerar ou rotacionar |
+|---|---|---|
+| `SUPABASE_ACCESS_TOKEN` | Autentica o Supabase CLI na API de gerenciamento (`link`, `functions deploy`) | Painel do Supabase → Account → Access Tokens. Para rotacionar: gerar um novo, atualizar o segredo e revogar o antigo |
+| `SUPABASE_DB_PASSWORD` | Senha do banco remoto, usada por `link` e `db push` | Painel do projeto → Project Settings → Database → *Reset database password*. Redefinir não afeta o app (que usa a publishable key), só exige atualizar o segredo e o `supabase link` local |
+| `SUPABASE_PROJECT_ID` | Ref do projeto remoto (`yqovnmlrbpkgwzmlnncb`); não é segredo, mas fica junto para o workflow não ter o ref fixo | Painel do projeto → Project Settings → General |
+
+- A chave do Resend (`RESEND_API_KEY`) **não** vai para o GitHub: o `supabase config push` (Auth/SMTP) continua manual, rodado da máquina do Gustavo.
+- Segredos das Edge Functions (`supabase secrets set`) também ficam fora do workflow. Hoje a única variável é `CORS_ORIGENS_PERMITIDAS`, que o app nativo não usa; se um cliente web precisar dela: `supabase secrets set CORS_ORIGENS_PERMITIDAS=https://<origem> --project-ref yqovnmlrbpkgwzmlnncb`.
 
 ## Validação de entrada
 

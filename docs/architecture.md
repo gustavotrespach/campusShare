@@ -114,6 +114,7 @@ taxa_plataforma  = valor × percentual_taxa
 valor_repassado  = valor − taxa_plataforma
 ```
 
+- `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação (RN11).
 - `distancia_km`: Directions API (Edge Function). `consumo_kml`: cadastro do veículo (motorização só sugere o valor inicial). `preco_litro` e `percentual_taxa`: PARAMETRO_CUSTO.
 - Rateio, taxa e repasse são calculados nas funções SQL; o teto é aplicado na publicação (ADR-007).
 - Etapas: Sprint 2 com valor digitado (função SQL `publicar_carona` chamada pelo app); Sprint 3 com sugestão automática e teto (Edge Function `publicar-carona` calcula a distância e chama a função SQL).
@@ -123,7 +124,25 @@ valor_repassado  = valor − taxa_plataforma
 | Ambiente | Backend | App |
 |---|---|---|
 | Desenvolvimento | Supabase local (`supabase start`, Docker) | Expo Go |
-| Demo (AP2) | Projeto Supabase (free) — migrations via `supabase db push`, funções via `supabase functions deploy` | Build EAS instalado |
+| Demo (AP2) | Projeto Supabase (free) — migrations e Edge Functions publicadas pelo workflow **Deploy** a cada merge na `main` (ver "CI e deploy") | Build EAS instalado |
+
+## CI e deploy (GitHub Actions, T14)
+
+| Workflow | Quando roda | O que faz |
+|---|---|---|
+| `.github/workflows/ci.yml` (**CI**) | Todo PR para `develop` ou `main`, push na `develop` e chamado pelo deploy | Três jobs independentes: **`banco`** (`supabase start` só com o Postgres → `supabase test db` → `supabase gen types` comparado com `mobile/src/types/database.ts`), **`edge-functions`** (`deno fmt --check`, `deno lint`, `deno test` em `supabase/functions`) e **`app`** (`npm ci`, `lint`, `typecheck`, `npm test` em `mobile/`) |
+| `.github/workflows/deploy.yml` (**Deploy**) | Push na `main` (merge da release) ou manual (`workflow_dispatch`) | Chama o CI inteiro e, só se os três jobs passarem, o job **`deploy`**: `supabase link` → `migration list` → `db push` (só migrations novas) → `migration list` → `functions deploy` (todas, com o `verify_jwt` do `config.toml`) → `curl` na `health` remota, falhando se não vier 200 `{"status":"ok"}` |
+
+- Versões fixadas nos workflows: Supabase CLI 2.119.0, Deno 2.9.7, Node 24 (as mesmas do desenvolvimento). Ao atualizar uma delas na máquina, atualize também o workflow.
+- Deploys ficam em fila (`concurrency: deploy-producao`, sem cancelamento); no CI, um push novo no mesmo PR cancela a execução anterior.
+- **Fora do workflow, manual:** `supabase config push` (Auth/SMTP, precisa da chave do Resend, que não fica no GitHub) e `supabase secrets set` dos segredos das Edge Functions (ver `docs/SECURITY.md`).
+
+**Release (`develop` → `main`):**
+1. Com a `develop` verde no CI, abra um PR `develop` → `main` com o título `release: <descrição>` (ex.: `release: sprint 1`).
+2. O CI roda no PR. Depois do merge, o workflow **Deploy** roda sozinho na `main`.
+3. Acompanhe em Actions → Deploy (ou `gh run watch`) e confira a `health` remota.
+
+**Reexecutar o deploy sem novo merge:** Actions → Deploy → *Run workflow* (branch `main`), ou `gh workflow run deploy.yml --ref main`. Útil depois de reativar o projeto pausado ou se um deploy falhou por instabilidade. **A execução manual só publica a partir da `main`:** o job `deploy` tem `if: github.ref == 'refs/heads/main'`, então, se outra branch for escolhida por engano, só os testes rodam e o `deploy` aparece como *skipped*.
 
 ## Planejamento por sprint
 

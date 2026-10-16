@@ -44,7 +44,7 @@ Mora em Torres, longe do campus, e não tem carro. Prefere viajar com outras mul
 | Valor repassado | O que o motorista recebe após a taxa |
 | Tolerância | Minutos que o motorista espera após o horário de partida |
 | Somente mulheres | Carona restrita a passageiras |
-| Domínio institucional | Parte do e-mail após o `@` que identifica a instituição (`ulbra.br`) |
+| Domínio institucional | Parte do e-mail após o `@` que identifica a instituição (`rede.ulbra.br`) |
 | PARAMETRO_CUSTO | Tabela com preço do litro e percentual da taxa, mantida pela equipe |
 
 ## Linha do tempo acadêmica
