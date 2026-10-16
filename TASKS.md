@@ -71,8 +71,8 @@ Descrição: Login com `auth.signInWithPassword`; rotas protegidas redirecionam 
 Aceite: login leva à Home; e-mail não confirmado mostra mensagem clara; senha errada mostra erro genérico; ao reabrir o app continua logado; logout limpa a sessão.
 
 ### T13 — Perfil do usuário
-Status: a fazer · Depende de: T09, T10
-Descrição: Tela de perfil lendo/atualizando a tabela `usuario` (só colunas liberadas) e view `perfil_publico`.
+Status: feito · Responsável: Gustavo Trespach · Depende de: T09, T10
+Descrição: Tela de perfil lendo/atualizando a tabela `usuario` (só colunas liberadas). A view `perfil_publico` foi movida para a T30 (depende de AVALIACAO).
 Aceite: usuário edita nome, telefone e gênero; não consegue alterar e-mail nem instituição; testes de RLS passam.
 
 ### T14 — Deploy do backend
@@ -163,7 +163,7 @@ Aceite: passageiros recebem push no cancelamento; motorista recebe push em nova 
 
 ### T30 — Concluir carona e avaliações
 Status: a fazer · Depende de: T23
-Descrição: Função `concluir_carona`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); média exposta em `perfil_publico`.
+Descrição: Função `concluir_carona`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); view `perfil_publico` (nome + média, sem e-mail, telefone ou gênero — movida da T13 em 16/10).
 Aceite: só participantes avaliam, uma vez cada, após a conclusão.
 
 ### T31 — Build de demonstração (AP2)

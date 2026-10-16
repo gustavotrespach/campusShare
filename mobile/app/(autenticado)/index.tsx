@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
@@ -31,6 +32,7 @@ export default function TelaHome() {
       <Text style={estilos.email}>{sessao?.user.email}</Text>
       <StatusServidor />
       {erro ? <Aviso mensagem={erro} /> : null}
+      <Botao titulo="Meu perfil" onPress={() => router.push('/perfil')} />
       <Botao titulo="Sair" variante="secundario" carregando={saindo} onPress={aoSair} />
     </View>
   );
