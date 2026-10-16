@@ -114,6 +114,7 @@ taxa_plataforma  = valor × percentual_taxa
 valor_repassado  = valor − taxa_plataforma
 ```
 
+- `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação (RN11).
 - `distancia_km`: Directions API (Edge Function). `consumo_kml`: cadastro do veículo (motorização só sugere o valor inicial). `preco_litro` e `percentual_taxa`: PARAMETRO_CUSTO.
 - Rateio, taxa e repasse são calculados nas funções SQL; o teto é aplicado na publicação (ADR-007).
 - Etapas: Sprint 2 com valor digitado (função SQL `publicar_carona` chamada pelo app); Sprint 3 com sugestão automática e teto (Edge Function `publicar-carona` calcula a distância e chama a função SQL).
