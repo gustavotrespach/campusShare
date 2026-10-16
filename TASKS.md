@@ -115,9 +115,10 @@ Aceite: usuário só vê e altera os próprios veículos (pgTAP); placa inválid
 Nota (16/10): a RLS de `veiculo` e o CHECK de placa já entraram na T06 (`schema_inicial`). A T15 adicionou a migration `regras_veiculos` (trigger `impedir_exclusao_veiculo_em_uso`: `VEICULO_EM_USO` com carona ABERTA/LOTADA, `VEICULO_COM_HISTORICO` só com histórico) e o pgTAP `06_veiculos`.
 
 ### T16 — Tela de veículos
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T15, T10
+Status: feito · Responsável: Gustavo Trespach · Depende de: T15, T10
 Descrição: `consumo_kml` sugerido pela motorização, editável.
 Aceite: cadastrar, listar, editar e excluir veículo pelo app.
+Nota (16/10): telas `(autenticado)/veiculos/` com service `veiculos.ts`; roteiro de teste aprovado pelo Gustavo no iPhone (Expo Go) contra o Supabase local.
 
 ### T17 — Publicar carona (US03, US07)
 Status: a fazer · Depende de: T15
