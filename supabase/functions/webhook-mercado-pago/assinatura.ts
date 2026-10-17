@@ -35,6 +35,11 @@ function lerPartes(cabecalho: string | null): Map<string, string> {
   return partes;
 }
 
+// Nomes das chaves do x-signature, na ordem em que vieram (ex.: "ts,v1"), sem os valores
+export function chavesDaAssinatura(cabecalho: string | null): string {
+  return [...lerPartes(cabecalho).keys()].join(',');
+}
+
 export function lerAssinatura(cabecalho: string | null): PartesAssinatura | null {
   const partes = lerPartes(cabecalho);
   const ts = partes.get('ts');
