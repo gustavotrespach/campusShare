@@ -144,14 +144,15 @@ Aceite: migration aplicada, testes de RLS passando e `docs/DATABASE.md` conferid
 Nota (16/10): migration `reserva_pagamento` com as 3 tabelas, enums `status_reserva`, `status_pagamento` e `metodo_pagamento`, `carona.vagas_ofertadas` (RN11), RLS só de leitura e `parametro_custo` inicial (6.29 / 0.1000); pgTAP `07_reserva_pagamento`.
 
 ### T21 — Função de reserva com rateio (US04)
-Status: a fazer · Depende de: T18, T20
-Descrição: Função SQL `reservar_vaga(p_id_carona, p_id_passageiro)` — `SELECT ... FOR UPDATE`, calcula `valor_individual` (RN11), valida RN14 e RN18, cria reserva `PENDENTE` e decrementa vagas; executável só pela `service_role`.
+Status: feito · Responsável: Gustavo Trespach · Depende de: T18, T20
+Descrição: Função SQL `reservar_vaga(p_id_carona, p_id_passageiro)` — `SELECT ... FOR UPDATE`, calcula `valor_individual` (RN11, por `valor_por_passageiro`), valida RN08, RN14 e RN18, cria reserva `PENDENTE` **e o pagamento `PENDENTE` com taxa e repasse (RN13)**, decrementa vagas e marca `LOTADA` com 0 vagas; executável só pela `service_role`.
 Aceite: teste de concorrência — duas chamadas simultâneas na última vaga, só uma passa; RN14 e RN18 cobertas em pgTAP.
 Nota (16/10): `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação — decisão do Gustavo registrada na RN11 do `SPEC.md`. Use `carona.vagas_ofertadas` (T20), não `vagas_disponiveis`, que diminui a cada reserva.
+Nota (17/10): feita na migration `reservar_vaga`; pgTAP `10_reservar_vaga` e teste de concorrência `supabase/tests/concorrencia/ultima_vaga.sh` (roda no job `banco` do CI).
 
 ### T22 — Edge Function de reserva + cobrança Pix sandbox (US04)
 Status: a fazer · Depende de: T21
-Descrição: `reservar-vaga`: valida o JWT, chama `reservar_vaga`, gera a cobrança no Mercado Pago (sandbox) e chama `registrar_pagamento` (PAGAMENTO `PENDENTE` com taxa e repasse — RN13). Se a cobrança falhar, cancela a reserva e devolve a vaga.
+Descrição: `reservar-vaga`: valida o JWT, chama `reservar_vaga` (que já cria a reserva e o PAGAMENTO `PENDENTE` com taxa e repasse — RN13, desde a T21), gera a cobrança no Mercado Pago (sandbox) e grava o `id_externo` da cobrança no pagamento por uma função SQL só da `service_role`. Se a cobrança falhar, desfaz a reserva e devolve a vaga por outra função SQL (transação com `FOR UPDATE` na carona), para a vaga não ficar presa.
 Aceite: resposta traz QR code / copia-e-cola do Pix; falha simulada do MP não deixa vaga presa (`deno test`).
 Nota (16/10): antes de começar, o Gustavo cria a conta de desenvolvedor do Mercado Pago e as credenciais de **teste** (sandbox), cadastradas com `supabase secrets set`, nunca no repositório.
 

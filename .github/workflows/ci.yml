@@ -44,6 +44,10 @@ jobs:
       - name: Testes pgTAP (RLS, funções, privilégios)
         run: supabase test db
 
+      # O pgTAP roda numa transação só; a disputa pela última vaga precisa de duas sessões reais
+      - name: Concorrência na última vaga (RN17)
+        run: bash supabase/tests/concorrencia/ultima_vaga.sh
+
       - name: Tipos do app em dia com o schema
         run: |
           supabase gen types typescript --local > /tmp/database.ts

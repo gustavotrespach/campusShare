@@ -84,11 +84,11 @@ sequenceDiagram
     A->>EF: functions.invoke('reservar-vaga') + JWT
     EF->>EF: Valida JWT (id do passageiro) e payload (Zod)
     EF->>DB: rpc reservar_vaga(p_id_carona, p_id_passageiro)
-    Note over DB: Transação única:<br/>SELECT carona FOR UPDATE<br/>valida vagas, RN14, RN18<br/>calcula valor_individual<br/>INSERT reserva PENDENTE; vagas - 1
-    DB-->>EF: reserva + valor
+    Note over DB: Transação única:<br/>SELECT carona FOR UPDATE<br/>valida vagas, RN14, RN18<br/>calcula valor_individual, taxa e repasse<br/>INSERT reserva e pagamento PENDENTE; vagas - 1
+    DB-->>EF: reserva + pagamento + valor
     EF->>MP: Cria cobrança Pix
     MP-->>EF: id externo, QR code, copia-e-cola
-    EF->>DB: rpc registrar_pagamento (PENDENTE, taxa, repasse)
+    EF->>DB: grava id_externo da cobrança no pagamento (função só da service_role)
     EF-->>A: 201 reserva + dados do Pix
     A-->>P: Exibe QR code
 
@@ -130,7 +130,7 @@ valor_repassado  = valor − taxa_plataforma
 
 | Workflow | Quando roda | O que faz |
 |---|---|---|
-| `.github/workflows/ci.yml` (**CI**) | Todo PR para `develop` ou `main`, push na `develop` e chamado pelo deploy | Três jobs independentes: **`banco`** (`supabase start` só com o Postgres → `supabase test db` → `supabase gen types` comparado com `mobile/src/types/database.ts`), **`edge-functions`** (`deno fmt --check`, `deno lint`, `deno test` em `supabase/functions`) e **`app`** (`npm ci`, `lint`, `typecheck`, `npm test` em `mobile/`) |
+| `.github/workflows/ci.yml` (**CI**) | Todo PR para `develop` ou `main`, push na `develop` e chamado pelo deploy | Três jobs independentes: **`banco`** (`supabase start` só com o Postgres → `supabase test db` → `supabase/tests/concorrencia/ultima_vaga.sh`, duas sessões disputando a última vaga → `supabase gen types` comparado com `mobile/src/types/database.ts`), **`edge-functions`** (`deno fmt --check`, `deno lint`, `deno test` em `supabase/functions`) e **`app`** (`npm ci`, `lint`, `typecheck`, `npm test` em `mobile/`) |
 | `.github/workflows/deploy.yml` (**Deploy**) | Push na `main` (merge da release) ou manual (`workflow_dispatch`) | Chama o CI inteiro e, só se os três jobs passarem, o job **`deploy`**: `supabase link` → `migration list` → `db push` (só migrations novas) → `migration list` → `functions deploy` (todas, com o `verify_jwt` do `config.toml`) → `curl` na `health` remota, falhando se não vier 200 `{"status":"ok"}` |
 
 - Versões fixadas nos workflows: Supabase CLI 2.119.0, Deno 2.9.7, Node 24 (as mesmas do desenvolvimento). Ao atualizar uma delas na máquina, atualize também o workflow.

@@ -175,6 +175,11 @@ isOneToOne: false
 "publicar_carona":
 { Args: { "p_custo_total": number,"p_data_hora_partida": string,"p_destino": string,"p_destino_lat": number,"p_destino_lng": number,"p_id_veiculo": string,"p_origem": string,"p_origem_lat": number,"p_origem_lng": number,"p_somente_mulheres"?: boolean,"p_tolerancia_min": number,"p_vagas_ofertadas": number }; Returns: string
                            },
+"reservar_vaga":
+{ Args: { "p_id_carona": string,"p_id_passageiro": string }; Returns: {
+              "id_pagamento": string,"id_reserva": string,"status": Database["public"]['Enums']["status_reserva"],"taxa_plataforma": number,"valor_individual": number,"valor_repassado": number
+            }[]
+                           },
 "validar_dominio_institucional":
 { Args: { "event": Json }; Returns: Json
                            },

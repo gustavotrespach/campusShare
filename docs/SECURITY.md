@@ -31,7 +31,7 @@ O app pode ser modificado; por isso o backend recalcula e valida tudo:
 | Domínio institucional | Auth Hook (SQL) |
 | Rateio (`valor_individual`) — qualquer valor enviado pelo app é ignorado | Função `reservar_vaga` |
 | Teto de preço (`custo_total ≤ custo_estimado`) | Edge Function `publicar-carona` + função SQL |
-| Taxa e repasse | Função `registrar_pagamento` |
+| Taxa e repasse | Função `reservar_vaga` (pagamento nasce junto com a reserva) |
 | Filtro "somente mulheres" na reserva | Função `reservar_vaga` |
 | Vagas disponíveis | Função SQL, transação única + `SELECT ... FOR UPDATE` |
 | Formatos e limites (placa, lugares, nota, tolerância) | `CHECK` constraints |
