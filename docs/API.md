@@ -207,7 +207,10 @@ const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona:
 |---|---|---|
 | Edge Function | `reservar-vaga` | Reserva a vaga (função SQL `reservar_vaga`) e gera a cobrança Pix no Mercado Pago (API de Orders, sandbox) — T22 |
 | Tabela | `reserva` — `select` | Passageiro vê as próprias; motorista vê as das suas caronas (RLS) |
+| RPC | `minhas_reservas()` | Reservas do usuário logado para a tela "Minhas reservas" (T25) |
 | RPC | `cancelar_reserva(p_id_reserva)` | Passageiro cancela; devolve a vaga |
+
+`minhas_reservas() returns table (id_reserva, status_reserva, reservado_em, status_pagamento, valor, id_carona, origem, destino, data_hora_partida, status_carona, nome_motorista)` (T25): só as reservas do `auth.uid()`, mais recentes primeiro (`reservado_em` desc), em qualquer status. `valor` é o do pagamento (decimal em reais; o app converte para centavos no service) e `nome_motorista` é só o primeiro nome. Sem sessão → 401 `NAO_AUTENTICADO`; `anon` não executa. Existe porque o passageiro não lê a tabela `carona` (só o motorista lê as próprias).
 
 A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança. O app chama a Edge Function, nunca a função.
 
@@ -295,7 +298,7 @@ x-request-id: <uuid>
 { "action": "order.processed", "type": "order", "data": { "id": "ORDTST..." , ... } }
 ```
 
-1. Assinatura: manifest `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`. O `data.id` vale em minúsculas ou como veio na URL (as notificações reais de order assinam o id original). O `ts` é obrigatório e entra no HMAC como veio, sem janela de tempo (`docs/SECURITY.md`). Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
+1. Assinatura: manifest `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`. O `data.id` vale em minúsculas (forma confirmada nas notificações reais) ou como veio na URL (tolerância). No sandbox, o segredo é o da aplicação do vendedor de teste (`docs/SECURITY.md`). O `ts` é obrigatório e entra no HMAC como veio, sem janela de tempo (`docs/SECURITY.md`). Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
 2. `type` diferente de `order` → 200 ignorado.
 3. `GET /v1/orders/{id}` na API do Mercado Pago: a decisão usa a resposta da API, nunca o corpo da notificação. Erro de rede, timeout ou HTTP diferente de 200/400/404 (401, 403, 5xx) → **500** (o Mercado Pago reenvia a cada 15 min). Order 404 ou id recusado com 400 → 200 ignorado.
 4. Só `status = processed` e `status_detail = accredited` é pago (tabela de status da documentação). Outros estados (`action_required`, `failed`, `canceled`, `refunded`…) → 200 sem mudar nada.
@@ -303,7 +306,7 @@ x-request-id: <uuid>
 
 Resposta 200: `{ "recebido": true, "resultado": "CONFIRMADO" }`. Resultados: `CONFIRMADO`, `JA_CONFIRMADO` (repetição), `REEMBOLSO_PENDENTE`, `IGNORADO_*` (tipo, order não encontrada, order inválida, não paga, sem referência) e `RECUSADO_<código>` (divergência de dados: 200 para não entrar em loop de retentativa; o log registra para conferência).
 
-**Como o app (T25) sabe que a reserva foi confirmada:** lendo a própria reserva pela RLS (`supabase.from('reserva').select('status').eq('id_reserva', id)`) enquanto a tela do Pix está aberta, até `status = 'CONFIRMADA'` (polling simples, ex.: a cada 5 s, parando ao sair da tela). O Realtime fica para depois da AP2 (exige incluir `reserva` na publicação `supabase_realtime` por migration).
+**Como o app (T25) sabe que a reserva foi confirmada:** polling pela RLS, `supabase.from('reserva').select('status, valor_individual, pagamento(status, valor)').eq('id_reserva', id)` (`consultarStatusReserva` em `services/reservas.ts`), a cada 5 s enquanto a tela de pagamento está em foco e a reserva está `PENDENTE`. Para ao sair da tela, quando a reserva vira `CONFIRMADA`, `CANCELADA` ou `EXPIRADA`, e depois de 15 min (botão "Verificar de novo"). O Pix (`qr_code`, `qr_code_base64`) não é salvo no banco: fica só na memória do app (`store/pix.ts`), indexado pelo `id_reserva`; reaberto o app, a tela mostra só o status. O Realtime fica para depois da AP2 (exige incluir `reserva` na publicação `supabase_realtime` por migration).
 
 `parametro_custo` (preço do litro e taxa) não é exposta ao app: só funções SQL e Edge Functions a leem.
 
