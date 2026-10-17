@@ -290,18 +290,18 @@ Colunas de `pagamento`: `id_pagamento`, `id_reserva`, `id_externo`, `valor`, `ta
 
 ```
 POST /functions/v1/webhook-mercado-pago?data.id=ORDTST...&type=order
-x-signature: ts=<milissegundos>,v1=<hmac sha256 hex>
+x-signature: ts=<segundos>,v1=<hmac sha256 hex>
 x-request-id: <uuid>
 { "action": "order.processed", "type": "order", "data": { "id": "ORDTST..." , ... } }
 ```
 
-1. Assinatura: manifest `id:<data.id da URL em minúsculas>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`; `ts` a mais de 10 min do horário do servidor é recusado. Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
+1. Assinatura: manifest `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`. O `data.id` vale em minúsculas ou como veio na URL (as notificações reais de order assinam o id original). O `ts` é obrigatório e entra no HMAC como veio, sem janela de tempo (`docs/SECURITY.md`). Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
 2. `type` diferente de `order` → 200 ignorado.
-3. `GET /v1/orders/{id}` na API do Mercado Pago: a decisão usa a resposta da API, nunca o corpo da notificação. Erro de rede, timeout ou HTTP diferente de 200/404 → **500** (o Mercado Pago reenvia a cada 15 min). Order 404 → 200 ignorado.
+3. `GET /v1/orders/{id}` na API do Mercado Pago: a decisão usa a resposta da API, nunca o corpo da notificação. Erro de rede, timeout ou HTTP diferente de 200/400/404 (401, 403, 5xx) → **500** (o Mercado Pago reenvia a cada 15 min). Order 404 ou id recusado com 400 → 200 ignorado.
 4. Só `status = processed` e `status_detail = accredited` é pago (tabela de status da documentação). Outros estados (`action_required`, `failed`, `canceled`, `refunded`…) → 200 sem mudar nada.
 5. Order paga → `confirmar_pagamento(id da order, external_reference = id_pagamento, total_paid_amount)`.
 
-Resposta 200: `{ "recebido": true, "resultado": "CONFIRMADO" }`. Resultados: `CONFIRMADO`, `JA_CONFIRMADO` (repetição), `REEMBOLSO_PENDENTE`, `IGNORADO_*` (tipo, order não encontrada, não paga, sem referência) e `RECUSADO_<código>` (divergência de dados: 200 para não entrar em loop de retentativa; o log registra para conferência).
+Resposta 200: `{ "recebido": true, "resultado": "CONFIRMADO" }`. Resultados: `CONFIRMADO`, `JA_CONFIRMADO` (repetição), `REEMBOLSO_PENDENTE`, `IGNORADO_*` (tipo, order não encontrada, order inválida, não paga, sem referência) e `RECUSADO_<código>` (divergência de dados: 200 para não entrar em loop de retentativa; o log registra para conferência).
 
 **Como o app (T25) sabe que a reserva foi confirmada:** lendo a própria reserva pela RLS (`supabase.from('reserva').select('status').eq('id_reserva', id)`) enquanto a tela do Pix está aberta, até `status = 'CONFIRMADA'` (polling simples, ex.: a cada 5 s, parando ao sair da tela). O Realtime fica para depois da AP2 (exige incluir `reserva` na publicação `supabase_realtime` por migration).
 
