@@ -11,3 +11,9 @@ export const ROTULO_GENERO: Record<Genero, string> = {
   OUTRO: 'Outro',
   NAO_INFORMADO: 'Prefiro não informar',
 };
+
+// Só exibição: a busca já esconde carona somente_mulheres de quem não é FEMININO e a reserva
+// recusa (RN18, backend). Mostrar o filtro para quem não verá resultado só confundiria.
+export function mostrarFiltroSomenteMulheres(genero: Genero | null | undefined): boolean {
+  return genero === 'FEMININO';
+}
