@@ -8,7 +8,9 @@ import { AppError } from '../_shared/erros.ts';
 import { comTratamentoDeErros } from '../_shared/resposta.ts';
 
 import {
+  chavesDaAssinatura,
   diagnosticarAssinatura,
+  lerAssinatura,
   type ResultadoAssinatura,
   validarAssinatura,
 } from './assinatura.ts';
@@ -41,13 +43,56 @@ function recebido(resultado: string): Response {
   return Response.json({ recebido: true, resultado }, { status: 200 });
 }
 
-async function lerCorpo(req: Request): Promise<Registro> {
+function lerCorpo(textoCorpo: string): Registro {
   try {
-    const corpo: unknown = JSON.parse(await req.text());
+    const corpo: unknown = JSON.parse(textoCorpo);
     return ehRegistro(corpo) ? corpo : {};
   } catch {
     return {};
   }
+}
+
+// Quem chama sem assinatura válida controla esses valores: cada um é cortado para o log não crescer
+const LIMITE_CAMPO_LOG = 200;
+
+type ValorLog = string | number | boolean;
+
+function valorSimples(valor: unknown): ValorLog | undefined {
+  if (typeof valor === 'string') {
+    return valor.slice(0, LIMITE_CAMPO_LOG);
+  }
+  return typeof valor === 'number' || typeof valor === 'boolean' ? valor : undefined;
+}
+
+// Fase 13.3: o que entra na assinatura, para comparar a notificação real com o manifest montado.
+// Só no hmac_invalido. Nunca o segredo, o v1 inteiro, o manifest, o HMAC calculado ou o corpo
+// inteiro: do corpo, só os cinco campos abaixo.
+function detalharHmacInvalido(
+  url: URL,
+  cabecalhos: { xSignature: string | null; xRequestId: string | null; dataId: string | null },
+  corpo: Registro,
+): Record<string, ValorLog> {
+  const dados = ehRegistro(corpo.data) ? corpo.data : {};
+  const campos: Record<string, ValorLog | undefined> = {
+    query: valorSimples(url.search),
+    data_id_url: valorSimples(cabecalhos.dataId),
+    request_id: valorSimples(cabecalhos.xRequestId),
+    ts: valorSimples(lerAssinatura(cabecalhos.xSignature)?.ts),
+    v1_prefixo: valorSimples(lerAssinatura(cabecalhos.xSignature)?.v1.slice(0, 8)),
+    chaves_assinatura: valorSimples(chavesDaAssinatura(cabecalhos.xSignature)),
+    corpo_data_id: valorSimples(dados.id),
+    corpo_type: valorSimples(corpo.type),
+    corpo_action: valorSimples(corpo.action),
+    corpo_live_mode: valorSimples(corpo.live_mode),
+    corpo_user_id: valorSimples(corpo.user_id),
+  };
+  const presentes: Record<string, ValorLog> = {};
+  for (const [chave, valor] of Object.entries(campos)) {
+    if (valor !== undefined) {
+      presentes[chave] = valor;
+    }
+  }
+  return presentes;
 }
 
 export function criarHandler(deps: Dependencias): (req: Request) => Promise<Response> {
@@ -59,6 +104,9 @@ export function criarHandler(deps: Dependencias): (req: Request) => Promise<Resp
     // A documentação assina o data.id que vem na URL
     const dataIdUrl = url.searchParams.get('data.id');
 
+    // O corpo é lido uma vez, antes da validação, só para o log do hmac_invalido; a decisão de
+    // aceitar continua dependendo só da assinatura
+    const corpo = lerCorpo(await req.text());
     const cabecalhos = {
       xSignature: req.headers.get('x-signature'),
       xRequestId: req.headers.get('x-request-id'),
@@ -70,12 +118,17 @@ export function criarHandler(deps: Dependencias): (req: Request) => Promise<Resp
     });
     const diagnostico = diagnosticarAssinatura({ ...cabecalhos, agoraMs: deps.agoraMs() });
     if (!assinatura.valida) {
-      deps.log('assinatura_recusada', { motivo: assinatura.motivo, ...diagnostico });
+      deps.log('assinatura_recusada', {
+        motivo: assinatura.motivo,
+        ...diagnostico,
+        ...(assinatura.motivo === 'hmac_invalido'
+          ? detalharHmacInvalido(url, cabecalhos, corpo)
+          : {}),
+      });
       throw new AppError(401, 'ASSINATURA_INVALIDA', 'Assinatura inválida.');
     }
     deps.log('assinatura_aceita', { variante_id: assinatura.variante, ...diagnostico });
 
-    const corpo = await lerCorpo(req);
     const dados = ehRegistro(corpo.data) ? corpo.data : {};
     const tipo = url.searchParams.get('type') ?? texto(corpo.type);
     const idOrder = dataIdUrl ?? texto(dados.id);
