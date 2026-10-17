@@ -41,7 +41,7 @@ Sprint 1 concluída: backend e app de autenticação prontos e publicados (Fases
 **Foco até a AP2 (22/10)** — decisão do Gustavo em 16/10; plano por dia em "Foco até a AP2" no `TASKS.md`.
 
 1. Trilha A (caronas): concluída para a demo (T15–T19). Próximo passo do app: botão de reservar no detalhe da carona (T25). A T19 usa `publicar_carona` (T17) e converte o valor de centavos para reais na fronteira.
-2. Trilha B (reserva e pagamento): T21, T22 e T23 feitas → falta a T25 (telas de reserva e Pix). O webhook só é alcançável no remoto: o teste ponta a ponta passa pela release na `main` (roteiro em "Notas técnicas").
+2. Trilha B (reserva e pagamento): T21, T22 e T23 feitas → falta a T25 (telas de reserva e Pix). O webhook só é alcançável no remoto: o teste ponta a ponta passa pela release na `main` (roteiro em "Notas para o próximo agente").
 3. T31 — build e roteiro da demo (depende agora de T19 e T25, não mais de T29): APK no Android e Expo Go no iPhone.
 **Depois da AP2:** T24, T26–T30 e o PKCE no deep link de confirmação, para completar o app.
 
