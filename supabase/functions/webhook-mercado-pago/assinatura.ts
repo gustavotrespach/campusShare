@@ -2,10 +2,9 @@
 // x-signature: "ts=<milissegundos>,v1=<hmac hex>". Manifest:
 //   id:<data.id da URL, em minúsculas>;request-id:<x-request-id>;ts:<ts>;
 // Segmento cujo valor está ausente sai do manifest. HMAC-SHA256 com a assinatura secreta, em hex.
-
-// Notificação com ts fora desta janela é recusada (replay). A documentação sugere comparar o ts
-// com o horário de recebimento, sem fixar um valor.
-export const TOLERANCIA_TS_MS = 10 * 60 * 1000;
+// Sem janela de tempo no ts (Fase 13.1): o simulador do painel foi recusado por ela, e o replay
+// não tem efeito novo, porque a decisão vem do GET /v1/orders/{id} e a confirmar_pagamento é
+// idempotente. O ts continua obrigatório e entra no HMAC exatamente como veio.
 
 export interface PartesAssinatura {
   ts: string;
@@ -16,23 +15,49 @@ export type ResultadoAssinatura =
   | { valida: true }
   | {
     valida: false;
-    motivo: 'segredo_ausente' | 'cabecalho_ausente' | 'ts_fora_da_janela' | 'hmac_invalido';
+    motivo: 'segredo_ausente' | 'cabecalho_ausente' | 'hmac_invalido';
   };
 
-export function lerAssinatura(cabecalho: string | null): PartesAssinatura | null {
-  if (!cabecalho) {
-    return null;
-  }
+function lerPartes(cabecalho: string | null): Map<string, string> {
   const partes = new Map<string, string>();
-  for (const trecho of cabecalho.split(',')) {
+  for (const trecho of (cabecalho ?? '').split(',')) {
     const [chave, ...resto] = trecho.split('=');
     if (chave && resto.length > 0) {
       partes.set(chave.trim(), resto.join('=').trim());
     }
   }
+  return partes;
+}
+
+export function lerAssinatura(cabecalho: string | null): PartesAssinatura | null {
+  const partes = lerPartes(cabecalho);
   const ts = partes.get('ts');
   const v1 = partes.get('v1');
   return ts && v1 ? { ts, v1 } : null;
+}
+
+// Dados para entender o formato real do ts do Mercado Pago, sem nada que ajude a forjar uma
+// assinatura: nunca o v1, o segredo, o manifest ou o HMAC calculado.
+export function diagnosticarAssinatura(entrada: {
+  xSignature: string | null;
+  xRequestId: string | null;
+  dataId: string | null;
+  agoraMs: number;
+}): Record<string, number | boolean> {
+  const ts = lerPartes(entrada.xSignature).get('ts') ?? '';
+  const diagnostico: Record<string, number | boolean> = {
+    ts_digitos: ts.replace(/\D/g, '').length,
+    id_na_url: Boolean(entrada.dataId),
+    tem_request_id: Boolean(entrada.xRequestId),
+  };
+  if (/^\d+$/.test(ts)) {
+    // Até 10 dígitos é segundos (10 dígitos valem até 2286); mais que isso, milissegundos
+    const tsMs = ts.length <= 10 ? Number(ts) * 1000 : Number(ts);
+    if (Number.isFinite(tsMs)) {
+      diagnostico.idade_s = Math.round((entrada.agoraMs - tsMs) / 1000);
+    }
+  }
+  return diagnostico;
 }
 
 export function montarManifest(
@@ -81,8 +106,6 @@ export async function validarAssinatura(entrada: {
   xSignature: string | null;
   xRequestId: string | null;
   dataId: string | null;
-  agoraMs: number;
-  toleranciaMs?: number;
 }): Promise<ResultadoAssinatura> {
   if (!entrada.segredo) {
     return { valida: false, motivo: 'segredo_ausente' };
@@ -90,13 +113,6 @@ export async function validarAssinatura(entrada: {
   const partes = lerAssinatura(entrada.xSignature);
   if (!partes) {
     return { valida: false, motivo: 'cabecalho_ausente' };
-  }
-  const tsMs = Number(partes.ts);
-  if (
-    !Number.isFinite(tsMs) ||
-    Math.abs(entrada.agoraMs - tsMs) > (entrada.toleranciaMs ?? TOLERANCIA_TS_MS)
-  ) {
-    return { valida: false, motivo: 'ts_fora_da_janela' };
   }
   const esperado = await hmacHex(
     entrada.segredo,

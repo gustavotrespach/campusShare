@@ -7,7 +7,11 @@
 import { AppError } from '../_shared/erros.ts';
 import { comTratamentoDeErros } from '../_shared/resposta.ts';
 
-import { type ResultadoAssinatura, validarAssinatura } from './assinatura.ts';
+import {
+  diagnosticarAssinatura,
+  type ResultadoAssinatura,
+  validarAssinatura,
+} from './assinatura.ts';
 import { estaPaga, type ResultadoConsulta } from './orders.ts';
 
 export type Log = (evento: string, dados: Record<string, string | number | boolean>) => void;
@@ -55,17 +59,21 @@ export function criarHandler(deps: Dependencias): (req: Request) => Promise<Resp
     // A documentação assina o data.id que vem na URL
     const dataIdUrl = url.searchParams.get('data.id');
 
-    const assinatura: ResultadoAssinatura = await validarAssinatura({
-      segredo: deps.segredo,
+    const cabecalhos = {
       xSignature: req.headers.get('x-signature'),
       xRequestId: req.headers.get('x-request-id'),
       dataId: dataIdUrl,
-      agoraMs: deps.agoraMs(),
+    };
+    const assinatura: ResultadoAssinatura = await validarAssinatura({
+      segredo: deps.segredo,
+      ...cabecalhos,
     });
+    const diagnostico = diagnosticarAssinatura({ ...cabecalhos, agoraMs: deps.agoraMs() });
     if (!assinatura.valida) {
-      deps.log('assinatura_recusada', { motivo: assinatura.motivo });
+      deps.log('assinatura_recusada', { motivo: assinatura.motivo, ...diagnostico });
       throw new AppError(401, 'ASSINATURA_INVALIDA', 'Assinatura inválida.');
     }
+    deps.log('assinatura_aceita', diagnostico);
 
     const corpo = await lerCorpo(req);
     const dados = ehRegistro(corpo.data) ? corpo.data : {};
