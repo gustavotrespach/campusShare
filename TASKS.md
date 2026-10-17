@@ -19,7 +19,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | 16–17/10 | T15 (veículos: trigger `VEICULO_EM_USO`) — feito | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) — feito | T14 (deploy + CI) |
 | 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) — feitas | T21 (reserva com rateio) | |
 | 18–19/10 | T18 (buscar caronas) — feita | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
-| 19–20/10 | T19 (telas de publicar e buscar) | T23 (webhook de pagamento) | |
+| 19–20/10 | T19 (telas de publicar e buscar) — feita | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) | |
 | 21–22/10 | | | T31 (build e roteiro da demo) |
 
@@ -133,9 +133,10 @@ Aceite: só caronas `ABERTA` e futuras (RN08); filtro "somente mulheres" funcion
 Nota (17/10): migration `buscar_caronas` com `buscar_caronas`, `detalhar_carona` e `valor_por_passageiro` (fórmula única do rateio, reaproveitada pela T21); pgTAP `09_buscar_caronas`. O `seed.sql` ganhou caronas variadas para a T19.
 
 ### T19 — Telas de publicar e buscar carona
-Status: a fazer · Depende de: T17, T18
+Status: feito · Responsável: Gustavo Trespach · Depende de: T17, T18
 Aceite: motorista publica pelo app; Home lista caronas próximas com horário, vagas, valor e tolerância.
 Nota (16/10): o mapa (T27) e a Directions API (T26) ficaram para depois da AP2. Para a demo, origem e destino precisam de latitude/longitude sem mapa (por exemplo, localização atual do aparelho com `expo-location` e uma lista curta de pontos fixos, como o campus). Definir no prompt da tarefa.
+Nota (17/10): Home "Caronas próximas", `caronas/publicar` e `caronas/[id]` com pontos fixos e localização atual (PR #27); roteiro de 20 passos aprovado pelo Gustavo no iPhone (Expo Go) contra o Supabase local.
 
 ### T20 — Tabelas RESERVA, PAGAMENTO e PARAMETRO_CUSTO
 Status: feito · Responsável: Gustavo Trespach · Depende de: T06
@@ -151,16 +152,19 @@ Nota (16/10): `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado n
 Nota (17/10): feita na migration `reservar_vaga`; pgTAP `10_reservar_vaga` e teste de concorrência `supabase/tests/concorrencia/ultima_vaga.sh` (roda no job `banco` do CI).
 
 ### T22 — Edge Function de reserva + cobrança Pix sandbox (US04)
-Status: a fazer · Depende de: T21
+Status: feito · Responsável: Gustavo Trespach · Depende de: T21
 Descrição: `reservar-vaga`: valida o JWT, chama `reservar_vaga` (que já cria a reserva e o PAGAMENTO `PENDENTE` com taxa e repasse — RN13, desde a T21), gera a cobrança no Mercado Pago (sandbox) e grava o `id_externo` da cobrança no pagamento por uma função SQL só da `service_role`. Se a cobrança falhar, desfaz a reserva e devolve a vaga por outra função SQL (transação com `FOR UPDATE` na carona), para a vaga não ficar presa.
 Aceite: resposta traz QR code / copia-e-cola do Pix; falha simulada do MP não deixa vaga presa (`deno test`).
 Nota (16/10): antes de começar, o Gustavo cria a conta de desenvolvedor do Mercado Pago e as credenciais de **teste** (sandbox), cadastradas com `supabase secrets set`, nunca no repositório.
+Nota (17/10): feita com a API de **Orders** (Checkout Transparente, Pix): Edge Function `reservar-vaga` (`verify_jwt = true`, fetch direto, sem SDK) e migration `cobranca_pix` (`registrar_cobranca`, `desfazer_reserva_sem_cobranca`); `deno test` e pgTAP `11_cobranca_pix`. Na release, o Gustavo cadastra `MERCADO_PAGO_ACCESS_TOKEN` (teste) com `supabase secrets set`.
 
 ### T23 — Webhook de pagamento
-Status: a fazer · Depende de: T22
-Descrição: Edge Function `webhook-mercado-pago` (`verify_jwt = false`) valida a assinatura, consulta a cobrança no MP e chama `confirmar_pagamento`: PAGAMENTO `APROVADO`, RESERVA `CONFIRMADA`, carona `LOTADA` quando zera vagas.
+Status: feito · Responsável: Gustavo Trespach · Depende de: T22
+Descrição: Edge Function `webhook-mercado-pago` (`verify_jwt = false`) valida a assinatura, consulta a order no MP e chama `confirmar_pagamento`: PAGAMENTO `APROVADO` e RESERVA `CONFIRMADA`; Pix pago de reserva desfeita vira `REEMBOLSO_PENDENTE`. As vagas não mudam aqui (a vaga é ocupada e a carona fica `LOTADA` na `reservar_vaga`, T21).
 Aceite: idempotente (webhook repetido não duplica efeito); assinatura inválida → 401.
 Nota (16/10): o Mercado Pago só alcança o webhook no projeto remoto, então o teste ponta a ponta depende da T14.
+Nota (17/10, T22): no sandbox, a order com pagador `APRO` termina em `processed/accredited` (não `approved`) cerca de 3 minutos depois de criada; `external_reference` = `id_pagamento` e `pagamento.id_externo` = id da order (`ORDTST…`). O webhook deve consultar a order pela API e tratar `processed/accredited` como pago.
+Nota (17/10, T23): feita (migration `confirmar_pagamento`, pgTAP `12_confirmar_pagamento`, `deno test`); verificada no local com notificações assinadas de verdade. O teste com o Mercado Pago chamando o webhook depende da release (secrets e URL no painel).
 
 ### T24 — Expiração de reservas pendentes
 Status: adiada (pós-AP2) · Depende de: T21

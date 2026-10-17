@@ -416,6 +416,15 @@ enabled = true
 [functions.health]
 verify_jwt = false
 
+# Reserva + cobrança Pix (T22): só usuário logado; o passageiro vem do JWT validado.
+[functions.reservar-vaga]
+verify_jwt = true
+
+# Webhook do Mercado Pago (T23): o Mercado Pago não manda JWT; a autenticidade vem só da
+# assinatura x-signature (MERCADO_PAGO_WEBHOOK_SECRET), validada antes de qualquer outra coisa.
+[functions.webhook-mercado-pago]
+verify_jwt = false
+
 # ============================================================
 # Projeto remoto (yqovnmlrbpkgwzmlnncb). O CLI aplica este bloco por cima da configuração acima
 # quando o comando roda contra o projeto linkado (config push / config diff).
