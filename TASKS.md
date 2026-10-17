@@ -133,7 +133,7 @@ Aceite: só caronas `ABERTA` e futuras (RN08); filtro "somente mulheres" funcion
 Nota (17/10): migration `buscar_caronas` com `buscar_caronas`, `detalhar_carona` e `valor_por_passageiro` (fórmula única do rateio, reaproveitada pela T21); pgTAP `09_buscar_caronas`. O `seed.sql` ganhou caronas variadas para a T19.
 
 ### T19 — Telas de publicar e buscar carona
-Status: a fazer · Depende de: T17, T18
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T17, T18
 Aceite: motorista publica pelo app; Home lista caronas próximas com horário, vagas, valor e tolerância.
 Nota (16/10): o mapa (T27) e a Directions API (T26) ficaram para depois da AP2. Para a demo, origem e destino precisam de latitude/longitude sem mapa (por exemplo, localização atual do aparelho com `expo-location` e uma lista curta de pontos fixos, como o campus). Definir no prompt da tarefa.
 
