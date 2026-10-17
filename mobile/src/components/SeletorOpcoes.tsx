@@ -11,6 +11,7 @@ interface Props<Valor> {
   valor: Valor;
   aoMudar: (valor: Valor) => void;
   ajuda?: string;
+  erro?: string;
 }
 
 // Escolha única entre poucas opções, em "chips" (mesmo visual do SeletorGenero).
@@ -20,6 +21,7 @@ export function SeletorOpcoes<Valor extends string | number | null>({
   valor,
   aoMudar,
   ajuda,
+  erro,
 }: Props<Valor>) {
   return (
     <View style={estilos.container}>
@@ -43,6 +45,11 @@ export function SeletorOpcoes<Valor extends string | number | null>({
           );
         })}
       </View>
+      {erro ? (
+        <Text accessibilityLiveRegion="polite" style={estilos.erro}>
+          {erro}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -65,4 +72,5 @@ const estilos = StyleSheet.create({
   opcaoSelecionada: { borderColor: '#1a56db', backgroundColor: '#eff4ff' },
   textoOpcao: { fontSize: 15, color: '#1f2933' },
   textoSelecionado: { color: '#1a56db', fontWeight: '600' },
+  erro: { fontSize: 13, color: '#b42318' },
 });

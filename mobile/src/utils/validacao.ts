@@ -2,6 +2,7 @@
 // Regras de negócio (domínio institucional, duplicidade) são do backend (RN01, AGENTS.md).
 
 import { validarConsumo } from './consumo';
+import { lerReais } from './dinheiro';
 import type { Genero } from './genero';
 import { validarPlaca } from './placa';
 
@@ -150,4 +151,50 @@ export function validarVeiculo(dados: {
   return Object.fromEntries(
     Object.entries(erros).filter(([, mensagem]) => mensagem !== undefined),
   ) as ErrosDeCampo<CamposVeiculo>;
+}
+
+// Limite das colunas origem/destino de public.carona (docs/DATABASE.md)
+const TAMANHO_MAXIMO_LOCAL = 200;
+
+export type CamposPublicacao =
+  'veiculo' | 'origem' | 'destino' | 'partida' | 'vagas' | 'custo_total';
+
+function validarLocal(local: { descricao: string } | null, vazio: string): string | undefined {
+  if (!local) {
+    return vazio;
+  }
+  return validarTextoObrigatorio(local.descricao, 'Descreva o local.', TAMANHO_MAXIMO_LOCAL);
+}
+
+// Retorno rápido de formato; RN04 a RN06 e as faixas são garantidas por publicar_carona.
+// Vagas e tolerância vêm de seletores com opções fixas: não há o que validar neles.
+export function validarPublicacao(
+  dados: {
+    idVeiculo: string | null;
+    origem: { descricao: string } | null;
+    destino: { descricao: string } | null;
+    partida: Date | null;
+    custoTotal: string;
+  },
+  agora: Date = new Date(),
+): ErrosDeCampo<CamposPublicacao> {
+  const erros: ErrosDeCampo<CamposPublicacao> = {
+    veiculo: dados.idVeiculo ? undefined : 'Escolha o veículo.',
+    origem: validarLocal(dados.origem, 'Escolha a origem.'),
+    destino: validarLocal(dados.destino, 'Escolha o destino.'),
+  };
+  if (!dados.partida) {
+    erros.partida = 'Escolha a data e a hora de partida.';
+  } else if (dados.partida.getTime() <= agora.getTime()) {
+    erros.partida = 'Escolha uma data e hora de partida no futuro.';
+  }
+  const centavos = lerReais(dados.custoTotal);
+  if (centavos === null) {
+    erros.custo_total = 'Informe o custo total da viagem.';
+  } else if (Number.isNaN(centavos) || centavos <= 0) {
+    erros.custo_total = 'Informe um valor em reais, ex.: 24,00.';
+  }
+  return Object.fromEntries(
+    Object.entries(erros).filter(([, mensagem]) => mensagem !== undefined),
+  ) as ErrosDeCampo<CamposPublicacao>;
 }
