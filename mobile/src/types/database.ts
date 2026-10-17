@@ -162,11 +162,24 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "publicar_carona":
+            "buscar_caronas":
+{ Args: { "p_data"?: string,"p_lat": number,"p_lng": number,"p_pagina"?: number,"p_raio_km"?: number,"p_somente_mulheres"?: boolean }; Returns: {
+              "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"vagas_disponiveis": number,"valor_por_passageiro": number
+            }[]
+                           },
+"detalhar_carona":
+{ Args: { "p_id_carona": string }; Returns: {
+              "cor": string,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"placa": string,"somente_mulheres": boolean,"sou_motorista": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number,"vagas_ofertadas": number,"valor_por_passageiro": number
+            }[]
+                           },
+"publicar_carona":
 { Args: { "p_custo_total": number,"p_data_hora_partida": string,"p_destino": string,"p_destino_lat": number,"p_destino_lng": number,"p_id_veiculo": string,"p_origem": string,"p_origem_lat": number,"p_origem_lng": number,"p_somente_mulheres"?: boolean,"p_tolerancia_min": number,"p_vagas_ofertadas": number }; Returns: string
                            },
 "validar_dominio_institucional":
 { Args: { "event": Json }; Returns: Json
+                           },
+"valor_por_passageiro":
+{ Args: { "p_custo_total": number,"p_vagas_ofertadas": number }; Returns: number
                            }
           }
           Enums: {

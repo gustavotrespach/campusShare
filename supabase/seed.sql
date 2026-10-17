@@ -49,3 +49,49 @@ values (
   3, 3, 24.00, 10, 'ABERTA'
 )
 on conflict (id_carona) do nothing;
+
+-- Caronas variadas para testar a busca (T18/T19), todas da motorista do seed (Onix, 5 lugares).
+-- Horários de Brasília (UTC−3) a partir da meia-noite UTC de hoje, sempre no futuro.
+insert into public.carona (
+  id_carona, id_motorista, id_veiculo, origem, origem_lat, origem_lng, destino, destino_lat,
+  destino_lng, data_hora_partida, vagas_ofertadas, vagas_disponiveis, custo_total, tolerancia_min,
+  somente_mulheres, status
+)
+values
+  -- Somente mulheres, perto de Torres: depois de amanhã às 18:00
+  (
+    'd2000000-0000-0000-0000-000000000002', 'd0000000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000001',
+    'Praia Grande, Torres - RS', -29.341800, -49.726200,
+    'ULBRA Torres - RS', -29.329000, -49.736500,
+    date_trunc('day', now() at time zone 'utc') at time zone 'utc' + interval '2 days 21 hours',
+    2, 2, 18.00, 5, true, 'ABERTA'
+  ),
+  -- Outro horário perto de Torres: amanhã às 12:30
+  (
+    'd2000000-0000-0000-0000-000000000003', 'd0000000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000001',
+    'Rodoviária de Torres - RS', -29.338500, -49.735500,
+    'ULBRA Torres - RS', -29.329000, -49.736500,
+    date_trunc('day', now() at time zone 'utc') at time zone 'utc' + interval '1 day 15 hours 30 minutes',
+    4, 4, 25.00, 15, false, 'ABERTA'
+  ),
+  -- Longe: Porto Alegre, fora do raio padrão de 10 km a partir de Torres
+  (
+    'd2000000-0000-0000-0000-000000000004', 'd0000000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000001',
+    'Centro Histórico, Porto Alegre - RS', -30.027700, -51.228700,
+    'ULBRA Torres - RS', -29.329000, -49.736500,
+    date_trunc('day', now() at time zone 'utc') at time zone 'utc' + interval '4 days 9 hours',
+    3, 3, 120.00, 10, false, 'ABERTA'
+  ),
+  -- LOTADA (0 de 3 vagas): não aparece na busca
+  (
+    'd2000000-0000-0000-0000-000000000005', 'd0000000-0000-0000-0000-000000000001',
+    'd1000000-0000-0000-0000-000000000001',
+    'Centro, Torres - RS', -29.335300, -49.726800,
+    'ULBRA Torres - RS', -29.329000, -49.736500,
+    date_trunc('day', now() at time zone 'utc') at time zone 'utc' + interval '2 days 10 hours 30 minutes',
+    3, 0, 24.00, 10, false, 'LOTADA'
+  )
+on conflict (id_carona) do nothing;
