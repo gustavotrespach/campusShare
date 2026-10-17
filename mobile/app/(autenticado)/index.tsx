@@ -20,6 +20,7 @@ import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { obterLocalizacaoAtual, type Coordenadas } from '@/services/localizacao';
 import { obterMeuPerfil } from '@/services/perfil';
+import { limparPix } from '@/store/pix';
 import { mostrarFiltroSomenteMulheres } from '@/utils/genero';
 import { ID_MINHA_LOCALIZACAO, ID_PONTO_PADRAO, PONTOS_FIXOS, pontoPorId } from '@/utils/pontos';
 
@@ -138,6 +139,8 @@ export default function TelaCaronasProximas() {
     setSaindo(true);
     try {
       await sair();
+      // O Pix em memória é da conta que saiu
+      limparPix();
     } catch (falha) {
       setAviso(normalizarErro(falha).message);
       setSaindo(false);
@@ -180,6 +183,11 @@ export default function TelaCaronasProximas() {
 
   const rodape = (
     <View style={estilos.rodape}>
+      <Botao
+        titulo="Minhas reservas"
+        variante="secundario"
+        onPress={() => router.push('/reservas')}
+      />
       <Botao
         titulo="Meus veículos"
         variante="secundario"

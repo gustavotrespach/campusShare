@@ -20,7 +20,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) — feitas | T21 (reserva com rateio) | |
 | 18–19/10 | T18 (buscar caronas) — feita | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
 | 19–20/10 | T19 (telas de publicar e buscar) — feita | T23 (webhook de pagamento) | |
-| 20–21/10 | | T25 (telas de reserva e pagamento) | |
+| 20–21/10 | | T25 (telas de reserva e pagamento) — feita | |
 | 21–22/10 | | | T31 (build e roteiro da demo) |
 
 As duas trilhas só se encontram na T21, que depende da T18. Cada tarefa continua sendo uma branch e um PR, com teste manual antes do merge.
@@ -172,8 +172,9 @@ Descrição: Função `expirar_reservas()` agendada no pg_cron a cada minuto: ma
 Aceite: reserva não paga após o prazo libera a vaga automaticamente (pgTAP chamando a função com reserva antiga).
 
 ### T25 — Telas de reserva e pagamento
-Status: a fazer · Depende de: T22, T23
-Descrição: Tela de pagamento com o Pix e status atualizado via Realtime; tela "Minhas reservas".
+Status: feito · Responsável: Gustavo Trespach · Depende de: T22, T23
+Descrição: Botão "Reservar vaga" no detalhe da carona (com confirmação do valor); tela de pagamento com o QR e o copia e cola do Pix e o status atualizado por **polling** a cada 5 s enquanto a tela está aberta (para ao confirmar, ao sair e após 15 min); tela "Minhas reservas" (função `minhas_reservas`).
+Decisão (revisor + Gustavo, 17/10): polling em vez de Realtime até a AP2: não muda o banco, funciona no Expo Go e cumpre o aceite ("sem recarregar a tela"). O Realtime fica para depois da AP2.
 Aceite: passageiro vê valor, paga pelo Pix sandbox e vê a reserva confirmada sem recarregar a tela.
 
 ---
