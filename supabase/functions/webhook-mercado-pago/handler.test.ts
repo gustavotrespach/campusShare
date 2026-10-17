@@ -3,7 +3,7 @@
 // orders.ts, assinatura.ts e _shared/supabase-rest.ts.
 import { assert, assertEquals, assertFalse } from 'jsr:@std/assert@1.0.19';
 
-import { hmacHex, iguaisEmTempoConstante, montarManifest } from './assinatura.ts';
+import { hmacHex, iguaisEmTempoConstante, montarManifest, variantesDoId } from './assinatura.ts';
 import { criarDependencias } from './dependencias.ts';
 import { criarHandler } from './handler.ts';
 
@@ -11,6 +11,8 @@ import { criarHandler } from './handler.ts';
 const SEGREDO = 'segredo-ficticio-de-teste';
 const TOKEN_MP = 'APP_USR-TOKEN-FALSO-DO-WEBHOOK-NAO-PODE-VAZAR';
 const AGORA = 1_760_720_060_000;
+// O ts real vem em segundos (Fase 13.1: ts_digitos = 10 nas notificações de produção)
+const AGORA_S = Math.floor(AGORA / 1000);
 const ID_ORDER = 'ORDTST01M55DT6T80KB4AHXZHKT4J93S';
 const ID_PAGAMENTO = '37bae66f-fff4-4111-a7d1-28fe8ff86808';
 const REQUEST_ID = 'b6f0c0a2-1111-4222-8333-944455556666';
@@ -81,11 +83,18 @@ async function notificacao(opcoes: {
   semAssinatura?: boolean;
   xSignature?: string;
   idNoManifest?: string;
+  // Como o id entra no manifest: em minúsculas (documentação, padrão) ou como está na URL
+  varianteId?: 'minusculas' | 'original';
 } = {}): Promise<Request> {
   const dataId = opcoes.dataId ?? ID_ORDER;
   const tipo = opcoes.tipo ?? 'order';
-  const ts = String(opcoes.ts ?? AGORA - 5_000);
-  const manifest = montarManifest(opcoes.idNoManifest ?? dataId, REQUEST_ID, ts);
+  const ts = String(opcoes.ts ?? AGORA_S - 5);
+  const idAssinado = opcoes.idNoManifest ?? dataId;
+  const manifest = montarManifest(
+    opcoes.varianteId === 'original' ? idAssinado : idAssinado.toLowerCase(),
+    REQUEST_ID,
+    ts,
+  );
   const v1 = opcoes.v1 ?? await hmacHex(opcoes.segredo ?? SEGREDO, manifest);
   const cabecalhos: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -121,18 +130,113 @@ Deno.test('HMAC-SHA256 em hex confere com o openssl', async () => {
     await hmacHex(SEGREDO, 'request-id:req-123;ts:1760720000000;'),
     '9a33d8304820e885985efaa9b9b3c50f098154cf9666aafe768517fb74a854c4',
   );
+  // ts em segundos e as duas variantes do id de order
+  assertEquals(
+    await hmacHex(SEGREDO, 'id:ORDTST01ABCDEF;request-id:req-123;ts:1760720000;'),
+    '1eaab64087a5b05f1f8bc9542e3a6b0d65717e1c98669c9197cb8f70c2c6bc3e',
+  );
+  assertEquals(
+    await hmacHex(SEGREDO, 'id:ordtst01abcdef;request-id:req-123;ts:1760720000;'),
+    '765200393cb6f6bbb2814785a038590c7f54b986ae92b46ec2c1c024e67dd8fc',
+  );
+  assertEquals(
+    await hmacHex(SEGREDO, 'id:123456;request-id:req-123;ts:1760720000;'),
+    'b52eb29342af8d59fc6dcfe2655aa0a7d0e23da14f7efd310f98d7be6925c416',
+  );
 });
 
-Deno.test('manifest: data.id em minúsculas e segmentos ausentes fora', () => {
+Deno.test('manifest: id como recebido e segmentos ausentes fora', () => {
   assertEquals(
-    montarManifest('ORDTST01ABCDEF', 'req-123', '1760720000000'),
-    'id:ordtst01abcdef;request-id:req-123;ts:1760720000000;',
+    montarManifest('ORDTST01ABCDEF', 'req-123', '1760720000'),
+    'id:ORDTST01ABCDEF;request-id:req-123;ts:1760720000;',
   );
   assertEquals(
-    montarManifest(null, 'req-123', '1760720000000'),
-    'request-id:req-123;ts:1760720000000;',
+    montarManifest(null, 'req-123', '1760720000'),
+    'request-id:req-123;ts:1760720000;',
   );
   assertEquals(montarManifest('abc', null, '1'), 'id:abc;ts:1;');
+});
+
+Deno.test('variantes do data.id: duas com letras maiúsculas, uma sem', () => {
+  assertEquals(variantesDoId('ORDTST01ABCDEF'), [
+    ['minusculas', 'ordtst01abcdef'],
+    ['original', 'ORDTST01ABCDEF'],
+  ]);
+  assertEquals(variantesDoId('123456'), [['minusculas', '123456']]);
+  assertEquals(variantesDoId('ordtst01abcdef'), [['minusculas', 'ordtst01abcdef']]);
+  assertEquals(variantesDoId(null), [['sem_id', null]]);
+});
+
+// Vetores do openssl acima, passando pelo handler inteiro
+const VETORES: Record<string, [string, string, string]> = {
+  'id de order assinado como veio (notificação real)': [
+    'ORDTST01ABCDEF',
+    '1eaab64087a5b05f1f8bc9542e3a6b0d65717e1c98669c9197cb8f70c2c6bc3e',
+    'original',
+  ],
+  'id de order assinado em minúsculas (documentação)': [
+    'ORDTST01ABCDEF',
+    '765200393cb6f6bbb2814785a038590c7f54b986ae92b46ec2c1c024e67dd8fc',
+    'minusculas',
+  ],
+  'id numérico (simulador do painel)': [
+    '123456',
+    'b52eb29342af8d59fc6dcfe2655aa0a7d0e23da14f7efd310f98d7be6925c416',
+    'minusculas',
+  ],
+};
+
+for (const [nome, [dataId, v1, variante]] of Object.entries(VETORES)) {
+  Deno.test(`${nome} → aceito, variante '${variante}'`, async () => {
+    const { handler, logs } = cenario({
+      [`v1/orders/${dataId}`]: () => Response.json({ message: 'not found' }, { status: 404 }),
+    });
+    const resposta = await handler(
+      new Request(`http://localhost/webhook-mercado-pago?data.id=${dataId}&type=order`, {
+        method: 'POST',
+        headers: { 'x-signature': `ts=1760720000,v1=${v1}`, 'x-request-id': 'req-123' },
+        body: '{}',
+      }),
+    );
+
+    assertEquals(resposta.status, 200);
+    const aceita = logs.map((l) => JSON.parse(l)).find((l) => l.evento === 'assinatura_aceita');
+    assertEquals(aceita?.variante_id, variante);
+  });
+}
+
+Deno.test('id de order com outra caixa (nenhuma variante) → 401 hmac_invalido', async () => {
+  // Assinado com "OrdTst01AbcDef": nem minúsculas nem a forma da URL ("ORDTST01ABCDEF")
+  const v1 = await hmacHex(SEGREDO, 'id:OrdTst01AbcDef;request-id:req-123;ts:1760720000;');
+  const { handler, chamadas, logs } = cenario();
+  const resposta = await handler(
+    new Request('http://localhost/webhook-mercado-pago?data.id=ORDTST01ABCDEF&type=order', {
+      method: 'POST',
+      headers: { 'x-signature': `ts=1760720000,v1=${v1}`, 'x-request-id': 'req-123' },
+      body: '{}',
+    }),
+  );
+
+  assertEquals(resposta.status, 401);
+  assertEquals(chamadas.length, 0);
+  assert(logs.some((l) => l.includes('"motivo":"hmac_invalido"')));
+});
+
+Deno.test('sem data.id na URL: assinatura sem o segmento id → variante sem_id', async () => {
+  const ts = String(AGORA_S);
+  const v1 = await hmacHex(SEGREDO, montarManifest(null, REQUEST_ID, ts));
+  const { handler, logs } = cenario();
+  const resposta = await handler(
+    new Request('http://localhost/webhook-mercado-pago?type=order', {
+      method: 'POST',
+      headers: { 'x-signature': `ts=${ts},v1=${v1}`, 'x-request-id': REQUEST_ID },
+      body: JSON.stringify({ type: 'order', data: { id: ID_ORDER } }),
+    }),
+  );
+
+  assertEquals(resposta.status, 200);
+  const aceita = logs.map((l) => JSON.parse(l)).find((l) => l.evento === 'assinatura_aceita');
+  assertEquals(aceita?.variante_id, 'sem_id');
 });
 
 Deno.test('comparação em tempo constante', () => {
@@ -189,14 +293,6 @@ const ASSINATURAS_RUINS: Record<string, [() => Promise<Request>, string]> = {
     },
     'hmac_invalido',
   ],
-  'manifest com data.id em maiúsculas (fora da regra da documentação)': [
-    async () => {
-      const ts = String(AGORA - 5_000);
-      const v1 = await hmacHex(SEGREDO, `id:${ID_ORDER};request-id:${REQUEST_ID};ts:${ts};`);
-      return notificacao({ v1, ts: Number(ts) });
-    },
-    'hmac_invalido',
-  ],
   'data.id trocado depois de assinado': [
     () => notificacao({ idNoManifest: 'ORDTSTOUTRAORDER' }),
     'hmac_invalido',
@@ -224,13 +320,25 @@ Deno.test('log de diagnóstico do ts: aceita e recusada, sem v1 nem segredo', as
       'ms, aceita',
       await notificacao({ ts: AGORA - 5_000 }),
       'assinatura_aceita',
-      { ts_digitos: 13, idade_s: 5, id_na_url: true, tem_request_id: true },
+      {
+        variante_id: 'minusculas',
+        ts_digitos: 13,
+        idade_s: 5,
+        id_na_url: true,
+        tem_request_id: true,
+      },
     ],
     [
-      'segundos, aceita',
-      await notificacao({ ts: Math.floor(AGORA / 1000) - 120 }),
+      'segundos, aceita (id original)',
+      await notificacao({ ts: AGORA_S - 120, varianteId: 'original' }),
       'assinatura_aceita',
-      { ts_digitos: 10, idade_s: 120, id_na_url: true, tem_request_id: true },
+      {
+        variante_id: 'original',
+        ts_digitos: 10,
+        idade_s: 120,
+        id_na_url: true,
+        tem_request_id: true,
+      },
     ],
     [
       'segundos, recusada',
@@ -349,6 +457,18 @@ Deno.test('order ainda não paga (action_required) → 200 sem tocar no banco', 
   }
 });
 
+Deno.test('consulta com HTTP 400 (id inválido, ex.: simulador) → 200 sem tocar no banco', async () => {
+  const { handler, chamou, logs } = cenario({
+    [`v1/orders/${ID_ORDER}`]: () => Response.json({ message: 'bad request' }, { status: 400 }),
+  });
+  const resposta = await handler(await notificacao());
+
+  assertEquals(resposta.status, 200);
+  assertEquals((await resposta.json()).resultado, 'IGNORADO_ORDER_INVALIDA');
+  assertEquals(chamou('rpc/confirmar_pagamento').length, 0);
+  assert(logs.some((l) => l.includes('order_invalida')));
+});
+
 Deno.test('order não encontrada (404) → 200 ignorado', async () => {
   const { handler, chamou } = cenario({
     [`v1/orders/${ID_ORDER}`]: () => Response.json({ message: 'not found' }, { status: 404 }),
@@ -363,6 +483,7 @@ Deno.test('order não encontrada (404) → 200 ignorado', async () => {
 const FALHAS_DO_MERCADO_PAGO: Record<string, Rota> = {
   'HTTP 503': () => Response.json({ message: `erro ${TOKEN_MP}` }, { status: 503 }),
   'HTTP 401 (token)': () => Response.json({ message: 'unauthorized' }, { status: 401 }),
+  'HTTP 403 (token sem permissão)': () => Response.json({ message: 'forbidden' }, { status: 403 }),
   'falha de rede': () => Promise.reject(new TypeError('connection refused')),
 };
 
