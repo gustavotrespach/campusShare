@@ -109,6 +109,7 @@ values
 create function pg_temp.inserir_carona(
   p_id_veiculo uuid default 'a1000000-0000-0000-0000-000000000001',
   p_vagas smallint default 3,
+  p_vagas_ofertadas smallint default 3,
   p_custo_total numeric default 40,
   p_custo_estimado numeric default null,
   p_tolerancia smallint default 10
@@ -117,11 +118,12 @@ language sql
 as $$
   insert into public.carona (
     id_motorista, id_veiculo, origem, origem_lat, origem_lng, destino, destino_lat, destino_lng,
-    data_hora_partida, vagas_disponiveis, custo_total, custo_estimado, tolerancia_min
+    data_hora_partida, vagas_ofertadas, vagas_disponiveis, custo_total, custo_estimado,
+    tolerancia_min
   ) values (
     'a0000000-0000-0000-0000-00000000000a', p_id_veiculo,
     'Centro, Torres', -29.335, -49.727, 'ULBRA Torres', -29.330, -49.740,
-    now() + interval '1 day', p_vagas, p_custo_total, p_custo_estimado, p_tolerancia
+    now() + interval '1 day', p_vagas_ofertadas, p_vagas, p_custo_total, p_custo_estimado, p_tolerancia
   );
 $$;
 

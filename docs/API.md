@@ -6,7 +6,7 @@ Não existe API REST própria (ADR-009). O app fala com o Supabase pelo `@supaba
 |---|---|---|
 | **Auth** | `supabase.auth.*` | Cadastro, login, sessão, reenvio de confirmação |
 | **Tabela** | `supabase.from('veiculo').select()` | Leitura/escrita simples do próprio usuário, limitada pela RLS |
-| **RPC** | `supabase.rpc('reservar_vaga', {...})` | Regras de negócio transacionais (funções SQL) |
+| **RPC** | `supabase.rpc('publicar_carona', {...})` | Regras de negócio transacionais (funções SQL) |
 | **Edge Function** | `supabase.functions.invoke('reservar-vaga', { body })` | Integrações com segredo (Pix, Directions, push) e webhook |
 
 - Base URL: `http://localhost:54321` (dev) · `https://<ref>.supabase.co` (demo).
@@ -39,7 +39,7 @@ O serviço do app normaliza os dois formatos (e os erros do Auth) em `AppError {
 | 401 | Sem sessão, JWT inválido, credenciais incorretas, assinatura de webhook inválida |
 | 403 | Autenticado, mas sem permissão (RLS ou dono do recurso) |
 | 404 | Recurso não encontrado |
-| 409 | Conflito (e-mail duplicado, carona lotada, reserva dupla) |
+| 409 | Conflito (e-mail duplicado, carona lotada, reserva dupla, veículo em uso) |
 | 422 | Regra de negócio violada (domínio, teto de preço, somente mulheres) |
 | 500 | Erro inesperado (mensagem genérica; detalhe só no log) |
 
@@ -94,7 +94,18 @@ Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `c
 |---|---|---|
 | Tabela | `veiculo` — `select/insert/update/delete` | Só os do próprio usuário (RLS; `id_motorista` preenchido com `auth.uid()` por default) |
 
-Constraints no banco: placa no padrão antigo ou Mercosul, `qtd_lugares` de 2 a 8, `consumo_kml > 0`. DELETE recusado (`VEICULO_EM_USO`, 409) se houver carona ABERTA com o veículo.
+Constraints no banco: placa no padrão antigo ou Mercosul (maiúsculas, sem hífen) e única, `qtd_lugares` de 2 a 8, `consumo_kml > 0`.
+
+DELETE recusado pelo trigger `impedir_exclusao_veiculo_em_uso` quando o veículo tem caronas:
+
+| HTTP | `message` (código) | `hint` (frase para o usuário) | Quando |
+|---|---|---|---|
+| 409 | `VEICULO_EM_USO` | Este veículo está em uma carona ativa. Cancele ou conclua a carona antes de excluí-lo. | Alguma carona `ABERTA` ou `LOTADA` com o veículo |
+| 409 | `VEICULO_COM_HISTORICO` | Este veículo tem caronas registradas no histórico e não pode ser excluído. | Só caronas `CONCLUIDA`/`CANCELADA` |
+
+DELETE ou UPDATE no veículo de outro motorista não falha, mas não afeta nenhuma linha (RLS). O app trata a resposta vazia como "Veículo não encontrado.".
+
+Placa já cadastrada (em qualquer conta) no INSERT ou UPDATE: HTTP 409 com `code = 23505` e `veiculo_placa_key` na `message`. O service `veiculos.ts` traduz para `PLACA_DUPLICADA`, "Esta placa já está cadastrada.", mostrado no campo da placa.
 
 ```ts
 await supabase.from('veiculo').insert({
@@ -107,10 +118,10 @@ await supabase.from('veiculo').insert({
 
 | Tipo | Nome | Descrição |
 |---|---|---|
-| RPC | `buscar_caronas(p_lat, p_lng, p_raio_km = 10, p_somente_mulheres = false, p_data = null, p_pagina = 1)` | Caronas ABERTA e futuras, por proximidade e horário (RN08) |
-| RPC | `detalhar_carona(p_id_carona)` | Motorista (perfil público), veículo, vagas, valor, tolerância |
+| RPC | `buscar_caronas(p_lat, p_lng, p_raio_km = 10, p_somente_mulheres = false, p_data = null, p_pagina = 1)` | Caronas ABERTA, com vaga e futuras, por proximidade da origem e horário (RN08); páginas de 20 |
+| RPC | `detalhar_carona(p_id_carona)` | Uma carona: motorista (nome), veículo com placa, vagas, valor por passageiro, tolerância |
 | Tabela | `carona` — `select` | Leitura das próprias caronas publicadas (RLS) |
-| RPC | `publicar_carona(...)` | Sprint 2: publica com `custo_total` digitado (RN04–RN06) |
+| RPC | `publicar_carona(...)` → `uuid` | Sprint 2: publica com `custo_total` digitado (RN04–RN06); único caminho de criação (o app não tem INSERT em `carona`) |
 | Edge Function | `sugestao-preco` | Sprint 3: `distancia_km` e `custo_estimado` |
 | Edge Function | `publicar-carona` | Sprint 3: recalcula `custo_estimado` e aplica o teto (RN10); passa a ser o único caminho de publicação |
 | RPC | `cancelar_carona(p_id_carona)` | Só o motorista; cancela reservas ativas e notifica (US06) |
@@ -118,15 +129,69 @@ await supabase.from('veiculo').insert({
 
 ```ts
 // publicar (Sprint 2: rpc; Sprint 3: functions.invoke('publicar-carona', { body }))
-await supabase.rpc('publicar_carona', {
+const { data: idCarona } = await supabase.rpc('publicar_carona', {
   p_id_veiculo: 'uuid',
   p_origem: 'Av. Beira Mar, 100 — Arroio do Sal', p_origem_lat: -29.55, p_origem_lng: -49.89,
   p_destino: 'ULBRA Torres', p_destino_lat: -29.33, p_destino_lng: -49.73,
-  p_data_hora_partida: '2026-10-05T10:30:00Z', p_vagas_disponiveis: 3,
+  p_data_hora_partida: '2026-10-05T10:30:00Z', p_vagas_ofertadas: 3,
   p_custo_total: 24.0, p_tolerancia_min: 10, p_somente_mulheres: false,
 });
-// 422 PRECO_ACIMA_DO_TETO · 422 SEM_VEICULO · 400 PARTIDA_NO_PASSADO · 422 VAGAS_ACIMA_DO_LIMITE
 ```
+
+`publicar_carona(p_id_veiculo uuid, p_origem text, p_origem_lat numeric, p_origem_lng numeric, p_destino text, p_destino_lat numeric, p_destino_lng numeric, p_data_hora_partida timestamptz, p_vagas_ofertadas int, p_custo_total numeric, p_tolerancia_min int, p_somente_mulheres boolean default false) returns uuid`
+
+- O motorista é sempre o usuário da sessão (`auth.uid()`), nunca um parâmetro.
+- `p_vagas_ofertadas`: vagas oferecidas a passageiros. A carona nasce `ABERTA` com `vagas_ofertadas = vagas_disponiveis` (RN11).
+- `p_custo_total` em **reais** com até 2 casas (o app converte de centavos na fronteira). Sem teto na Sprint 2 (RN12): `custo_estimado` e `distancia_km` ficam nulos.
+- `p_data_hora_partida` em UTC (ISO 8601). `origem` e `destino` são gravados com `trim`.
+- Vagas e tolerância são inteiros: um valor fracionário (ex.: `2.5`) é recusado pelo PostgREST antes da função, com `22P02`.
+
+Erros (validados nesta ordem; a frase para o usuário vem no `hint`):
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão |
+| 422 | `SEM_VEICULO` | Cadastre um veículo antes de oferecer uma carona. | Usuário sem nenhum veículo (RN04) |
+| 404 | `VEICULO_NAO_ENCONTRADO` | Veículo não encontrado. Escolha um dos seus veículos. | Veículo inexistente ou de outro motorista (mesma resposta) |
+| 400 | `DADOS_INVALIDOS` | Ofereça pelo menos 1 vaga. | `p_vagas_ofertadas` < 1 |
+| 422 | `VAGAS_ACIMA_DO_LIMITE` | Este veículo comporta no máximo N vagas para passageiros. | `p_vagas_ofertadas` > `qtd_lugares − 1` (RN05) |
+| 400 | `DADOS_INVALIDOS` | Informe a data e a hora de partida. | Partida ausente |
+| 400 | `PARTIDA_NO_PASSADO` | Escolha uma data e hora de partida no futuro. | Partida ≤ agora (RN06) |
+| 400 | `DADOS_INVALIDOS` | Frase específica do campo | Origem/destino vazio ou com mais de 200 caracteres; coordenada fora da faixa; custo ≤ 0, com mais de 2 casas ou acima do limite da coluna; tolerância fora de 0 a 30 (US07) |
+
+Sprint 3 (Edge Function `publicar-carona`): `422 PRECO_ACIMA_DO_TETO` (RN10).
+
+**Buscar e detalhar (T18).** As duas RPCs são `SECURITY DEFINER` e devolvem só colunas públicas (sem telefone, e-mail nem `id_motorista`); o app não lê `carona` de outros motoristas direto na tabela.
+
+```ts
+const { data: caronas } = await supabase.rpc('buscar_caronas', {
+  p_lat: -29.3353, p_lng: -49.7268,          // ponto do passageiro
+  p_raio_km: 10, p_somente_mulheres: false,  // opcionais
+  p_data: '2026-10-20',                      // opcional: dia em America/Sao_Paulo
+  p_pagina: 1,
+});
+const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona: 'uuid' });
+```
+
+`buscar_caronas(p_lat numeric, p_lng numeric, p_raio_km numeric default 10, p_somente_mulheres boolean default false, p_data date default null, p_pagina int default 1)`:
+- Só `ABERTA`, com `vagas_disponiveis > 0` e partida no futuro (RN08), com a **origem** a até `p_raio_km` do ponto (bounding box + haversine).
+- Não mostra as caronas do próprio usuário (RN14). Caronas `somente_mulheres` só aparecem para usuárias com `genero = FEMININO` (RN18); com `p_somente_mulheres = true`, só elas aparecem.
+- `p_data` é o dia em `America/Sao_Paulo` (23:30 de Brasília conta no próprio dia, mesmo sendo o dia seguinte em UTC).
+- Ordem: distância e depois horário. 20 por página; página além do fim vem vazia.
+- Colunas: `id_carona`, `origem`, `origem_lat`, `origem_lng`, `destino`, `destino_lat`, `destino_lng`, `data_hora_partida`, `vagas_disponiveis`, `tolerancia_min`, `somente_mulheres`, `distancia_km` (do ponto do passageiro até a origem, 1 casa), `valor_por_passageiro` (reais, 2 casas), `nome_motorista` (só o primeiro nome), `modelo`, `cor`.
+
+`detalhar_carona(p_id_carona uuid)` devolve uma linha com as colunas da busca (sem `distancia_km`) mais `vagas_ofertadas`, `status`, `custo_total`, `placa` (para reconhecer o carro no embarque), `sou_motorista` e `nome_motorista` com o nome completo (perfil público).
+- Visível para o motorista (qualquer status), para quem tem reserva na carona (qualquer status) e, para os demais, se estiver `ABERTA` e futura (e, se `somente_mulheres`, para usuárias).
+
+`valor_por_passageiro = round(custo_total ÷ (vagas_ofertadas + 1), 2)` (RN11) vem da função SQL única `valor_por_passageiro`, a mesma que a `reservar_vaga` (T21) usa para cobrar. A sobra de centavos fica com o motorista (R$ 25,00 com 2 vagas → R$ 8,33).
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão (as duas RPCs) |
+| 400 | `DADOS_INVALIDOS` | Sua localização é inválida. Tente de novo. | Coordenadas ausentes ou fora da faixa |
+| 400 | `DADOS_INVALIDOS` | O raio da busca deve ser de 1 a 50 km. | `p_raio_km` fora de 1 a 50 |
+| 400 | `DADOS_INVALIDOS` | Página inválida. | `p_pagina` < 1 |
+| 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada ou não está mais disponível. | Detalhe de carona inexistente ou fora da visibilidade (mesma resposta) |
 
 ```json
 // POST /functions/v1/sugestao-preco
@@ -144,7 +209,39 @@ await supabase.rpc('publicar_carona', {
 | Tabela | `reserva` — `select` | Passageiro vê as próprias; motorista vê as das suas caronas (RLS) |
 | RPC | `cancelar_reserva(p_id_reserva)` | Passageiro cancela; devolve a vaga |
 
-A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança.
+A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança. O app chama a Edge Function, nunca a função.
+
+`reservar_vaga(p_id_carona uuid, p_id_passageiro uuid) returns table (id_reserva, id_pagamento, valor_individual, taxa_plataforma, valor_repassado, status)` (T21):
+- `p_id_passageiro` é o usuário do JWT validado pela Edge Function, nunca um campo do corpo enviado pelo app.
+- Numa transação, com a carona travada (`FOR UPDATE`): valida, grava a reserva `PENDENTE` com `valor_individual = valor_por_passageiro(custo_total, vagas_ofertadas)` (RN11, o mesmo valor da busca), grava o pagamento `PENDENTE` (`PIX`, `id_externo` nulo) com `taxa_plataforma = round(valor × percentual_taxa, 2)` e `valor_repassado = valor − taxa` (RN13, taxa do `parametro_custo` mais recente) e baixa uma vaga; com 0 vagas a carona vira `LOTADA`.
+- A reserva `PENDENTE` ocupa a vaga até ser paga ou expirar (expiração automática: T24, pós-AP2).
+- Exemplo: R$ 24,00 com 3 vagas → R$ 6,00, taxa R$ 0,60, repasse R$ 5,40. R$ 25,00 com 2 vagas → R$ 8,33, R$ 0,83, R$ 7,50.
+
+Erros (validados nesta ordem; a Edge Function repassa ao app):
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada ou não está mais disponível. | Carona inexistente |
+| 404 | `USUARIO_NAO_ENCONTRADO` | Não encontramos seu perfil. Saia e entre novamente. | Passageiro sem linha em `usuario` |
+| 422 | `RESERVA_PROPRIA_CARONA` | Você não pode reservar uma vaga na sua própria carona. | Motorista = passageiro (RN14) |
+| 403 | `CARONA_SOMENTE_MULHERES` | Esta carona é exclusiva para mulheres. | Carona `somente_mulheres` e passageiro sem `genero = FEMININO` (RN18) |
+| 409 | `CARONA_INDISPONIVEL` | Esta carona não está mais disponível para reserva. | `CANCELADA`, `CONCLUIDA` ou partida já passada (RN08) |
+| 409 | `CARONA_LOTADA` | Esta carona não tem mais vagas. | `LOTADA` ou sem vagas (inclusive quem perdeu a disputa pela última vaga) |
+| 409 | `RESERVA_DUPLICADA` | Você já tem uma reserva nesta carona. | Já existe reserva `PENDENTE`/`CONFIRMADA` do passageiro (RN14) |
+| 422 | `VALOR_ABAIXO_DO_MINIMO` | O valor por passageiro desta carona é menor que R$ 0,01. | `custo_total` tão baixo que o rateio dá R$ 0,00 |
+| 500 | `PARAMETRO_AUSENTE` | Não foi possível calcular o valor agora. Tente mais tarde. | Nenhum `parametro_custo` cadastrado |
+
+Leitura direta pelo app (tabelas criadas na T20; INSERT, UPDATE e DELETE recusados com `42501` para `authenticated`):
+
+```ts
+// Passageiro: as próprias reservas. Motorista: as reservas das próprias caronas (mesma consulta; a RLS filtra)
+await supabase
+  .from('reserva')
+  .select('id_reserva, id_carona, id_passageiro, valor_individual, status, criado_em')
+  .eq('id_carona', idCarona);
+```
+
+Colunas de `reserva`: `id_reserva`, `id_carona`, `id_passageiro`, `valor_individual` (reais, 2 casas), `status` (`PENDENTE`, `CONFIRMADA`, `CANCELADA`, `EXPIRADA`), `criado_em`.
 
 ```json
 // POST /functions/v1/reservar-vaga
@@ -154,7 +251,7 @@ A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge 
     "id_reserva": "uuid", "status": "PENDENTE", "valor_individual": 6.00,
     "expira_em": "2026-10-04T18:15:00Z",
     "pix": { "qr_code": "base64...", "copia_e_cola": "00020126..." } } }
-// 409 CARONA_LOTADA · 409 RESERVA_DUPLICADA · 422 SOMENTE_MULHERES · 422 PROPRIA_CARONA
+// 409 CARONA_LOTADA · 409 RESERVA_DUPLICADA · 403 CARONA_SOMENTE_MULHERES · 422 RESERVA_PROPRIA_CARONA (tabela acima)
 ```
 
 O app acompanha a confirmação assinando mudanças da própria reserva via **Realtime** (`supabase.channel(...).on('postgres_changes', ...)`).
@@ -164,7 +261,11 @@ O app acompanha a confirmação assinando mudanças da própria reserva via **Re
 | Tipo | Nome | Descrição |
 |---|---|---|
 | Edge Function 🔓 | `webhook-mercado-pago` | Notificação do Mercado Pago (`verify_jwt = false`; assinatura validada) — idempotente |
-| Tabela | `pagamento` — `select` | Status do pagamento das próprias reservas (RLS) |
+| Tabela | `pagamento` — `select` | Status do pagamento das próprias reservas (RLS); só o passageiro, o motorista não vê |
+
+Colunas de `pagamento`: `id_pagamento`, `id_reserva`, `id_externo`, `valor`, `taxa_plataforma`, `valor_repassado`, `metodo` (`PIX`), `status` (`PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE`), `pago_em`. Nenhuma escrita pelo app: o pagamento é criado pela Edge Function `reservar-vaga` e aprovado só pelo webhook (ADR-008).
+
+`parametro_custo` (preço do litro e taxa) não é exposta ao app: só funções SQL e Edge Functions a leem.
 
 ## notificacoes (US06)
 

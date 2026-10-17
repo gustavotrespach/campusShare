@@ -25,13 +25,13 @@ export type Database = {
           Tables: {
             "carona": {
                   Row: {
-                    "custo_estimado": number | null,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number | null,"id_carona": string,"id_motorista": string,"id_veiculo": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number
+                    "custo_estimado": number | null,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number | null,"id_carona": string,"id_motorista": string,"id_veiculo": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number,"vagas_ofertadas": number
                   }
                   Insert: {
-                    "custo_estimado"?: number | null,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km"?: number | null,"id_carona"?: string,"id_motorista": string,"id_veiculo": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres"?: boolean,"status"?: Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number
+                    "custo_estimado"?: number | null,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km"?: number | null,"id_carona"?: string,"id_motorista": string,"id_veiculo": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres"?: boolean,"status"?: Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number,"vagas_ofertadas": number
                   }
                   Update: {
-                    "custo_estimado"?: number | null,"custo_total"?: number,"data_hora_partida"?: string,"destino"?: string,"destino_lat"?: number,"destino_lng"?: number,"distancia_km"?: number | null,"id_carona"?: string,"id_motorista"?: string,"id_veiculo"?: string,"origem"?: string,"origem_lat"?: number,"origem_lng"?: number,"somente_mulheres"?: boolean,"status"?: Database["public"]['Enums']["status_carona"],"tolerancia_min"?: number,"vagas_disponiveis"?: number
+                    "custo_estimado"?: number | null,"custo_total"?: number,"data_hora_partida"?: string,"destino"?: string,"destino_lat"?: number,"destino_lng"?: number,"distancia_km"?: number | null,"id_carona"?: string,"id_motorista"?: string,"id_veiculo"?: string,"origem"?: string,"origem_lat"?: number,"origem_lng"?: number,"somente_mulheres"?: boolean,"status"?: Database["public"]['Enums']["status_carona"],"tolerancia_min"?: number,"vagas_disponiveis"?: number,"vagas_ofertadas"?: number
                   }
                   Relationships: [
                     {
@@ -60,6 +60,63 @@ isOneToOne: false
                   }
                   Relationships: [
                     
+                  ]
+                },"pagamento": {
+                  Row: {
+                    "id_externo": string | null,"id_pagamento": string,"id_reserva": string,"metodo": Database["public"]['Enums']["metodo_pagamento"],"pago_em": string | null,"status": Database["public"]['Enums']["status_pagamento"],"taxa_plataforma": number,"valor": number,"valor_repassado": number
+                  }
+                  Insert: {
+                    "id_externo"?: string | null,"id_pagamento"?: string,"id_reserva": string,"metodo"?: Database["public"]['Enums']["metodo_pagamento"],"pago_em"?: string | null,"status"?: Database["public"]['Enums']["status_pagamento"],"taxa_plataforma": number,"valor": number,"valor_repassado": number
+                  }
+                  Update: {
+                    "id_externo"?: string | null,"id_pagamento"?: string,"id_reserva"?: string,"metodo"?: Database["public"]['Enums']["metodo_pagamento"],"pago_em"?: string | null,"status"?: Database["public"]['Enums']["status_pagamento"],"taxa_plataforma"?: number,"valor"?: number,"valor_repassado"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "pagamento_id_reserva_fkey"
+      columns: ["id_reserva"]
+isOneToOne: true
+      referencedRelation: "reserva"
+      referencedColumns: ["id_reserva"]
+    }
+                  ]
+                },"parametro_custo": {
+                  Row: {
+                    "atualizado_em": string,"id_parametro": number,"percentual_taxa": number,"preco_litro": number
+                  }
+                  Insert: {
+                    "atualizado_em"?: string,"id_parametro"?: never,"percentual_taxa": number,"preco_litro": number
+                  }
+                  Update: {
+                    "atualizado_em"?: string,"id_parametro"?: never,"percentual_taxa"?: number,"preco_litro"?: number
+                  }
+                  Relationships: [
+                    
+                  ]
+                },"reserva": {
+                  Row: {
+                    "criado_em": string,"id_carona": string,"id_passageiro": string,"id_reserva": string,"status": Database["public"]['Enums']["status_reserva"],"valor_individual": number
+                  }
+                  Insert: {
+                    "criado_em"?: string,"id_carona": string,"id_passageiro": string,"id_reserva"?: string,"status"?: Database["public"]['Enums']["status_reserva"],"valor_individual": number
+                  }
+                  Update: {
+                    "criado_em"?: string,"id_carona"?: string,"id_passageiro"?: string,"id_reserva"?: string,"status"?: Database["public"]['Enums']["status_reserva"],"valor_individual"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "reserva_id_carona_fkey"
+      columns: ["id_carona"]
+isOneToOne: false
+      referencedRelation: "carona"
+      referencedColumns: ["id_carona"]
+    },{
+      foreignKeyName: "reserva_id_passageiro_fkey"
+      columns: ["id_passageiro"]
+isOneToOne: false
+      referencedRelation: "usuario"
+      referencedColumns: ["id_usuario"]
+    }
                   ]
                 },"usuario": {
                   Row: {
@@ -105,12 +162,33 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "validar_dominio_institucional":
+            "buscar_caronas":
+{ Args: { "p_data"?: string,"p_lat": number,"p_lng": number,"p_pagina"?: number,"p_raio_km"?: number,"p_somente_mulheres"?: boolean }; Returns: {
+              "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"vagas_disponiveis": number,"valor_por_passageiro": number
+            }[]
+                           },
+"detalhar_carona":
+{ Args: { "p_id_carona": string }; Returns: {
+              "cor": string,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"placa": string,"somente_mulheres": boolean,"sou_motorista": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number,"vagas_ofertadas": number,"valor_por_passageiro": number
+            }[]
+                           },
+"publicar_carona":
+{ Args: { "p_custo_total": number,"p_data_hora_partida": string,"p_destino": string,"p_destino_lat": number,"p_destino_lng": number,"p_id_veiculo": string,"p_origem": string,"p_origem_lat": number,"p_origem_lng": number,"p_somente_mulheres"?: boolean,"p_tolerancia_min": number,"p_vagas_ofertadas": number }; Returns: string
+                           },
+"reservar_vaga":
+{ Args: { "p_id_carona": string,"p_id_passageiro": string }; Returns: {
+              "id_pagamento": string,"id_reserva": string,"status": Database["public"]['Enums']["status_reserva"],"taxa_plataforma": number,"valor_individual": number,"valor_repassado": number
+            }[]
+                           },
+"validar_dominio_institucional":
 { Args: { "event": Json }; Returns: Json
+                           },
+"valor_por_passageiro":
+{ Args: { "p_custo_total": number,"p_vagas_ofertadas": number }; Returns: number
                            }
           }
           Enums: {
-            "genero_usuario": "FEMININO"|"MASCULINO"|"OUTRO"|"NAO_INFORMADO","status_carona": "ABERTA"|"LOTADA"|"CANCELADA"|"CONCLUIDA"
+            "genero_usuario": "FEMININO"|"MASCULINO"|"OUTRO"|"NAO_INFORMADO","metodo_pagamento": "PIX","status_carona": "ABERTA"|"LOTADA"|"CANCELADA"|"CONCLUIDA","status_pagamento": "PENDENTE"|"APROVADO"|"RECUSADO"|"REEMBOLSO_PENDENTE","status_reserva": "PENDENTE"|"CONFIRMADA"|"CANCELADA"|"EXPIRADA"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -230,7 +308,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "genero_usuario": ["FEMININO", "MASCULINO", "OUTRO", "NAO_INFORMADO"],"status_carona": ["ABERTA", "LOTADA", "CANCELADA", "CONCLUIDA"]
+            "genero_usuario": ["FEMININO", "MASCULINO", "OUTRO", "NAO_INFORMADO"],"metodo_pagamento": ["PIX"],"status_carona": ["ABERTA", "LOTADA", "CANCELADA", "CONCLUIDA"],"status_pagamento": ["PENDENTE", "APROVADO", "RECUSADO", "REEMBOLSO_PENDENTE"],"status_reserva": ["PENDENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA"]
           }
         }
 } as const

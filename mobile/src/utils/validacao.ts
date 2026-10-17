@@ -1,7 +1,9 @@
 // Validação local só de formato, para dar retorno rápido antes de chamar o backend.
 // Regras de negócio (domínio institucional, duplicidade) são do backend (RN01, AGENTS.md).
 
+import { validarConsumo } from './consumo';
 import type { Genero } from './genero';
+import { validarPlaca } from './placa';
 
 const FORMATO_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const TAMANHO_MINIMO_SENHA = 8;
@@ -109,4 +111,43 @@ export function validarPerfil(dados: {
     erros.telefone = erroTelefone;
   }
   return erros;
+}
+
+// Limites das colunas de public.veiculo (docs/DATABASE.md)
+const TAMANHO_MAXIMO_MODELO = 60;
+const TAMANHO_MAXIMO_COR = 30;
+
+function validarTextoObrigatorio(
+  valor: string,
+  vazio: string,
+  tamanhoMaximo: number,
+): string | undefined {
+  const texto = valor.trim();
+  if (texto.length === 0) {
+    return vazio;
+  }
+  if (texto.length > tamanhoMaximo) {
+    return `Use no máximo ${tamanhoMaximo} caracteres.`;
+  }
+  return undefined;
+}
+
+export type CamposVeiculo = 'modelo' | 'placa' | 'cor' | 'consumo_kml';
+
+// Lugares vêm de um seletor de 2 a 8 e motorização de uma lista: não há o que validar neles.
+export function validarVeiculo(dados: {
+  modelo: string;
+  placa: string;
+  cor: string;
+  consumo_kml: string;
+}): ErrosDeCampo<CamposVeiculo> {
+  const erros: ErrosDeCampo<CamposVeiculo> = {
+    modelo: validarTextoObrigatorio(dados.modelo, 'Informe o modelo.', TAMANHO_MAXIMO_MODELO),
+    placa: validarPlaca(dados.placa),
+    cor: validarTextoObrigatorio(dados.cor, 'Informe a cor.', TAMANHO_MAXIMO_COR),
+    consumo_kml: validarConsumo(dados.consumo_kml),
+  };
+  return Object.fromEntries(
+    Object.entries(erros).filter(([, mensagem]) => mensagem !== undefined),
+  ) as ErrosDeCampo<CamposVeiculo>;
 }

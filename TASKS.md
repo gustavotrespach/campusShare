@@ -16,9 +16,9 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 
 | Dia | Trilha A — caronas | Trilha B — reserva e pagamento | Geral |
 |---|---|---|---|
-| 16–17/10 | T15 (veículos: falta o trigger `VEICULO_EM_USO`) | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) | T14 (deploy + CI) |
-| 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) | T21 (reserva com rateio) | |
-| 18–19/10 | T18 (buscar caronas) | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
+| 16–17/10 | T15 (veículos: trigger `VEICULO_EM_USO`) — feito | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) — feito | T14 (deploy + CI) |
+| 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) — feitas | T21 (reserva com rateio) | |
+| 18–19/10 | T18 (buscar caronas) — feita | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
 | 19–20/10 | T19 (telas de publicar e buscar) | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) | |
 | 21–22/10 | | | T31 (build e roteiro da demo) |
@@ -99,34 +99,38 @@ Descrição: Tela de perfil lendo/atualizando a tabela `usuario` (só colunas li
 Aceite: usuário edita nome, telefone e gênero; não consegue alterar e-mail nem instituição; testes de RLS passam.
 
 ### T14 — Deploy do backend
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T09
+Status: feito · Responsável: Gustavo Trespach · Depende de: T09
 Descrição: GitHub Actions na `main` rodando `supabase db push` e `supabase functions deploy`; segredos com `supabase secrets set`.
 Aceite: `health` responde no projeto remoto; cadastro e login funcionam com o app apontando para o projeto.
+Nota (16/10): workflows `CI` (todo PR: `banco`, `edge-functions`, `app`) e `Deploy` (push na `main`) em `.github/workflows/`. Primeiro deploy pela release #18 (`health` HTTP 200); app testado no Expo Go contra o remoto (login, perfil, bloqueio de `@gmail.com`). `config push` e `secrets set` continuam manuais (`docs/architecture.md`).
 
 ---
 
 ## Sprint 2 — Veículos, caronas, reservas e pagamento
 
 ### T15 — Regras de veículos
-Status: a fazer · Depende de: T06
+Status: feito · Responsável: Gustavo Trespach · Depende de: T06
 Descrição: Políticas RLS de CRUD dos próprios veículos, CHECK de placa (antigo e Mercosul) e trigger que impede excluir veículo com carona ABERTA (`VEICULO_EM_USO`).
 Aceite: usuário só vê e altera os próprios veículos (pgTAP); placa inválida é recusada.
-Nota (16/10): a RLS de `veiculo` e o CHECK de placa já entraram na T06 (`schema_inicial`). Falta o trigger `VEICULO_EM_USO` e conferir se os testes pgTAP existentes cobrem o aceite.
+Nota (16/10): a RLS de `veiculo` e o CHECK de placa já entraram na T06 (`schema_inicial`). A T15 adicionou a migration `regras_veiculos` (trigger `impedir_exclusao_veiculo_em_uso`: `VEICULO_EM_USO` com carona ABERTA/LOTADA, `VEICULO_COM_HISTORICO` só com histórico) e o pgTAP `06_veiculos`.
 
 ### T16 — Tela de veículos
-Status: a fazer · Depende de: T15, T10
+Status: feito · Responsável: Gustavo Trespach · Depende de: T15, T10
 Descrição: `consumo_kml` sugerido pela motorização, editável.
 Aceite: cadastrar, listar, editar e excluir veículo pelo app.
+Nota (16/10): telas `(autenticado)/veiculos/` com service `veiculos.ts`; roteiro de teste aprovado pelo Gustavo no iPhone (Expo Go) contra o Supabase local.
 
 ### T17 — Publicar carona (US03, US07)
-Status: a fazer · Depende de: T15
+Status: feito · Responsável: Gustavo Trespach · Depende de: T15
 Descrição: Função SQL `publicar_carona` (RPC) com veículo, origem/destino (texto + lat/lng), data/hora, vagas, `custo_total` digitado, `tolerancia_min` e `somente_mulheres`; `id_motorista = auth.uid()`.
 Aceite: RN04, RN05 e RN06 validadas na função; INSERT direto em `carona` pelo app é bloqueado; carona nasce `ABERTA`.
+Nota (16/10): a T20 criou `carona.vagas_ofertadas` (obrigatória, 1 a 7); `publicar_carona` grava `vagas_ofertadas` e `vagas_disponiveis` com o mesmo valor. Feita na migration `publicar_carona` (pgTAP `08_publicar_carona`); erros e assinatura em `docs/API.md`.
 
 ### T18 — Buscar caronas (US05)
-Status: a fazer · Depende de: T17
+Status: feito · Responsável: Gustavo Trespach · Depende de: T17
 Descrição: Funções `buscar_caronas(p_lat, p_lng, p_raio_km, p_somente_mulheres, p_data, p_pagina)` — bounding box + haversine, ordenado por proximidade e horário — e `detalhar_carona`.
 Aceite: só caronas `ABERTA` e futuras (RN08); filtro "somente mulheres" funciona; telefone do motorista não aparece.
+Nota (17/10): migration `buscar_caronas` com `buscar_caronas`, `detalhar_carona` e `valor_por_passageiro` (fórmula única do rateio, reaproveitada pela T21); pgTAP `09_buscar_caronas`. O `seed.sql` ganhou caronas variadas para a T19.
 
 ### T19 — Telas de publicar e buscar carona
 Status: a fazer · Depende de: T17, T18
@@ -134,19 +138,21 @@ Aceite: motorista publica pelo app; Home lista caronas próximas com horário, v
 Nota (16/10): o mapa (T27) e a Directions API (T26) ficaram para depois da AP2. Para a demo, origem e destino precisam de latitude/longitude sem mapa (por exemplo, localização atual do aparelho com `expo-location` e uma lista curta de pontos fixos, como o campus). Definir no prompt da tarefa.
 
 ### T20 — Tabelas RESERVA, PAGAMENTO e PARAMETRO_CUSTO
-Status: a fazer · Depende de: T06
+Status: feito · Responsável: Gustavo Trespach · Depende de: T06
 Descrição: Migration das tabelas com RLS (leitura pelos participantes, sem escrita direta) e PARAMETRO_CUSTO inicial em migration idempotente.
 Aceite: migration aplicada, testes de RLS passando e `docs/DATABASE.md` conferido.
+Nota (16/10): migration `reserva_pagamento` com as 3 tabelas, enums `status_reserva`, `status_pagamento` e `metodo_pagamento`, `carona.vagas_ofertadas` (RN11), RLS só de leitura e `parametro_custo` inicial (6.29 / 0.1000); pgTAP `07_reserva_pagamento`.
 
 ### T21 — Função de reserva com rateio (US04)
-Status: a fazer · Depende de: T18, T20
-Descrição: Função SQL `reservar_vaga(p_id_carona, p_id_passageiro)` — `SELECT ... FOR UPDATE`, calcula `valor_individual` (RN11), valida RN14 e RN18, cria reserva `PENDENTE` e decrementa vagas; executável só pela `service_role`.
+Status: feito · Responsável: Gustavo Trespach · Depende de: T18, T20
+Descrição: Função SQL `reservar_vaga(p_id_carona, p_id_passageiro)` — `SELECT ... FOR UPDATE`, calcula `valor_individual` (RN11, por `valor_por_passageiro`), valida RN08, RN14 e RN18, cria reserva `PENDENTE` **e o pagamento `PENDENTE` com taxa e repasse (RN13)**, decrementa vagas e marca `LOTADA` com 0 vagas; executável só pela `service_role`.
 Aceite: teste de concorrência — duas chamadas simultâneas na última vaga, só uma passa; RN14 e RN18 cobertas em pgTAP.
-Nota (16/10): `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação — decisão do Gustavo registrada na RN11 do `SPEC.md`.
+Nota (16/10): `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado na publicação — decisão do Gustavo registrada na RN11 do `SPEC.md`. Use `carona.vagas_ofertadas` (T20), não `vagas_disponiveis`, que diminui a cada reserva.
+Nota (17/10): feita na migration `reservar_vaga`; pgTAP `10_reservar_vaga` e teste de concorrência `supabase/tests/concorrencia/ultima_vaga.sh` (roda no job `banco` do CI).
 
 ### T22 — Edge Function de reserva + cobrança Pix sandbox (US04)
 Status: a fazer · Depende de: T21
-Descrição: `reservar-vaga`: valida o JWT, chama `reservar_vaga`, gera a cobrança no Mercado Pago (sandbox) e chama `registrar_pagamento` (PAGAMENTO `PENDENTE` com taxa e repasse — RN13). Se a cobrança falhar, cancela a reserva e devolve a vaga.
+Descrição: `reservar-vaga`: valida o JWT, chama `reservar_vaga` (que já cria a reserva e o PAGAMENTO `PENDENTE` com taxa e repasse — RN13, desde a T21), gera a cobrança no Mercado Pago (sandbox) e grava o `id_externo` da cobrança no pagamento por uma função SQL só da `service_role`. Se a cobrança falhar, desfaz a reserva e devolve a vaga por outra função SQL (transação com `FOR UPDATE` na carona), para a vaga não ficar presa.
 Aceite: resposta traz QR code / copia-e-cola do Pix; falha simulada do MP não deixa vaga presa (`deno test`).
 Nota (16/10): antes de começar, o Gustavo cria a conta de desenvolvedor do Mercado Pago e as credenciais de **teste** (sandbox), cadastradas com `supabase secrets set`, nunca no repositório.
 

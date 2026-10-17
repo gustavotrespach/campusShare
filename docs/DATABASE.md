@@ -58,6 +58,8 @@ Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a par
 | motorizacao | VARCHAR(10) | ex.: `1.0`, `1.6` — só sugere o consumo inicial |
 | consumo_kml | DECIMAL(4,1) | CHECK > 0; alimenta a sugestão de preço |
 
+Exclusão: o trigger `impedir_exclusao_veiculo_em_uso` (BEFORE DELETE) recusa veículo com carona `ABERTA`/`LOTADA` (`VEICULO_EM_USO`) ou só com caronas `CONCLUIDA`/`CANCELADA` (`VEICULO_COM_HISTORICO`), ambos `PT409`. A FK `carona → veiculo` (NO ACTION) já impediria a exclusão com o erro técnico `23503`; o trigger troca esse erro por um código do domínio. Na exclusão da conta (`auth.users` → `usuario` → `veiculo` em cascata) o trigger não recusa: o perfil já foi removido e as caronas saem na mesma cascata.
+
 ### CARONA
 | Coluna | Tipo | Regras |
 |---|---|---|
@@ -70,7 +72,8 @@ Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a par
 | destino_lat / destino_lng | DECIMAL(9,6) | |
 | distancia_km | DECIMAL(6,2) | nulo até a Sprint 3 |
 | data_hora_partida | TIMESTAMPTZ | no futuro na criação |
-| vagas_disponiveis | SMALLINT | CHECK 0 a 7; ≤ `qtd_lugares − 1` na criação |
+| vagas_ofertadas | SMALLINT | obrigatório, CHECK 1 a 7; fixado na publicação (`n_ocupantes = vagas_ofertadas + 1`, RN11) |
+| vagas_disponiveis | SMALLINT | CHECK 0 a 7 e ≤ `vagas_ofertadas`; ≤ `qtd_lugares − 1` na criação; diminui a cada reserva |
 | custo_estimado | DECIMAL(10,2) | nulo até a Sprint 3; teto do preço |
 | custo_total | DECIMAL(10,2) | CHECK > 0; ≤ `custo_estimado` quando houver |
 | tolerancia_min | SMALLINT | CHECK 0 a 30 |
@@ -80,27 +83,27 @@ Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a par
 ### RESERVA (associativa USUARIO N:N CARONA)
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_reserva | UUID | PK |
-| id_carona | UUID | FK → CARONA |
-| id_passageiro | UUID | FK → USUARIO |
-| valor_individual | DECIMAL(10,2) | rateio calculado na função `reservar_vaga` |
+| id_reserva | UUID | PK, default `gen_random_uuid()` |
+| id_carona | UUID | FK → CARONA, `on delete cascade` |
+| id_passageiro | UUID | FK → USUARIO, `on delete cascade` |
+| valor_individual | DECIMAL(10,2) | obrigatório, CHECK > 0; rateio calculado na função `reservar_vaga` |
 | status | ENUM `PENDENTE`, `CONFIRMADA`, `CANCELADA`, `EXPIRADA` | default `PENDENTE` |
 | criado_em | TIMESTAMPTZ | default `now()`; base para expiração |
 
-Índice único parcial: (`id_carona`, `id_passageiro`) onde status em (`PENDENTE`, `CONFIRMADA`) — impede reserva dupla.
+Índice único parcial `reserva_id_carona_id_passageiro_ativa_key`: (`id_carona`, `id_passageiro`) onde status em (`PENDENTE`, `CONFIRMADA`) — impede reserva dupla (RN14) e permite reservar de novo depois de `CANCELADA`/`EXPIRADA`. Índices em `id_carona` e `id_passageiro` (RLS e consultas por carona).
 
 ### PAGAMENTO (1:1 com RESERVA)
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_pagamento | UUID | PK |
-| id_reserva | UUID | FK → RESERVA, UNIQUE |
-| id_externo | VARCHAR(64) | UNIQUE; id da cobrança no Mercado Pago (idempotência) |
-| valor | DECIMAL(10,2) | = `valor_individual` |
-| taxa_plataforma | DECIMAL(10,2) | `valor × percentual_taxa` |
-| valor_repassado | DECIMAL(10,2) | `valor − taxa_plataforma` |
-| metodo | ENUM `PIX` | |
-| status | ENUM `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE` | |
-| pago_em | TIMESTAMPTZ | preenchido pelo webhook |
+| id_pagamento | UUID | PK, default `gen_random_uuid()` |
+| id_reserva | UUID | FK → RESERVA, UNIQUE, `on delete cascade` |
+| id_externo | VARCHAR(64) | UNIQUE; id da cobrança no Mercado Pago (idempotência); nulo até a cobrança existir |
+| valor | DECIMAL(10,2) | obrigatório, CHECK > 0; = `valor_individual` |
+| taxa_plataforma | DECIMAL(10,2) | obrigatório, CHECK ≥ 0 e ≤ `valor`; `valor × percentual_taxa` |
+| valor_repassado | DECIMAL(10,2) | obrigatório, CHECK = `valor − taxa_plataforma` |
+| metodo | ENUM `PIX` | default `PIX` |
+| status | ENUM `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE` | default `PENDENTE` |
+| pago_em | TIMESTAMPTZ | preenchido pelo webhook; CHECK: obrigatório quando `status = APROVADO` |
 
 ### AVALIACAO
 | Coluna | Tipo | Regras |
@@ -127,12 +130,12 @@ UNIQUE (`id_reserva`, `id_avaliador`).
 ### PARAMETRO_CUSTO
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_parametro | INT | PK |
-| preco_litro | DECIMAL(5,2) | mantido pela equipe |
-| percentual_taxa | DECIMAL(5,4) | ex.: `0.0500` = 5% |
-| atualizado_em | TIMESTAMPTZ | |
+| id_parametro | INT | PK, `generated always as identity` |
+| preco_litro | DECIMAL(5,2) | obrigatório, CHECK > 0; mantido pela equipe |
+| percentual_taxa | DECIMAL(5,4) | obrigatório, CHECK 0 a 1; ex.: `0.0500` = 5% |
+| atualizado_em | TIMESTAMPTZ | default `now()` |
 
-O registro mais recente é o vigente. Sem acesso pelo app (RLS sem políticas).
+O registro mais recente (`atualizado_em`) é o vigente. Valor inicial na migration `reserva_pagamento`, idempotente (só insere com a tabela vazia): `preco_litro = 6.29`, `percentual_taxa = 0.1000` (10%). Sem acesso pelo app (RLS sem políticas, sem grant para `authenticated`).
 
 ## Cardinalidades
 
@@ -161,12 +164,14 @@ RLS habilitada em **todas** as tabelas. Escrita em tabelas com regra de negócio
 | veiculo | só os próprios | todos, só nos próprios |
 | carona | motorista vê as próprias; busca/detalhe via funções | — (funções `publicar_carona`, `cancelar_carona`, `concluir_carona`) |
 | reserva | passageiro vê as próprias; motorista vê as das suas caronas | — (Edge Function `reservar-vaga`, função `cancelar_reserva`) |
-| pagamento | passageiro da reserva | — (Edge Functions) |
+| pagamento | passageiro da reserva (o motorista não vê) | — (Edge Functions) |
 | avaliacao | avaliador e avaliado | — (função `avaliar_participante`) |
 | notificacao | só as próprias | UPDATE da coluna `lida` nas próprias |
 | parametro_custo | — | — |
 
 View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome e média de avaliações.
+
+Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `detalhar_carona` (`SECURITY DEFINER`, colunas públicas), sem política nova em `carona`, `usuario` ou `veiculo`. Isso também evita recursão de RLS: a política do motorista em `reserva` consulta `carona`, e uma política de `carona` que consultasse `reserva` entraria em loop (T18).
 
 ## Funções, triggers e jobs
 
@@ -174,9 +179,15 @@ View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome 
 |---|---|---|
 | `validar_dominio_institucional` | Auth Hook (Before User Created), `SECURITY DEFINER`, `EXECUTE` só para `supabase_auth_admin` | RN01: domínio exato após o `@`, em minúsculas; recusa com 422 `DOMINIO_INVALIDO` |
 | `criar_perfil_usuario` | Trigger AFTER INSERT em `auth.users`, `SECURITY DEFINER` | Cria a linha de USUARIO |
-| `publicar_carona`, `buscar_caronas`, `detalhar_carona`, `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
-| `reservar_vaga`, `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (RN11, RN14–RN18) |
-| `registrar_pagamento`, `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos (RN13) |
+| `impedir_exclusao_veiculo_em_uso` | Trigger BEFORE DELETE em `veiculo`, `SECURITY DEFINER`, sem `EXECUTE` para nenhum papel | Recusa excluir veículo com carona (`VEICULO_EM_USO` / `VEICULO_COM_HISTORICO`, `PT409`) |
+| `publicar_carona` | Função RPC, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Cria a carona `ABERTA` do `auth.uid()` (RN04–RN06, US03, US07), com `vagas_ofertadas = vagas_disponiveis` (RN11); entrada inválida vira `PTxxx` com hint |
+| `buscar_caronas` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | US05, RN08: caronas `ABERTA`, com vaga e futuras por proximidade da origem (bounding box + haversine) e horário; sem as próprias (RN14) e com `somente_mulheres` só para usuárias (RN18); só colunas públicas |
+| `detalhar_carona` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Uma carona com veículo e placa, visível ao motorista, a quem tem reserva e, se `ABERTA` e futura, aos demais; senão `CARONA_NAO_ENCONTRADA` |
+| `valor_por_passageiro` | Função SQL `IMMUTABLE`, sem `EXECUTE` para o app | Fórmula única do rateio (RN11): `round(custo_total ÷ (vagas_ofertadas + 1), 2)`; usada na busca, no detalhe e na reserva (T21) |
+| `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
+| `reservar_vaga` | Função `SECURITY DEFINER`, `EXECUTE` só para `service_role` (Edge Function `reservar-vaga`) | Transação única com `SELECT carona FOR UPDATE`: valida RN08, RN14 e RN18, grava reserva `PENDENTE` (rateio por `valor_por_passageiro`, RN11) e pagamento `PENDENTE` com taxa e repasse (RN13), baixa a vaga e marca `LOTADA` com 0 vagas (RN07, RN17) |
+| `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (cancelamento T28, expiração T24 — pós-AP2) |
+| Gravar a cobrança e `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos: a T22 grava o `id_externo` da cobrança Pix no pagamento já criado por `reservar_vaga` (taxa e repasse já calculados); a T23 confirma pelo webhook, de forma idempotente |
 | `avaliar_participante` | Função RPC | RN19 |
 | Triggers de notificação | Triggers em `reserva`/`carona` | Gravam NOTIFICACAO |
 | `expirar-reservas` | Job pg_cron (a cada minuto) | RN16 |
@@ -189,11 +200,14 @@ Aprovadas em 02/10/2026 (decorrem do ADR-009; aplicadas na migration `schema_ini
 - `USUARIO.id_usuario` passa a ser FK para `auth.users(id)`; **saem** `senha_hash` e `email_verificado` (ficam no Supabase Auth — ADR-009).
 - `USUARIO.expo_push_token` (VARCHAR, opcional): necessário para enviar push (T29).
 
-Pendentes de aprovação do squad (e de atualização do DER):
+Aprovadas em 16/10/2026 (Gustavo, no merge da T20; aplicadas na migration `reserva_pagamento`):
 
 - `RESERVA.status`: incluir `CANCELADA` e `EXPIRADA`.
 - `PAGAMENTO.status`: valores `PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE`.
 - `PAGAMENTO.id_externo` (VARCHAR, UNIQUE): id da cobrança no Mercado Pago, usado para idempotência do webhook.
+- `CARONA.vagas_ofertadas` (SMALLINT, obrigatório): vagas oferecidas na publicação, base do rateio (RN11).
+
+O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima.
 
 ## Migrations
 
