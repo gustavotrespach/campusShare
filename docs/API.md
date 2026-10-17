@@ -121,7 +121,7 @@ await supabase.from('veiculo').insert({
 | RPC | `buscar_caronas(p_lat, p_lng, p_raio_km = 10, p_somente_mulheres = false, p_data = null, p_pagina = 1)` | Caronas ABERTA e futuras, por proximidade e horário (RN08) |
 | RPC | `detalhar_carona(p_id_carona)` | Motorista (perfil público), veículo, vagas, valor, tolerância |
 | Tabela | `carona` — `select` | Leitura das próprias caronas publicadas (RLS) |
-| RPC | `publicar_carona(...)` | Sprint 2: publica com `custo_total` digitado (RN04–RN06) |
+| RPC | `publicar_carona(...)` → `uuid` | Sprint 2: publica com `custo_total` digitado (RN04–RN06); único caminho de criação (o app não tem INSERT em `carona`) |
 | Edge Function | `sugestao-preco` | Sprint 3: `distancia_km` e `custo_estimado` |
 | Edge Function | `publicar-carona` | Sprint 3: recalcula `custo_estimado` e aplica o teto (RN10); passa a ser o único caminho de publicação |
 | RPC | `cancelar_carona(p_id_carona)` | Só o motorista; cancela reservas ativas e notifica (US06) |
@@ -129,15 +129,37 @@ await supabase.from('veiculo').insert({
 
 ```ts
 // publicar (Sprint 2: rpc; Sprint 3: functions.invoke('publicar-carona', { body }))
-await supabase.rpc('publicar_carona', {
+const { data: idCarona } = await supabase.rpc('publicar_carona', {
   p_id_veiculo: 'uuid',
   p_origem: 'Av. Beira Mar, 100 — Arroio do Sal', p_origem_lat: -29.55, p_origem_lng: -49.89,
   p_destino: 'ULBRA Torres', p_destino_lat: -29.33, p_destino_lng: -49.73,
-  p_data_hora_partida: '2026-10-05T10:30:00Z', p_vagas_disponiveis: 3,
+  p_data_hora_partida: '2026-10-05T10:30:00Z', p_vagas_ofertadas: 3,
   p_custo_total: 24.0, p_tolerancia_min: 10, p_somente_mulheres: false,
 });
-// 422 PRECO_ACIMA_DO_TETO · 422 SEM_VEICULO · 400 PARTIDA_NO_PASSADO · 422 VAGAS_ACIMA_DO_LIMITE
 ```
+
+`publicar_carona(p_id_veiculo uuid, p_origem text, p_origem_lat numeric, p_origem_lng numeric, p_destino text, p_destino_lat numeric, p_destino_lng numeric, p_data_hora_partida timestamptz, p_vagas_ofertadas int, p_custo_total numeric, p_tolerancia_min int, p_somente_mulheres boolean default false) returns uuid`
+
+- O motorista é sempre o usuário da sessão (`auth.uid()`), nunca um parâmetro.
+- `p_vagas_ofertadas`: vagas oferecidas a passageiros. A carona nasce `ABERTA` com `vagas_ofertadas = vagas_disponiveis` (RN11).
+- `p_custo_total` em **reais** com até 2 casas (o app converte de centavos na fronteira). Sem teto na Sprint 2 (RN12): `custo_estimado` e `distancia_km` ficam nulos.
+- `p_data_hora_partida` em UTC (ISO 8601). `origem` e `destino` são gravados com `trim`.
+- Vagas e tolerância são inteiros: um valor fracionário (ex.: `2.5`) é recusado pelo PostgREST antes da função, com `22P02`.
+
+Erros (validados nesta ordem; a frase para o usuário vem no `hint`):
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão |
+| 422 | `SEM_VEICULO` | Cadastre um veículo antes de oferecer uma carona. | Usuário sem nenhum veículo (RN04) |
+| 404 | `VEICULO_NAO_ENCONTRADO` | Veículo não encontrado. Escolha um dos seus veículos. | Veículo inexistente ou de outro motorista (mesma resposta) |
+| 400 | `DADOS_INVALIDOS` | Ofereça pelo menos 1 vaga. | `p_vagas_ofertadas` < 1 |
+| 422 | `VAGAS_ACIMA_DO_LIMITE` | Este veículo comporta no máximo N vagas para passageiros. | `p_vagas_ofertadas` > `qtd_lugares − 1` (RN05) |
+| 400 | `DADOS_INVALIDOS` | Informe a data e a hora de partida. | Partida ausente |
+| 400 | `PARTIDA_NO_PASSADO` | Escolha uma data e hora de partida no futuro. | Partida ≤ agora (RN06) |
+| 400 | `DADOS_INVALIDOS` | Frase específica do campo | Origem/destino vazio ou com mais de 200 caracteres; coordenada fora da faixa; custo ≤ 0, com mais de 2 casas ou acima do limite da coluna; tolerância fora de 0 a 30 (US07) |
+
+Sprint 3 (Edge Function `publicar-carona`): `422 PRECO_ACIMA_DO_TETO` (RN10).
 
 ```json
 // POST /functions/v1/sugestao-preco

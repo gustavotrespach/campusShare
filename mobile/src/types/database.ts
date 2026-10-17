@@ -162,7 +162,10 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "validar_dominio_institucional":
+            "publicar_carona":
+{ Args: { "p_custo_total": number,"p_data_hora_partida": string,"p_destino": string,"p_destino_lat": number,"p_destino_lng": number,"p_id_veiculo": string,"p_origem": string,"p_origem_lat": number,"p_origem_lng": number,"p_somente_mulheres"?: boolean,"p_tolerancia_min": number,"p_vagas_ofertadas": number }; Returns: string
+                           },
+"validar_dominio_institucional":
 { Args: { "event": Json }; Returns: Json
                            }
           }

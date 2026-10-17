@@ -17,7 +17,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | Dia | Trilha A — caronas | Trilha B — reserva e pagamento | Geral |
 |---|---|---|---|
 | 16–17/10 | T15 (veículos: trigger `VEICULO_EM_USO`) — feito | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) — feito | T14 (deploy + CI) |
-| 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) | T21 (reserva com rateio) | |
+| 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) — feitas | T21 (reserva com rateio) | |
 | 18–19/10 | T18 (buscar caronas) | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
 | 19–20/10 | T19 (telas de publicar e buscar) | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) | |
@@ -121,10 +121,10 @@ Aceite: cadastrar, listar, editar e excluir veículo pelo app.
 Nota (16/10): telas `(autenticado)/veiculos/` com service `veiculos.ts`; roteiro de teste aprovado pelo Gustavo no iPhone (Expo Go) contra o Supabase local.
 
 ### T17 — Publicar carona (US03, US07)
-Status: a fazer · Depende de: T15
+Status: feito · Responsável: Gustavo Trespach · Depende de: T15
 Descrição: Função SQL `publicar_carona` (RPC) com veículo, origem/destino (texto + lat/lng), data/hora, vagas, `custo_total` digitado, `tolerancia_min` e `somente_mulheres`; `id_motorista = auth.uid()`.
 Aceite: RN04, RN05 e RN06 validadas na função; INSERT direto em `carona` pelo app é bloqueado; carona nasce `ABERTA`.
-Nota (16/10): a T20 criou `carona.vagas_ofertadas` (obrigatória, 1 a 7); `publicar_carona` grava `vagas_ofertadas` e `vagas_disponiveis` com o mesmo valor.
+Nota (16/10): a T20 criou `carona.vagas_ofertadas` (obrigatória, 1 a 7); `publicar_carona` grava `vagas_ofertadas` e `vagas_disponiveis` com o mesmo valor. Feita na migration `publicar_carona` (pgTAP `08_publicar_carona`); erros e assinatura em `docs/API.md`.
 
 ### T18 — Buscar caronas (US05)
 Status: a fazer · Depende de: T17

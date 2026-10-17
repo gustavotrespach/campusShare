@@ -178,7 +178,8 @@ View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome 
 | `validar_dominio_institucional` | Auth Hook (Before User Created), `SECURITY DEFINER`, `EXECUTE` só para `supabase_auth_admin` | RN01: domínio exato após o `@`, em minúsculas; recusa com 422 `DOMINIO_INVALIDO` |
 | `criar_perfil_usuario` | Trigger AFTER INSERT em `auth.users`, `SECURITY DEFINER` | Cria a linha de USUARIO |
 | `impedir_exclusao_veiculo_em_uso` | Trigger BEFORE DELETE em `veiculo`, `SECURITY DEFINER`, sem `EXECUTE` para nenhum papel | Recusa excluir veículo com carona (`VEICULO_EM_USO` / `VEICULO_COM_HISTORICO`, `PT409`) |
-| `publicar_carona`, `buscar_caronas`, `detalhar_carona`, `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
+| `publicar_carona` | Função RPC, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Cria a carona `ABERTA` do `auth.uid()` (RN04–RN06, US03, US07), com `vagas_ofertadas = vagas_disponiveis` (RN11); entrada inválida vira `PTxxx` com hint |
+| `buscar_caronas`, `detalhar_carona`, `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
 | `reservar_vaga`, `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (RN11, RN14–RN18) |
 | `registrar_pagamento`, `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos (RN13) |
 | `avaliar_participante` | Função RPC | RN19 |
