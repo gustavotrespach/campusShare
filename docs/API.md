@@ -295,7 +295,7 @@ x-request-id: <uuid>
 { "action": "order.processed", "type": "order", "data": { "id": "ORDTST..." , ... } }
 ```
 
-1. Assinatura: manifest `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`. O `data.id` vale em minúsculas ou como veio na URL (as notificações reais de order assinam o id original). O `ts` é obrigatório e entra no HMAC como veio, sem janela de tempo (`docs/SECURITY.md`). Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
+1. Assinatura: manifest `id:<data.id>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`. O `data.id` vale em minúsculas (forma confirmada nas notificações reais) ou como veio na URL (tolerância). No sandbox, o segredo é o da aplicação do vendedor de teste (`docs/SECURITY.md`). O `ts` é obrigatório e entra no HMAC como veio, sem janela de tempo (`docs/SECURITY.md`). Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
 2. `type` diferente de `order` → 200 ignorado.
 3. `GET /v1/orders/{id}` na API do Mercado Pago: a decisão usa a resposta da API, nunca o corpo da notificação. Erro de rede, timeout ou HTTP diferente de 200/400/404 (401, 403, 5xx) → **500** (o Mercado Pago reenvia a cada 15 min). Order 404 ou id recusado com 400 → 200 ignorado.
 4. Só `status = processed` e `status_detail = accredited` é pago (tabela de status da documentação). Outros estados (`action_required`, `failed`, `canceled`, `refunded`…) → 200 sem mudar nada.
