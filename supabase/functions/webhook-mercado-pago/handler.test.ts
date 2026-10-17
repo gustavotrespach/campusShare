@@ -366,8 +366,10 @@ Deno.test('log de diagnóstico do ts: aceita e recusada, sem v1 nem segredo', as
 
     const linha = logs.find((l) => JSON.parse(l).evento === evento);
     assert(linha, `${nome}: sem log ${evento}`);
-    const { evento: _evento, ...dados } = JSON.parse(linha);
-    assertEquals(dados, esperado, nome);
+    // Só os campos do diagnóstico do ts; os do hmac_invalido têm teste próprio abaixo
+    const dados = JSON.parse(linha);
+    const conferidos = Object.fromEntries(Object.keys(esperado).map((k) => [k, dados[k]]));
+    assertEquals(conferidos, esperado, nome);
     assert(v1.length === 64);
     for (const l of logs) {
       assertFalse(l.includes(v1), `${nome}: v1 no log`);
@@ -390,6 +392,137 @@ Deno.test('log de diagnóstico sem data.id na URL nem x-request-id', async () =>
   assertEquals(dados.evento, 'assinatura_recusada');
   assertEquals(dados.id_na_url, false);
   assertEquals(dados.tem_request_id, false);
+});
+
+// ------------------------------------------------------------
+// Log de diagnóstico do hmac_invalido (Fase 13.3)
+// ------------------------------------------------------------
+
+const CAMPOS_HMAC_INVALIDO = [
+  'query',
+  'data_id_url',
+  'request_id',
+  'ts',
+  'v1_prefixo',
+  'chaves_assinatura',
+  'corpo_data_id',
+  'corpo_type',
+  'corpo_action',
+  'corpo_live_mode',
+  'corpo_user_id',
+];
+
+// Como uma notificação real de order chega, com campos do corpo que não podem ir para o log
+function notificacaoReal(v1: string): { requisicao: Request; corpo: string } {
+  const corpo = JSON.stringify({
+    action: 'order.processed',
+    api_version: 'v1',
+    application_id: '1234567890123456',
+    date_created: '2026-10-17T20:10:00Z',
+    live_mode: false,
+    type: 'order',
+    user_id: 987654321,
+    data: {
+      id: ID_ORDER,
+      external_reference: 'referencia-do-corpo-nao-vai-para-o-log',
+      status: 'processed',
+      total_amount: '5.00',
+    },
+  });
+  const requisicao = new Request(
+    `http://localhost/webhook-mercado-pago?data.id=${ID_ORDER}&type=order`,
+    {
+      method: 'POST',
+      headers: { 'x-signature': `ts=${AGORA_S},v1=${v1}`, 'x-request-id': REQUEST_ID },
+      body: corpo,
+    },
+  );
+  return { requisicao, corpo };
+}
+
+Deno.test('hmac_invalido registra o que entra na assinatura, sem v1 inteiro nem corpo', async () => {
+  const v1 = '0123abcd' + 'f'.repeat(56);
+  const { requisicao, corpo } = notificacaoReal(v1);
+  const { handler, logs } = cenario();
+  const resposta = await handler(requisicao);
+
+  assertEquals(resposta.status, 401);
+  const recusa = JSON.parse(logs.find((l) => l.includes('assinatura_recusada')) ?? '{}');
+  const registrados = Object.fromEntries(CAMPOS_HMAC_INVALIDO.map((k) => [k, recusa[k]]));
+  assertEquals(registrados, {
+    query: `?data.id=${ID_ORDER}&type=order`,
+    data_id_url: ID_ORDER,
+    request_id: REQUEST_ID,
+    ts: String(AGORA_S),
+    v1_prefixo: '0123abcd',
+    chaves_assinatura: 'ts,v1',
+    corpo_data_id: ID_ORDER,
+    corpo_type: 'order',
+    corpo_action: 'order.processed',
+    corpo_live_mode: false,
+    corpo_user_id: 987654321,
+  });
+  assertEquals(recusa.motivo, 'hmac_invalido');
+  assertEquals(recusa.v1_prefixo.length, 8);
+  for (const linha of logs) {
+    assertFalse(linha.includes(v1), 'v1 inteiro no log');
+    assertFalse(linha.includes(SEGREDO), 'segredo no log');
+    assertFalse(linha.includes(corpo), 'corpo inteiro no log');
+    assertFalse(linha.includes('referencia-do-corpo'), 'campo do corpo fora da lista no log');
+    assertFalse(linha.includes('application_id'), 'campo do corpo fora da lista no log');
+    assertFalse(linha.includes('request-id:'), 'manifest no log');
+  }
+});
+
+Deno.test('hmac_invalido sem corpo JSON: só os campos que existem', async () => {
+  const { handler, logs } = cenario();
+  await handler(
+    new Request(`http://localhost/webhook-mercado-pago?data.id=${ID_ORDER}`, {
+      method: 'POST',
+      headers: { 'x-signature': `v1=${'9'.repeat(64)},ts=${AGORA_S},extra=1` },
+      body: 'não é json',
+    }),
+  );
+  const recusa = JSON.parse(logs[0]);
+  assertEquals(recusa.motivo, 'hmac_invalido');
+  assertEquals(recusa.chaves_assinatura, 'v1,ts,extra');
+  assertEquals(recusa.v1_prefixo, '99999999');
+  for (const campo of ['request_id', 'corpo_data_id', 'corpo_type', 'corpo_user_id']) {
+    assertFalse(campo in recusa, `${campo} deveria estar ausente`);
+  }
+});
+
+Deno.test('hmac_invalido corta valores longos vindos de fora', async () => {
+  const idLongo = 'X'.repeat(500);
+  const { handler, logs } = cenario();
+  await handler(
+    new Request(`http://localhost/webhook-mercado-pago?data.id=${idLongo}`, {
+      method: 'POST',
+      headers: { 'x-signature': `ts=${AGORA_S},v1=${'1'.repeat(64)}` },
+      body: '{}',
+    }),
+  );
+  const recusa = JSON.parse(logs[0]);
+  assertEquals(recusa.data_id_url.length, 200);
+  assertEquals(recusa.query.length, 200);
+});
+
+Deno.test('assinatura válida e outros motivos de recusa não registram esses campos', async () => {
+  const casos: [string, Request][] = [
+    ['válida', await notificacao()],
+    ['cabecalho_ausente', await notificacao({ semAssinatura: true })],
+  ];
+  for (const [nome, requisicao] of casos) {
+    const { handler, logs } = cenario();
+    await handler(requisicao);
+    assert(logs.length > 0);
+    for (const linha of logs) {
+      const dados = JSON.parse(linha);
+      for (const campo of CAMPOS_HMAC_INVALIDO) {
+        assertFalse(campo in dados, `${nome}: ${campo} em ${dados.evento}`);
+      }
+    }
+  }
 });
 
 Deno.test('sem segredo configurado → 401 sem consultar nada', async () => {
