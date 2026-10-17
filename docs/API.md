@@ -6,7 +6,7 @@ Não existe API REST própria (ADR-009). O app fala com o Supabase pelo `@supaba
 |---|---|---|
 | **Auth** | `supabase.auth.*` | Cadastro, login, sessão, reenvio de confirmação |
 | **Tabela** | `supabase.from('veiculo').select()` | Leitura/escrita simples do próprio usuário, limitada pela RLS |
-| **RPC** | `supabase.rpc('reservar_vaga', {...})` | Regras de negócio transacionais (funções SQL) |
+| **RPC** | `supabase.rpc('publicar_carona', {...})` | Regras de negócio transacionais (funções SQL) |
 | **Edge Function** | `supabase.functions.invoke('reservar-vaga', { body })` | Integrações com segredo (Pix, Directions, push) e webhook |
 
 - Base URL: `http://localhost:54321` (dev) · `https://<ref>.supabase.co` (demo).
@@ -209,7 +209,27 @@ const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona:
 | Tabela | `reserva` — `select` | Passageiro vê as próprias; motorista vê as das suas caronas (RLS) |
 | RPC | `cancelar_reserva(p_id_reserva)` | Passageiro cancela; devolve a vaga |
 
-A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança.
+A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança. O app chama a Edge Function, nunca a função.
+
+`reservar_vaga(p_id_carona uuid, p_id_passageiro uuid) returns table (id_reserva, id_pagamento, valor_individual, taxa_plataforma, valor_repassado, status)` (T21):
+- `p_id_passageiro` é o usuário do JWT validado pela Edge Function, nunca um campo do corpo enviado pelo app.
+- Numa transação, com a carona travada (`FOR UPDATE`): valida, grava a reserva `PENDENTE` com `valor_individual = valor_por_passageiro(custo_total, vagas_ofertadas)` (RN11, o mesmo valor da busca), grava o pagamento `PENDENTE` (`PIX`, `id_externo` nulo) com `taxa_plataforma = round(valor × percentual_taxa, 2)` e `valor_repassado = valor − taxa` (RN13, taxa do `parametro_custo` mais recente) e baixa uma vaga; com 0 vagas a carona vira `LOTADA`.
+- A reserva `PENDENTE` ocupa a vaga até ser paga ou expirar (expiração automática: T24, pós-AP2).
+- Exemplo: R$ 24,00 com 3 vagas → R$ 6,00, taxa R$ 0,60, repasse R$ 5,40. R$ 25,00 com 2 vagas → R$ 8,33, R$ 0,83, R$ 7,50.
+
+Erros (validados nesta ordem; a Edge Function repassa ao app):
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada ou não está mais disponível. | Carona inexistente |
+| 404 | `USUARIO_NAO_ENCONTRADO` | Não encontramos seu perfil. Saia e entre novamente. | Passageiro sem linha em `usuario` |
+| 422 | `RESERVA_PROPRIA_CARONA` | Você não pode reservar uma vaga na sua própria carona. | Motorista = passageiro (RN14) |
+| 403 | `CARONA_SOMENTE_MULHERES` | Esta carona é exclusiva para mulheres. | Carona `somente_mulheres` e passageiro sem `genero = FEMININO` (RN18) |
+| 409 | `CARONA_INDISPONIVEL` | Esta carona não está mais disponível para reserva. | `CANCELADA`, `CONCLUIDA` ou partida já passada (RN08) |
+| 409 | `CARONA_LOTADA` | Esta carona não tem mais vagas. | `LOTADA` ou sem vagas (inclusive quem perdeu a disputa pela última vaga) |
+| 409 | `RESERVA_DUPLICADA` | Você já tem uma reserva nesta carona. | Já existe reserva `PENDENTE`/`CONFIRMADA` do passageiro (RN14) |
+| 422 | `VALOR_ABAIXO_DO_MINIMO` | O valor por passageiro desta carona é menor que R$ 0,01. | `custo_total` tão baixo que o rateio dá R$ 0,00 |
+| 500 | `PARAMETRO_AUSENTE` | Não foi possível calcular o valor agora. Tente mais tarde. | Nenhum `parametro_custo` cadastrado |
 
 Leitura direta pelo app (tabelas criadas na T20; INSERT, UPDATE e DELETE recusados com `42501` para `authenticated`):
 
@@ -231,7 +251,7 @@ Colunas de `reserva`: `id_reserva`, `id_carona`, `id_passageiro`, `valor_individ
     "id_reserva": "uuid", "status": "PENDENTE", "valor_individual": 6.00,
     "expira_em": "2026-10-04T18:15:00Z",
     "pix": { "qr_code": "base64...", "copia_e_cola": "00020126..." } } }
-// 409 CARONA_LOTADA · 409 RESERVA_DUPLICADA · 422 SOMENTE_MULHERES · 422 PROPRIA_CARONA
+// 409 CARONA_LOTADA · 409 RESERVA_DUPLICADA · 403 CARONA_SOMENTE_MULHERES · 422 RESERVA_PROPRIA_CARONA (tabela acima)
 ```
 
 O app acompanha a confirmação assinando mudanças da própria reserva via **Realtime** (`supabase.channel(...).on('postgres_changes', ...)`).

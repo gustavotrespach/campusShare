@@ -185,8 +185,9 @@ Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `deta
 | `detalhar_carona` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Uma carona com veículo e placa, visível ao motorista, a quem tem reserva e, se `ABERTA` e futura, aos demais; senão `CARONA_NAO_ENCONTRADA` |
 | `valor_por_passageiro` | Função SQL `IMMUTABLE`, sem `EXECUTE` para o app | Fórmula única do rateio (RN11): `round(custo_total ÷ (vagas_ofertadas + 1), 2)`; usada na busca, no detalhe e na reserva (T21) |
 | `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
-| `reservar_vaga`, `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (RN11, RN14–RN18) |
-| `registrar_pagamento`, `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos (RN13) |
+| `reservar_vaga` | Função `SECURITY DEFINER`, `EXECUTE` só para `service_role` (Edge Function `reservar-vaga`) | Transação única com `SELECT carona FOR UPDATE`: valida RN08, RN14 e RN18, grava reserva `PENDENTE` (rateio por `valor_por_passageiro`, RN11) e pagamento `PENDENTE` com taxa e repasse (RN13), baixa a vaga e marca `LOTADA` com 0 vagas (RN07, RN17) |
+| `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (cancelamento T28, expiração T24 — pós-AP2) |
+| Gravar a cobrança e `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos: a T22 grava o `id_externo` da cobrança Pix no pagamento já criado por `reservar_vaga` (taxa e repasse já calculados); a T23 confirma pelo webhook, de forma idempotente |
 | `avaliar_participante` | Função RPC | RN19 |
 | Triggers de notificação | Triggers em `reserva`/`carona` | Gravam NOTIFICACAO |
 | `expirar-reservas` | Job pg_cron (a cada minuto) | RN16 |
