@@ -79,6 +79,7 @@ async function notificacao(opcoes: {
   segredo?: string;
   v1?: string;
   semAssinatura?: boolean;
+  xSignature?: string;
   idNoManifest?: string;
 } = {}): Promise<Request> {
   const dataId = opcoes.dataId ?? ID_ORDER;
@@ -91,7 +92,7 @@ async function notificacao(opcoes: {
     'x-request-id': REQUEST_ID,
   };
   if (!opcoes.semAssinatura) {
-    cabecalhos['x-signature'] = `ts=${ts},v1=${v1}`;
+    cabecalhos['x-signature'] = opcoes.xSignature ?? `ts=${ts},v1=${v1}`;
   }
   return new Request(
     `http://localhost/webhook-mercado-pago?data.id=${dataId}&type=${tipo}`,
@@ -150,31 +151,138 @@ Deno.test('assinatura válida, com data.id em maiúsculas na URL → confirma (2
   assertEquals(chamou('v1/orders').length, 1);
 });
 
-const ASSINATURAS_RUINS: Record<string, () => Promise<Request>> = {
-  'v1 errado': () => notificacao({ v1: 'a'.repeat(64) }),
-  'assinada com outro segredo': () => notificacao({ segredo: 'outro-segredo' }),
-  'sem x-signature': () => notificacao({ semAssinatura: true }),
-  'ts de 11 minutos atrás (replay)': () => notificacao({ ts: AGORA - 11 * 60 * 1000 }),
-  'ts no futuro além da janela': () => notificacao({ ts: AGORA + 11 * 60 * 1000 }),
-  'manifest com data.id em maiúsculas (fora da regra da documentação)': async () => {
-    const ts = String(AGORA - 5_000);
-    const v1 = await hmacHex(SEGREDO, `id:${ID_ORDER};request-id:${REQUEST_ID};ts:${ts};`);
-    return notificacao({ v1, ts: Number(ts) });
-  },
-  'data.id trocado depois de assinado': () => notificacao({ idNoManifest: 'ORDTSTOUTRAORDER' }),
+// Sem janela de tempo: vale qualquer idade e qualquer unidade do ts, se o HMAC conferir
+const TS_ACEITOS: Record<string, number> = {
+  'em segundos (10 dígitos)': Math.floor(AGORA / 1000) - 5,
+  'antigo (01/01/2021, em ms)': 1_609_459_200_000,
+  'antigo (01/01/2021, em segundos)': 1_609_459_200,
+  'no futuro (1 h)': AGORA + 60 * 60 * 1000,
 };
 
-for (const [nome, montar] of Object.entries(ASSINATURAS_RUINS)) {
-  Deno.test(`assinatura ruim (${nome}) → 401 sem consultar nada`, async () => {
+for (const [nome, ts] of Object.entries(TS_ACEITOS)) {
+  Deno.test(`assinatura correta com ts ${nome} → aceita`, async () => {
+    const { handler, chamou } = cenario();
+    const resposta = await handler(await notificacao({ ts }));
+
+    assertEquals(resposta.status, 200);
+    assertEquals((await resposta.json()).resultado, 'CONFIRMADO');
+    assertEquals(chamou('v1/orders').length, 1);
+  });
+}
+
+const ASSINATURAS_RUINS: Record<string, [() => Promise<Request>, string]> = {
+  'v1 errado': [() => notificacao({ v1: 'a'.repeat(64) }), 'hmac_invalido'],
+  'assinada com outro segredo': [
+    () => notificacao({ segredo: 'outro-segredo' }),
+    'hmac_invalido',
+  ],
+  'sem x-signature': [() => notificacao({ semAssinatura: true }), 'cabecalho_ausente'],
+  'x-signature sem ts': [
+    () => notificacao({ xSignature: `v1=${'a'.repeat(64)}` }),
+    'cabecalho_ausente',
+  ],
+  'x-signature sem v1': [() => notificacao({ xSignature: `ts=${AGORA}` }), 'cabecalho_ausente'],
+  'ts trocado depois de assinado': [
+    async () => {
+      const v1 = await hmacHex(SEGREDO, montarManifest(ID_ORDER, REQUEST_ID, String(AGORA)));
+      return notificacao({ xSignature: `ts=${AGORA + 1},v1=${v1}` });
+    },
+    'hmac_invalido',
+  ],
+  'manifest com data.id em maiúsculas (fora da regra da documentação)': [
+    async () => {
+      const ts = String(AGORA - 5_000);
+      const v1 = await hmacHex(SEGREDO, `id:${ID_ORDER};request-id:${REQUEST_ID};ts:${ts};`);
+      return notificacao({ v1, ts: Number(ts) });
+    },
+    'hmac_invalido',
+  ],
+  'data.id trocado depois de assinado': [
+    () => notificacao({ idNoManifest: 'ORDTSTOUTRAORDER' }),
+    'hmac_invalido',
+  ],
+};
+
+for (const [nome, [montar, motivo]] of Object.entries(ASSINATURAS_RUINS)) {
+  Deno.test(`assinatura ruim (${nome}) → 401 '${motivo}' sem consultar nada`, async () => {
     const { handler, chamadas, logs } = cenario();
     const resposta = await handler(await montar());
 
     assertEquals(resposta.status, 401);
     assertEquals((await resposta.json()).error.code, 'ASSINATURA_INVALIDA');
     assertEquals(chamadas.length, 0);
-    assert(logs.some((linha) => linha.includes('assinatura_recusada')));
+    const recusa = logs.map((linha) => JSON.parse(linha)).find((l) =>
+      l.evento === 'assinatura_recusada'
+    );
+    assertEquals(recusa?.motivo, motivo);
   });
 }
+
+Deno.test('log de diagnóstico do ts: aceita e recusada, sem v1 nem segredo', async () => {
+  const casos: [string, Request, string, Record<string, unknown>][] = [
+    [
+      'ms, aceita',
+      await notificacao({ ts: AGORA - 5_000 }),
+      'assinatura_aceita',
+      { ts_digitos: 13, idade_s: 5, id_na_url: true, tem_request_id: true },
+    ],
+    [
+      'segundos, aceita',
+      await notificacao({ ts: Math.floor(AGORA / 1000) - 120 }),
+      'assinatura_aceita',
+      { ts_digitos: 10, idade_s: 120, id_na_url: true, tem_request_id: true },
+    ],
+    [
+      'segundos, recusada',
+      await notificacao({ ts: Math.floor(AGORA / 1000), v1: 'c'.repeat(64) }),
+      'assinatura_recusada',
+      {
+        motivo: 'hmac_invalido',
+        ts_digitos: 10,
+        idade_s: 0,
+        id_na_url: true,
+        tem_request_id: true,
+      },
+    ],
+    [
+      'ts não numérico, recusada',
+      await notificacao({ xSignature: `ts=abc,v1=${'d'.repeat(64)}` }),
+      'assinatura_recusada',
+      { motivo: 'hmac_invalido', ts_digitos: 0, id_na_url: true, tem_request_id: true },
+    ],
+  ];
+  for (const [nome, requisicao, evento, esperado] of casos) {
+    const v1 = /v1=([^,]+)/.exec(requisicao.headers.get('x-signature') ?? '')?.[1] ?? '';
+    const { handler, logs } = cenario();
+    await handler(requisicao);
+
+    const linha = logs.find((l) => JSON.parse(l).evento === evento);
+    assert(linha, `${nome}: sem log ${evento}`);
+    const { evento: _evento, ...dados } = JSON.parse(linha);
+    assertEquals(dados, esperado, nome);
+    assert(v1.length === 64);
+    for (const l of logs) {
+      assertFalse(l.includes(v1), `${nome}: v1 no log`);
+      assertFalse(l.includes(SEGREDO), `${nome}: segredo no log`);
+      assertFalse(l.includes('request-id:'), `${nome}: manifest no log`);
+    }
+  }
+});
+
+Deno.test('log de diagnóstico sem data.id na URL nem x-request-id', async () => {
+  const { handler, logs } = cenario();
+  await handler(
+    new Request('http://localhost/webhook-mercado-pago?type=order', {
+      method: 'POST',
+      headers: { 'x-signature': `ts=${AGORA},v1=${'e'.repeat(64)}` },
+      body: '{}',
+    }),
+  );
+  const dados = JSON.parse(logs[0]);
+  assertEquals(dados.evento, 'assinatura_recusada');
+  assertEquals(dados.id_na_url, false);
+  assertEquals(dados.tem_request_id, false);
+});
 
 Deno.test('sem segredo configurado → 401 sem consultar nada', async () => {
   const { handler, chamadas } = cenario({}, { segredo: '' });
