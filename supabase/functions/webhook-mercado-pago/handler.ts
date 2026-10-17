@@ -73,7 +73,7 @@ export function criarHandler(deps: Dependencias): (req: Request) => Promise<Resp
       deps.log('assinatura_recusada', { motivo: assinatura.motivo, ...diagnostico });
       throw new AppError(401, 'ASSINATURA_INVALIDA', 'Assinatura inválida.');
     }
-    deps.log('assinatura_aceita', diagnostico);
+    deps.log('assinatura_aceita', { variante_id: assinatura.variante, ...diagnostico });
 
     const corpo = await lerCorpo(req);
     const dados = ehRegistro(corpo.data) ? corpo.data : {};
@@ -94,6 +94,10 @@ export function criarHandler(deps: Dependencias): (req: Request) => Promise<Resp
     if (consulta.tipo === 'nao_encontrada') {
       deps.log('order_nao_encontrada', { id_order: idOrder });
       return recebido('IGNORADO_ORDER_NAO_ENCONTRADA');
+    }
+    if (consulta.tipo === 'invalida') {
+      deps.log('order_invalida', { id_order: idOrder });
+      return recebido('IGNORADO_ORDER_INVALIDA');
     }
     const { order } = consulta;
     if (!estaPaga(order)) {

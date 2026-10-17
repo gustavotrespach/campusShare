@@ -1,7 +1,10 @@
 // Validação da assinatura das notificações do Mercado Pago (docs: checkout-api-orders/notifications).
-// x-signature: "ts=<milissegundos>,v1=<hmac hex>". Manifest:
-//   id:<data.id da URL, em minúsculas>;request-id:<x-request-id>;ts:<ts>;
+// x-signature: "ts=<segundos>,v1=<hmac hex>". Manifest:
+//   id:<data.id da URL>;request-id:<x-request-id>;ts:<ts>;
 // Segmento cujo valor está ausente sai do manifest. HMAC-SHA256 com a assinatura secreta, em hex.
+// O data.id vale em duas variantes (Fase 13.2): em minúsculas, como manda a documentação, e como
+// veio na URL. As notificações reais de order (ids "ORDTST…") falharam com o id em minúsculas;
+// o simulador do painel, com id numérico, não mostra a diferença.
 // Sem janela de tempo no ts (Fase 13.1): o simulador do painel foi recusado por ela, e o replay
 // não tem efeito novo, porque a decisão vem do GET /v1/orders/{id} e a confirmar_pagamento é
 // idempotente. O ts continua obrigatório e entra no HMAC exatamente como veio.
@@ -11,8 +14,11 @@ export interface PartesAssinatura {
   v1: string;
 }
 
+// 'sem_id': a URL não trouxe data.id e o manifest não tem o segmento id
+export type VarianteId = 'minusculas' | 'original' | 'sem_id';
+
 export type ResultadoAssinatura =
-  | { valida: true }
+  | { valida: true; variante: VarianteId }
   | {
     valida: false;
     motivo: 'segredo_ausente' | 'cabecalho_ausente' | 'hmac_invalido';
@@ -60,6 +66,19 @@ export function diagnosticarAssinatura(entrada: {
   return diagnostico;
 }
 
+// Formas do data.id que entram no manifest. Id sem letras maiúsculas (ex.: numérico) tem uma
+// variante só, para não calcular o mesmo HMAC duas vezes.
+export function variantesDoId(dataId: string | null): [VarianteId, string | null][] {
+  if (!dataId) {
+    return [['sem_id', null]];
+  }
+  const minusculas = dataId.toLowerCase();
+  return minusculas === dataId
+    ? [['minusculas', dataId]]
+    : [['minusculas', minusculas], ['original', dataId]];
+}
+
+// O id entra como recebido: quem chama escolhe a variante (variantesDoId)
 export function montarManifest(
   dataId: string | null,
   requestId: string | null,
@@ -67,7 +86,7 @@ export function montarManifest(
 ): string {
   let manifest = '';
   if (dataId) {
-    manifest += `id:${dataId.toLowerCase()};`;
+    manifest += `id:${dataId};`;
   }
   if (requestId) {
     manifest += `request-id:${requestId};`;
@@ -114,11 +133,16 @@ export async function validarAssinatura(entrada: {
   if (!partes) {
     return { valida: false, motivo: 'cabecalho_ausente' };
   }
-  const esperado = await hmacHex(
-    entrada.segredo,
-    montarManifest(entrada.dataId, entrada.xRequestId, partes.ts),
-  );
-  return iguaisEmTempoConstante(esperado, partes.v1.toLowerCase())
-    ? { valida: true }
-    : { valida: false, motivo: 'hmac_invalido' };
+  const recebido = partes.v1.toLowerCase();
+  // Compara todas as variantes, sem parar na primeira, e todas em tempo constante
+  const conferidas: [VarianteId, boolean][] = [];
+  for (const [variante, id] of variantesDoId(entrada.dataId)) {
+    const esperado = await hmacHex(
+      entrada.segredo,
+      montarManifest(id, entrada.xRequestId, partes.ts),
+    );
+    conferidas.push([variante, iguaisEmTempoConstante(esperado, recebido)]);
+  }
+  const bateu = conferidas.find(([, igual]) => igual);
+  return bateu ? { valida: true, variante: bateu[0] } : { valida: false, motivo: 'hmac_invalido' };
 }
