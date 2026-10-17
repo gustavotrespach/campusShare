@@ -152,16 +152,18 @@ Nota (16/10): `n_ocupantes = vagas oferecidas + 1` (motorista incluso), fixado n
 Nota (17/10): feita na migration `reservar_vaga`; pgTAP `10_reservar_vaga` e teste de concorrência `supabase/tests/concorrencia/ultima_vaga.sh` (roda no job `banco` do CI).
 
 ### T22 — Edge Function de reserva + cobrança Pix sandbox (US04)
-Status: a fazer · Depende de: T21
+Status: feito · Responsável: Gustavo Trespach · Depende de: T21
 Descrição: `reservar-vaga`: valida o JWT, chama `reservar_vaga` (que já cria a reserva e o PAGAMENTO `PENDENTE` com taxa e repasse — RN13, desde a T21), gera a cobrança no Mercado Pago (sandbox) e grava o `id_externo` da cobrança no pagamento por uma função SQL só da `service_role`. Se a cobrança falhar, desfaz a reserva e devolve a vaga por outra função SQL (transação com `FOR UPDATE` na carona), para a vaga não ficar presa.
 Aceite: resposta traz QR code / copia-e-cola do Pix; falha simulada do MP não deixa vaga presa (`deno test`).
 Nota (16/10): antes de começar, o Gustavo cria a conta de desenvolvedor do Mercado Pago e as credenciais de **teste** (sandbox), cadastradas com `supabase secrets set`, nunca no repositório.
+Nota (17/10): feita com a API de **Orders** (Checkout Transparente, Pix): Edge Function `reservar-vaga` (`verify_jwt = true`, fetch direto, sem SDK) e migration `cobranca_pix` (`registrar_cobranca`, `desfazer_reserva_sem_cobranca`); `deno test` e pgTAP `11_cobranca_pix`. Na release, o Gustavo cadastra `MERCADO_PAGO_ACCESS_TOKEN` (teste) com `supabase secrets set`.
 
 ### T23 — Webhook de pagamento
 Status: a fazer · Depende de: T22
 Descrição: Edge Function `webhook-mercado-pago` (`verify_jwt = false`) valida a assinatura, consulta a cobrança no MP e chama `confirmar_pagamento`: PAGAMENTO `APROVADO`, RESERVA `CONFIRMADA`, carona `LOTADA` quando zera vagas.
 Aceite: idempotente (webhook repetido não duplica efeito); assinatura inválida → 401.
 Nota (16/10): o Mercado Pago só alcança o webhook no projeto remoto, então o teste ponta a ponta depende da T14.
+Nota (17/10, T22): no sandbox, a order com pagador `APRO` termina em `processed/accredited` (não `approved`) cerca de 3 minutos depois de criada; `external_reference` = `id_pagamento` e `pagamento.id_externo` = id da order (`ORDTST…`). O webhook deve consultar a order pela API e tratar `processed/accredited` como pago.
 
 ### T24 — Expiração de reservas pendentes
 Status: adiada (pós-AP2) · Depende de: T21

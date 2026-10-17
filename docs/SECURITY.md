@@ -60,7 +60,19 @@ Cadastrados em GitHub → Settings → Secrets and variables → Actions → *Re
 | `SUPABASE_PROJECT_ID` | Ref do projeto remoto (`yqovnmlrbpkgwzmlnncb`); não é segredo, mas fica junto para o workflow não ter o ref fixo | Painel do projeto → Project Settings → General |
 
 - A chave do Resend (`RESEND_API_KEY`) **não** vai para o GitHub: o `supabase config push` (Auth/SMTP) continua manual, rodado da máquina do Gustavo.
-- Segredos das Edge Functions (`supabase secrets set`) também ficam fora do workflow. Hoje a única variável é `CORS_ORIGENS_PERMITIDAS`, que o app nativo não usa; se um cliente web precisar dela: `supabase secrets set CORS_ORIGENS_PERMITIDAS=https://<origem> --project-ref yqovnmlrbpkgwzmlnncb`.
+- Segredos das Edge Functions (`supabase secrets set`) também ficam fora do workflow: o Gustavo cadastra à mão. `CORS_ORIGENS_PERMITIDAS` o app nativo não usa; se um cliente web precisar dela: `supabase secrets set CORS_ORIGENS_PERMITIDAS=https://<origem> --project-ref yqovnmlrbpkgwzmlnncb`.
+
+### Mercado Pago (Edge Function `reservar-vaga`, T22)
+
+| Variável | Valor | Local | Remoto |
+|---|---|---|---|
+| `MERCADO_PAGO_ACCESS_TOKEN` | Access Token de **teste** da aplicação "CampusShare" (Checkout Transparente via Orders): Suas integrações → CampusShare → Testes → Credenciais de teste | `supabase/functions/.env` (fora do git) | `supabase secrets set MERCADO_PAGO_ACCESS_TOKEN=... --project-ref yqovnmlrbpkgwzmlnncb` (Gustavo, na release) |
+| `MERCADO_PAGO_MODO_TESTE` | `true` (padrão do projeto): pagador de teste `APRO`, que o sandbox aprova sozinho. `false` usa o e-mail e o nome do usuário | idem | idem, se precisar mudar |
+
+- As credenciais de teste começam com `APP_USR-`, como as de produção: confira no painel que é a de **teste**. O MVP usa só sandbox; a order de teste vem com id `ORDTST…`.
+- O token só existe no servidor (Edge Function). Nunca no app, em log, commit, relatório ou mensagem. A Edge Function loga só ids e status; o corpo das respostas do Mercado Pago não é registrado.
+- Rotacionar: gerar nova credencial de teste no painel, atualizar `supabase/functions/.env` e o `secrets set`, e revogar a antiga.
+- `SUPABASE_SERVICE_ROLE_KEY` e `SUPABASE_URL` são injetadas pelo runtime das Edge Functions; a `reservar-vaga` usa a service_role só para chamar `reservar_vaga`, `registrar_cobranca` e `desfazer_reserva_sem_cobranca`.
 
 ## Validação de entrada
 

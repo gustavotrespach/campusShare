@@ -205,7 +205,7 @@ const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona:
 
 | Tipo | Nome | Descrição |
 |---|---|---|
-| Edge Function | `reservar-vaga` | Reserva a vaga (função SQL `reservar_vaga`), calcula o rateio e gera a cobrança Pix |
+| Edge Function | `reservar-vaga` | Reserva a vaga (função SQL `reservar_vaga`) e gera a cobrança Pix no Mercado Pago (API de Orders, sandbox) — T22 |
 | Tabela | `reserva` — `select` | Passageiro vê as próprias; motorista vê as das suas caronas (RLS) |
 | RPC | `cancelar_reserva(p_id_reserva)` | Passageiro cancela; devolve a vaga |
 
@@ -244,15 +244,36 @@ await supabase
 Colunas de `reserva`: `id_reserva`, `id_carona`, `id_passageiro`, `valor_individual` (reais, 2 casas), `status` (`PENDENTE`, `CONFIRMADA`, `CANCELADA`, `EXPIRADA`), `criado_em`.
 
 ```json
-// POST /functions/v1/reservar-vaga
+// POST /functions/v1/reservar-vaga   (Authorization: Bearer <JWT do usuário>)
 { "id_carona": "uuid" }
 // 201
 { "data": {
-    "id_reserva": "uuid", "status": "PENDENTE", "valor_individual": 6.00,
-    "expira_em": "2026-10-04T18:15:00Z",
-    "pix": { "qr_code": "base64...", "copia_e_cola": "00020126..." } } }
-// 409 CARONA_LOTADA · 409 RESERVA_DUPLICADA · 403 CARONA_SOMENTE_MULHERES · 422 RESERVA_PROPRIA_CARONA (tabela acima)
+    "id_reserva": "uuid", "id_pagamento": "uuid", "valor_centavos": 500, "status": "PENDENTE",
+    "pix": { "qr_code": "00020126...", "qr_code_base64": "iVBORw0...", "ticket_url": "https://..." } } }
 ```
+
+```ts
+const { data, error } = await supabase.functions.invoke('reservar-vaga', {
+  body: { id_carona: idCarona },
+});
+```
+
+Contrato da Edge Function `reservar-vaga` (T22, `verify_jwt = true`):
+- Corpo: só `id_carona` (uuid). Qualquer outro campo, inclusive o passageiro, é recusado (400): o passageiro é o usuário do JWT, validado no Auth.
+- Fluxo: `reservar_vaga` → cobrança Pix na API de Orders do Mercado Pago (`X-Idempotency-Key` = `id_pagamento`, `external_reference` = `id_pagamento`) → `registrar_cobranca` (grava o id da order em `pagamento.id_externo`).
+- Resposta 201: valor em **centavos**; `pix.qr_code` é o "copia e cola"; `qr_code_base64` é a imagem PNG (pode vir `null` no sandbox); `ticket_url` abre a página do Pix. Taxa, repasse e id da order não vão para o app.
+- A reserva fica `PENDENTE` até o webhook confirmar o pagamento (T23, ADR-008).
+
+Erros (formato das Edge Functions: `{ "error": { "code", "message", "details" } }`):
+
+| HTTP | `code` | `message` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Entre na sua conta para reservar. / Sua sessão expirou. Entre novamente. | Sem JWT, ou JWT recusado pelo Auth |
+| 400 | `PAYLOAD_INVALIDO` | Dados inválidos. | Corpo sem `id_carona` uuid, ou com campos a mais (`details.campos`) |
+| 405 | `METODO_NAO_PERMITIDO` | Use POST para reservar. | Método diferente de POST |
+| 404, 403, 409, 422, 500 | os códigos da `reservar_vaga` | a frase do `hint` | Repassados com o mesmo status (tabela acima): `CARONA_LOTADA`, `RESERVA_DUPLICADA`, `CARONA_SOMENTE_MULHERES`... |
+| 502 | `PAGAMENTO_INDISPONIVEL` | Não foi possível gerar o Pix agora. Tente de novo em instantes. | Mercado Pago com erro, timeout (10 s) ou sem QR Code: a reserva é desfeita e a vaga volta (`desfazer_reserva_sem_cobranca`) |
+| 503 | `PAGAMENTO_INDISPONIVEL` | idem | Credencial do Mercado Pago não configurada (nenhuma reserva é criada) |
 
 O app acompanha a confirmação assinando mudanças da própria reserva via **Realtime** (`supabase.channel(...).on('postgres_changes', ...)`).
 
