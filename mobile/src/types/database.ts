@@ -167,6 +167,9 @@ isOneToOne: false
               "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"vagas_disponiveis": number,"valor_por_passageiro": number
             }[]
                            },
+"confirmar_pagamento":
+{ Args: { "p_id_externo": string,"p_id_pagamento": string,"p_valor": number }; Returns: string
+                           },
 "desfazer_reserva_sem_cobranca":
 { Args: { "p_id_reserva": string }; Returns: boolean
                            },

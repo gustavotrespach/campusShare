@@ -38,7 +38,10 @@ O app pode ser modificado; por isso o backend recalcula e valida tudo:
 
 ## Pagamentos
 
-- Webhook do Mercado Pago na Edge Function `webhook-mercado-pago` com `verify_jwt = false` (o MP não envia JWT): validar a **assinatura** (`MP_WEBHOOK_SECRET`) e consultar o status da cobrança na API do Mercado Pago antes de confirmar — nunca confiar só no corpo recebido.
+- Webhook do Mercado Pago na Edge Function `webhook-mercado-pago` com `verify_jwt = false` (o MP não envia JWT): validar a **assinatura** (`MERCADO_PAGO_WEBHOOK_SECRET`) e consultar o status da cobrança na API do Mercado Pago antes de confirmar — nunca confiar só no corpo recebido (T23).
+  - **Assinatura:** `x-signature: ts=...,v1=...`; manifest `id:<data.id da URL em minúsculas>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai do manifest); HMAC-SHA256 em hex com a assinatura secreta; comparação em **tempo constante**. Validada antes de qualquer acesso ao banco ou à API; inválida → 401.
+  - **Replay:** `ts` (milissegundos) a mais de 10 minutos do horário do servidor é recusado. Mesmo uma notificação válida reenviada não tem efeito novo: a decisão vem da API do Mercado Pago e a `confirmar_pagamento` é idempotente.
+  - **Divergência** (order de outro pagamento, valor diferente) → 200 com log, sem confirmar: repetir a notificação não corrigiria o dado.
 - **Idempotência:** o mesmo evento processado duas vezes não confirma nem repassa em dobro (`PAGAMENTO.id_externo` UNIQUE; `confirmar_pagamento` ignora pagamento já `APROVADO`).
 - No MVP, somente credenciais de **sandbox**.
 
@@ -62,11 +65,12 @@ Cadastrados em GitHub → Settings → Secrets and variables → Actions → *Re
 - A chave do Resend (`RESEND_API_KEY`) **não** vai para o GitHub: o `supabase config push` (Auth/SMTP) continua manual, rodado da máquina do Gustavo.
 - Segredos das Edge Functions (`supabase secrets set`) também ficam fora do workflow: o Gustavo cadastra à mão. `CORS_ORIGENS_PERMITIDAS` o app nativo não usa; se um cliente web precisar dela: `supabase secrets set CORS_ORIGENS_PERMITIDAS=https://<origem> --project-ref yqovnmlrbpkgwzmlnncb`.
 
-### Mercado Pago (Edge Function `reservar-vaga`, T22)
+### Mercado Pago (Edge Functions `reservar-vaga` e `webhook-mercado-pago`, T22 e T23)
 
 | Variável | Valor | Local | Remoto |
 |---|---|---|---|
 | `MERCADO_PAGO_ACCESS_TOKEN` | Access Token de **teste** da aplicação "CampusShare" (Checkout Transparente via Orders): Suas integrações → CampusShare → Testes → Credenciais de teste | `supabase/functions/.env` (fora do git) | `supabase secrets set MERCADO_PAGO_ACCESS_TOKEN=... --project-ref yqovnmlrbpkgwzmlnncb` (Gustavo, na release) |
+| `MERCADO_PAGO_WEBHOOK_SECRET` | Assinatura secreta do webhook: painel → CampusShare → Webhooks → Configurar notificações (evento Order); botão *Reset* gera outra | `supabase/functions/.env` | `supabase secrets set MERCADO_PAGO_WEBHOOK_SECRET=... --project-ref yqovnmlrbpkgwzmlnncb` (Gustavo, na release) |
 | `MERCADO_PAGO_MODO_TESTE` | `true` (padrão do projeto): pagador de teste `APRO`, que o sandbox aprova sozinho. `false` usa o e-mail e o nome do usuário | idem | idem, se precisar mudar |
 
 - As credenciais de teste começam com `APP_USR-`, como as de produção: confira no painel que é a de **teste**. O MVP usa só sandbox; a order de teste vem com id `ORDTST…`.

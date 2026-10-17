@@ -159,11 +159,12 @@ Nota (16/10): antes de começar, o Gustavo cria a conta de desenvolvedor do Merc
 Nota (17/10): feita com a API de **Orders** (Checkout Transparente, Pix): Edge Function `reservar-vaga` (`verify_jwt = true`, fetch direto, sem SDK) e migration `cobranca_pix` (`registrar_cobranca`, `desfazer_reserva_sem_cobranca`); `deno test` e pgTAP `11_cobranca_pix`. Na release, o Gustavo cadastra `MERCADO_PAGO_ACCESS_TOKEN` (teste) com `supabase secrets set`.
 
 ### T23 — Webhook de pagamento
-Status: a fazer · Depende de: T22
-Descrição: Edge Function `webhook-mercado-pago` (`verify_jwt = false`) valida a assinatura, consulta a cobrança no MP e chama `confirmar_pagamento`: PAGAMENTO `APROVADO`, RESERVA `CONFIRMADA`, carona `LOTADA` quando zera vagas.
+Status: feito · Responsável: Gustavo Trespach · Depende de: T22
+Descrição: Edge Function `webhook-mercado-pago` (`verify_jwt = false`) valida a assinatura, consulta a order no MP e chama `confirmar_pagamento`: PAGAMENTO `APROVADO` e RESERVA `CONFIRMADA`; Pix pago de reserva desfeita vira `REEMBOLSO_PENDENTE`. As vagas não mudam aqui (a vaga é ocupada e a carona fica `LOTADA` na `reservar_vaga`, T21).
 Aceite: idempotente (webhook repetido não duplica efeito); assinatura inválida → 401.
 Nota (16/10): o Mercado Pago só alcança o webhook no projeto remoto, então o teste ponta a ponta depende da T14.
 Nota (17/10, T22): no sandbox, a order com pagador `APRO` termina em `processed/accredited` (não `approved`) cerca de 3 minutos depois de criada; `external_reference` = `id_pagamento` e `pagamento.id_externo` = id da order (`ORDTST…`). O webhook deve consultar a order pela API e tratar `processed/accredited` como pago.
+Nota (17/10, T23): feita (migration `confirmar_pagamento`, pgTAP `12_confirmar_pagamento`, `deno test`); verificada no local com notificações assinadas de verdade. O teste com o Mercado Pago chamando o webhook depende da release (secrets e URL no painel).
 
 ### T24 — Expiração de reservas pendentes
 Status: adiada (pós-AP2) · Depende de: T21

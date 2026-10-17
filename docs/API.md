@@ -275,16 +275,35 @@ Erros (formato das Edge Functions: `{ "error": { "code", "message", "details" } 
 | 502 | `PAGAMENTO_INDISPONIVEL` | Não foi possível gerar o Pix agora. Tente de novo em instantes. | Mercado Pago com erro, timeout (10 s) ou sem QR Code: a reserva é desfeita e a vaga volta (`desfazer_reserva_sem_cobranca`) |
 | 503 | `PAGAMENTO_INDISPONIVEL` | idem | Credencial do Mercado Pago não configurada (nenhuma reserva é criada) |
 
-O app acompanha a confirmação assinando mudanças da própria reserva via **Realtime** (`supabase.channel(...).on('postgres_changes', ...)`).
+O app acompanha a confirmação lendo a própria reserva (polling simples, ver "Webhook" em pagamentos); o Realtime (`supabase.channel(...).on('postgres_changes', ...)`) fica para depois da AP2.
 
 ## pagamentos
 
 | Tipo | Nome | Descrição |
 |---|---|---|
-| Edge Function 🔓 | `webhook-mercado-pago` | Notificação do Mercado Pago (`verify_jwt = false`; assinatura validada) — idempotente |
+| Edge Function 🔓 | `webhook-mercado-pago` | Notificação do Mercado Pago (`verify_jwt = false`; assinatura `x-signature` validada; order consultada na API) — idempotente (T23) |
 | Tabela | `pagamento` — `select` | Status do pagamento das próprias reservas (RLS); só o passageiro, o motorista não vê |
 
 Colunas de `pagamento`: `id_pagamento`, `id_reserva`, `id_externo`, `valor`, `taxa_plataforma`, `valor_repassado`, `metodo` (`PIX`), `status` (`PENDENTE`, `APROVADO`, `RECUSADO`, `REEMBOLSO_PENDENTE`), `pago_em`. Nenhuma escrita pelo app: o pagamento é criado pela Edge Function `reservar-vaga` e aprovado só pelo webhook (ADR-008).
+
+**Webhook `webhook-mercado-pago` (T23).** Chamado só pelo Mercado Pago (evento *Order* configurado no painel), nunca pelo app:
+
+```
+POST /functions/v1/webhook-mercado-pago?data.id=ORDTST...&type=order
+x-signature: ts=<milissegundos>,v1=<hmac sha256 hex>
+x-request-id: <uuid>
+{ "action": "order.processed", "type": "order", "data": { "id": "ORDTST..." , ... } }
+```
+
+1. Assinatura: manifest `id:<data.id da URL em minúsculas>;request-id:<x-request-id>;ts:<ts>;` (segmento ausente sai), HMAC-SHA256 com `MERCADO_PAGO_WEBHOOK_SECRET`, comparado em tempo constante com `v1`; `ts` a mais de 10 min do horário do servidor é recusado. Inválida, ausente ou sem segredo → **401**, sem tocar no banco nem na API.
+2. `type` diferente de `order` → 200 ignorado.
+3. `GET /v1/orders/{id}` na API do Mercado Pago: a decisão usa a resposta da API, nunca o corpo da notificação. Erro de rede, timeout ou HTTP diferente de 200/404 → **500** (o Mercado Pago reenvia a cada 15 min). Order 404 → 200 ignorado.
+4. Só `status = processed` e `status_detail = accredited` é pago (tabela de status da documentação). Outros estados (`action_required`, `failed`, `canceled`, `refunded`…) → 200 sem mudar nada.
+5. Order paga → `confirmar_pagamento(id da order, external_reference = id_pagamento, total_paid_amount)`.
+
+Resposta 200: `{ "recebido": true, "resultado": "CONFIRMADO" }`. Resultados: `CONFIRMADO`, `JA_CONFIRMADO` (repetição), `REEMBOLSO_PENDENTE`, `IGNORADO_*` (tipo, order não encontrada, não paga, sem referência) e `RECUSADO_<código>` (divergência de dados: 200 para não entrar em loop de retentativa; o log registra para conferência).
+
+**Como o app (T25) sabe que a reserva foi confirmada:** lendo a própria reserva pela RLS (`supabase.from('reserva').select('status').eq('id_reserva', id)`) enquanto a tela do Pix está aberta, até `status = 'CONFIRMADA'` (polling simples, ex.: a cada 5 s, parando ao sair da tela). O Realtime fica para depois da AP2 (exige incluir `reserva` na publicação `supabase_realtime` por migration).
 
 `parametro_custo` (preço do litro e taxa) não é exposta ao app: só funções SQL e Edge Functions a leem.
 
