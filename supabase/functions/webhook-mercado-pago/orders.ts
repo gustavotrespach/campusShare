@@ -20,9 +20,12 @@ export interface OrderConsultada {
   valorPago: string | null;
 }
 
+// 'invalida': a API recusou o id com HTTP 400 (ex.: "123456" do simulador do painel). Fica
+// separada de 'nao_encontrada' só para o log: as duas viram 200, porque reenviar não muda nada.
 export type ResultadoConsulta =
   | { tipo: 'encontrada'; order: OrderConsultada }
-  | { tipo: 'nao_encontrada' };
+  | { tipo: 'nao_encontrada' }
+  | { tipo: 'invalida' };
 
 type Registro = Record<string, unknown>;
 
@@ -39,8 +42,8 @@ export function estaPaga(order: OrderConsultada): boolean {
   return order.status === 'processed' && order.statusDetail === 'accredited';
 }
 
-// Lança Error em falha de rede, timeout ou resposta diferente de 200/404: o webhook responde 500
-// e o Mercado Pago tenta de novo mais tarde.
+// Lança Error em falha de rede, timeout ou resposta diferente de 200/400/404 (401, 403, 5xx): o
+// webhook responde 500 e o Mercado Pago tenta de novo mais tarde.
 export async function consultarOrder(
   config: ConfigOrders,
   idOrder: string,
@@ -67,6 +70,10 @@ export async function consultarOrder(
   if (resposta.status === 404) {
     await resposta.body?.cancel();
     return { tipo: 'nao_encontrada' };
+  }
+  if (resposta.status === 400) {
+    await resposta.body?.cancel();
+    return { tipo: 'invalida' };
   }
   if (!resposta.ok) {
     await resposta.body?.cancel();
