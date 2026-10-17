@@ -118,8 +118,8 @@ await supabase.from('veiculo').insert({
 
 | Tipo | Nome | Descrição |
 |---|---|---|
-| RPC | `buscar_caronas(p_lat, p_lng, p_raio_km = 10, p_somente_mulheres = false, p_data = null, p_pagina = 1)` | Caronas ABERTA e futuras, por proximidade e horário (RN08) |
-| RPC | `detalhar_carona(p_id_carona)` | Motorista (perfil público), veículo, vagas, valor, tolerância |
+| RPC | `buscar_caronas(p_lat, p_lng, p_raio_km = 10, p_somente_mulheres = false, p_data = null, p_pagina = 1)` | Caronas ABERTA, com vaga e futuras, por proximidade da origem e horário (RN08); páginas de 20 |
+| RPC | `detalhar_carona(p_id_carona)` | Uma carona: motorista (nome), veículo com placa, vagas, valor por passageiro, tolerância |
 | Tabela | `carona` — `select` | Leitura das próprias caronas publicadas (RLS) |
 | RPC | `publicar_carona(...)` → `uuid` | Sprint 2: publica com `custo_total` digitado (RN04–RN06); único caminho de criação (o app não tem INSERT em `carona`) |
 | Edge Function | `sugestao-preco` | Sprint 3: `distancia_km` e `custo_estimado` |
@@ -160,6 +160,38 @@ Erros (validados nesta ordem; a frase para o usuário vem no `hint`):
 | 400 | `DADOS_INVALIDOS` | Frase específica do campo | Origem/destino vazio ou com mais de 200 caracteres; coordenada fora da faixa; custo ≤ 0, com mais de 2 casas ou acima do limite da coluna; tolerância fora de 0 a 30 (US07) |
 
 Sprint 3 (Edge Function `publicar-carona`): `422 PRECO_ACIMA_DO_TETO` (RN10).
+
+**Buscar e detalhar (T18).** As duas RPCs são `SECURITY DEFINER` e devolvem só colunas públicas (sem telefone, e-mail nem `id_motorista`); o app não lê `carona` de outros motoristas direto na tabela.
+
+```ts
+const { data: caronas } = await supabase.rpc('buscar_caronas', {
+  p_lat: -29.3353, p_lng: -49.7268,          // ponto do passageiro
+  p_raio_km: 10, p_somente_mulheres: false,  // opcionais
+  p_data: '2026-10-20',                      // opcional: dia em America/Sao_Paulo
+  p_pagina: 1,
+});
+const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona: 'uuid' });
+```
+
+`buscar_caronas(p_lat numeric, p_lng numeric, p_raio_km numeric default 10, p_somente_mulheres boolean default false, p_data date default null, p_pagina int default 1)`:
+- Só `ABERTA`, com `vagas_disponiveis > 0` e partida no futuro (RN08), com a **origem** a até `p_raio_km` do ponto (bounding box + haversine).
+- Não mostra as caronas do próprio usuário (RN14). Caronas `somente_mulheres` só aparecem para usuárias com `genero = FEMININO` (RN18); com `p_somente_mulheres = true`, só elas aparecem.
+- `p_data` é o dia em `America/Sao_Paulo` (23:30 de Brasília conta no próprio dia, mesmo sendo o dia seguinte em UTC).
+- Ordem: distância e depois horário. 20 por página; página além do fim vem vazia.
+- Colunas: `id_carona`, `origem`, `origem_lat`, `origem_lng`, `destino`, `destino_lat`, `destino_lng`, `data_hora_partida`, `vagas_disponiveis`, `tolerancia_min`, `somente_mulheres`, `distancia_km` (do ponto do passageiro até a origem, 1 casa), `valor_por_passageiro` (reais, 2 casas), `nome_motorista` (só o primeiro nome), `modelo`, `cor`.
+
+`detalhar_carona(p_id_carona uuid)` devolve uma linha com as colunas da busca (sem `distancia_km`) mais `vagas_ofertadas`, `status`, `custo_total`, `placa` (para reconhecer o carro no embarque), `sou_motorista` e `nome_motorista` com o nome completo (perfil público).
+- Visível para o motorista (qualquer status), para quem tem reserva na carona (qualquer status) e, para os demais, se estiver `ABERTA` e futura (e, se `somente_mulheres`, para usuárias).
+
+`valor_por_passageiro = round(custo_total ÷ (vagas_ofertadas + 1), 2)` (RN11) vem da função SQL única `valor_por_passageiro`, a mesma que a `reservar_vaga` (T21) usa para cobrar. A sobra de centavos fica com o motorista (R$ 25,00 com 2 vagas → R$ 8,33).
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão (as duas RPCs) |
+| 400 | `DADOS_INVALIDOS` | Sua localização é inválida. Tente de novo. | Coordenadas ausentes ou fora da faixa |
+| 400 | `DADOS_INVALIDOS` | O raio da busca deve ser de 1 a 50 km. | `p_raio_km` fora de 1 a 50 |
+| 400 | `DADOS_INVALIDOS` | Página inválida. | `p_pagina` < 1 |
+| 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada ou não está mais disponível. | Detalhe de carona inexistente ou fora da visibilidade (mesma resposta) |
 
 ```json
 // POST /functions/v1/sugestao-preco

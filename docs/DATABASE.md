@@ -171,6 +171,8 @@ RLS habilitada em **todas** as tabelas. Escrita em tabelas com regra de negócio
 
 View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome e média de avaliações.
 
+Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `detalhar_carona` (`SECURITY DEFINER`, colunas públicas), sem política nova em `carona`, `usuario` ou `veiculo`. Isso também evita recursão de RLS: a política do motorista em `reserva` consulta `carona`, e uma política de `carona` que consultasse `reserva` entraria em loop (T18).
+
 ## Funções, triggers e jobs
 
 | Objeto | Tipo | Papel |
@@ -179,7 +181,10 @@ View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome 
 | `criar_perfil_usuario` | Trigger AFTER INSERT em `auth.users`, `SECURITY DEFINER` | Cria a linha de USUARIO |
 | `impedir_exclusao_veiculo_em_uso` | Trigger BEFORE DELETE em `veiculo`, `SECURITY DEFINER`, sem `EXECUTE` para nenhum papel | Recusa excluir veículo com carona (`VEICULO_EM_USO` / `VEICULO_COM_HISTORICO`, `PT409`) |
 | `publicar_carona` | Função RPC, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Cria a carona `ABERTA` do `auth.uid()` (RN04–RN06, US03, US07), com `vagas_ofertadas = vagas_disponiveis` (RN11); entrada inválida vira `PTxxx` com hint |
-| `buscar_caronas`, `detalhar_carona`, `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
+| `buscar_caronas` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | US05, RN08: caronas `ABERTA`, com vaga e futuras por proximidade da origem (bounding box + haversine) e horário; sem as próprias (RN14) e com `somente_mulheres` só para usuárias (RN18); só colunas públicas |
+| `detalhar_carona` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Uma carona com veículo e placa, visível ao motorista, a quem tem reserva e, se `ABERTA` e futura, aos demais; senão `CARONA_NAO_ENCONTRADA` |
+| `valor_por_passageiro` | Função SQL `IMMUTABLE`, sem `EXECUTE` para o app | Fórmula única do rateio (RN11): `round(custo_total ÷ (vagas_ofertadas + 1), 2)`; usada na busca, no detalhe e na reserva (T21) |
+| `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
 | `reservar_vaga`, `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (RN11, RN14–RN18) |
 | `registrar_pagamento`, `confirmar_pagamento` | Funções (só `service_role`) | Módulo pagamentos (RN13) |
 | `avaliar_participante` | Função RPC | RN19 |
