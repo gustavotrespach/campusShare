@@ -1,13 +1,21 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
 import { detalharCarona, type CaronaDetalhe } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
+import { reservarVaga } from '@/services/reservas';
+import { guardarPix } from '@/store/pix';
 import { formatarDataHoraCompleta } from '@/utils/data-hora';
 import { formatarReais } from '@/utils/dinheiro';
+import { atalhoDoErroDeReserva, podeReservar } from '@/utils/reserva';
+
+interface ErroReserva {
+  mensagem: string;
+  atalho: 'minhas_reservas' | null;
+}
 
 type Carregamento =
   | { tipo: 'carregando' }
@@ -33,6 +41,10 @@ function Linha({ rotulo, valor }: { rotulo: string; valor: string }) {
 export default function TelaDetalheCarona() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [carregamento, setCarregamento] = useState<Carregamento>({ tipo: 'carregando' });
+  const [reservando, setReservando] = useState(false);
+  const [erroReserva, setErroReserva] = useState<ErroReserva | null>(null);
+  // Trava síncrona contra duplo toque: o estado do React só muda no próximo render
+  const reservaEmAndamento = useRef(false);
 
   useEffect(() => {
     // Ignora a resposta se a tela foi desmontada antes de ela chegar
@@ -74,6 +86,39 @@ export default function TelaDetalheCarona() {
 
   const { carona } = carregamento;
 
+  const reservar = async () => {
+    if (reservaEmAndamento.current) {
+      return;
+    }
+    reservaEmAndamento.current = true;
+    setReservando(true);
+    setErroReserva(null);
+    try {
+      const reserva = await reservarVaga(carona.id_carona);
+      guardarPix(reserva);
+      router.push({ pathname: '/reservas/[id]', params: { id: reserva.idReserva } });
+    } catch (falha) {
+      const erro = normalizarErro(falha);
+      setErroReserva({ mensagem: erro.message, atalho: atalhoDoErroDeReserva(erro.code) });
+    } finally {
+      reservaEmAndamento.current = false;
+      setReservando(false);
+    }
+  };
+
+  // O valor mostrado é o que o backend calculou (valor_por_passageiro); a reservar_vaga cobra o
+  // mesmo cálculo
+  const confirmarReserva = () => {
+    Alert.alert(
+      'Reservar vaga',
+      `Reservar por ${formatarReais(carona.valorPorPassageiroCentavos)}? O pagamento é por Pix.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Reservar', onPress: () => void reservar() },
+      ],
+    );
+  };
+
   return (
     <ScrollView style={estilos.tela} contentContainerStyle={estilos.conteudo}>
       {carona.sou_motorista ? <Aviso tipo="info" mensagem="Esta é a sua carona." /> : null}
@@ -102,6 +147,22 @@ export default function TelaDetalheCarona() {
       {carona.somente_mulheres ? <Linha rotulo="Passageiros" valor="Somente mulheres" /> : null}
       <Linha rotulo="Motorista" valor={carona.nome_motorista} />
       <Linha rotulo="Veículo" valor={`${carona.modelo} ${carona.cor} · placa ${carona.placa}`} />
+
+      {erroReserva ? (
+        <>
+          <Aviso mensagem={erroReserva.mensagem} />
+          {erroReserva.atalho === 'minhas_reservas' ? (
+            <Botao
+              titulo="Ver minhas reservas"
+              variante="secundario"
+              onPress={() => router.push('/reservas')}
+            />
+          ) : null}
+        </>
+      ) : null}
+      {podeReservar(carona) ? (
+        <Botao titulo="Reservar vaga" carregando={reservando} onPress={confirmarReserva} />
+      ) : null}
     </ScrollView>
   );
 }

@@ -10,6 +10,8 @@ export default function LayoutAutenticado() {
       <Stack.Screen name="veiculos/[id]" options={{ title: 'Editar veículo' }} />
       <Stack.Screen name="caronas/publicar" options={{ title: 'Oferecer carona' }} />
       <Stack.Screen name="caronas/[id]" options={{ title: 'Detalhes da carona' }} />
+      <Stack.Screen name="reservas/index" options={{ title: 'Minhas reservas' }} />
+      <Stack.Screen name="reservas/[id]" options={{ title: 'Pagamento da reserva' }} />
     </Stack>
   );
 }
