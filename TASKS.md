@@ -19,7 +19,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | 16–17/10 | T15 (veículos: trigger `VEICULO_EM_USO`) — feito | T20 (tabelas RESERVA, PAGAMENTO, PARAMETRO_CUSTO) — feito | T14 (deploy + CI) |
 | 17–18/10 | T16 (tela de veículos) · T17 (publicar carona) — feitas | T21 (reserva com rateio) | |
 | 18–19/10 | T18 (buscar caronas) — feita | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
-| 19–20/10 | T19 (telas de publicar e buscar) | T23 (webhook de pagamento) | |
+| 19–20/10 | T19 (telas de publicar e buscar) — feita | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) | |
 | 21–22/10 | | | T31 (build e roteiro da demo) |
 
@@ -133,9 +133,10 @@ Aceite: só caronas `ABERTA` e futuras (RN08); filtro "somente mulheres" funcion
 Nota (17/10): migration `buscar_caronas` com `buscar_caronas`, `detalhar_carona` e `valor_por_passageiro` (fórmula única do rateio, reaproveitada pela T21); pgTAP `09_buscar_caronas`. O `seed.sql` ganhou caronas variadas para a T19.
 
 ### T19 — Telas de publicar e buscar carona
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T17, T18
+Status: feito · Responsável: Gustavo Trespach · Depende de: T17, T18
 Aceite: motorista publica pelo app; Home lista caronas próximas com horário, vagas, valor e tolerância.
 Nota (16/10): o mapa (T27) e a Directions API (T26) ficaram para depois da AP2. Para a demo, origem e destino precisam de latitude/longitude sem mapa (por exemplo, localização atual do aparelho com `expo-location` e uma lista curta de pontos fixos, como o campus). Definir no prompt da tarefa.
+Nota (17/10): Home "Caronas próximas", `caronas/publicar` e `caronas/[id]` com pontos fixos e localização atual (PR #27); roteiro de 20 passos aprovado pelo Gustavo no iPhone (Expo Go) contra o Supabase local.
 
 ### T20 — Tabelas RESERVA, PAGAMENTO e PARAMETRO_CUSTO
 Status: feito · Responsável: Gustavo Trespach · Depende de: T06
