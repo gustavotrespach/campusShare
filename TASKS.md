@@ -21,6 +21,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | 18–19/10 | T18 (buscar caronas) — feita | T22 (reserva + Pix sandbox) — **precisa das credenciais de teste do Mercado Pago** | |
 | 19–20/10 | T19 (telas de publicar e buscar) — feita | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) — feita | |
+| 18–21/10 | | | T32 (identidade visual) — em andamento |
 | 21–22/10 | | | T31 (build e roteiro da demo) |
 
 As duas trilhas só se encontram na T21, que depende da T18. Cada tarefa continua sendo uma branch e um PR, com teste manual antes do merge.
@@ -204,6 +205,11 @@ Aceite: passageiros recebem push no cancelamento; motorista recebe push em nova 
 Status: adiada (pós-AP2) · Depende de: T23
 Descrição: Função `concluir_carona`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); view `perfil_publico` (nome + média, sem e-mail, telefone ou gênero — movida da T13 em 16/10).
 Aceite: só participantes avaliam, uma vez cada, após a conclusão.
+
+### T32 — Identidade visual (tema, componentes, telas da demo, ícone e splash)
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T25
+Descrição: Aplicar a especificação de `docs/design/DESIGN.md`: `mobile/src/tema.ts`, componentes base (Botao, CampoTexto, Aviso, SeloStatus, EstadoVazio, LinhaRota, Avatar), header padrão, telas da demo (1 Entrar, 5 Caronas próximas, 6 Detalhes da carona, 8 Pagamento, 9 Minhas reservas), ícone e splash. As demais telas ficam para a Fase 16. Só apresentação: nenhuma regra de negócio muda.
+Aceite: as telas 1, 5, 6, 8 e 9 seguem os mockups de `docs/design/mockups/`, nenhuma tela perde funcionalidade, nenhuma cor escrita à mão nas telas tocadas e `app.json` com o ícone, o ícone adaptativo e o splash.
 
 ### T31 — Build de demonstração (AP2)
 Status: a fazer · Depende de: T19, T25 (até 16/10: T25, T29)
