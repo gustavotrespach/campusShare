@@ -214,5 +214,6 @@ Aceite: as telas 1, 5, 6, 8 e 9 seguem os mockups de `docs/design/mockups/`, nen
 ### T31 — Build de demonstração (AP2)
 Status: feito · Responsável: Gustavo Trespach · Depende de: T19, T25 (até 16/10: T25, T29)
 Descrição: Projeto EAS `@trespaco/campusshare`; APK Android pelo EAS Build (perfil `preview`); iPhone pelo Expo Go abrindo o EAS Update do canal `preview` (sem conta Apple Developer não há build iOS); app apontando para o Supabase remoto pelas variáveis do ambiente `preview` do EAS; roteiro em `docs/DEMO.md`.
+Nota (18/10): confirmado pelo Gustavo no iPhone: o update abriu no Expo Go, login no remoto, "Servidor: ok" e reserva confirmada pelo webhook. Falta testar o APK num Android.
 Aceite: app instalado em pelo menos 2 celulares reais, fluxo completo cadastro → carona → reserva → pagamento sandbox funcionando.
 Nota (16/10): o projeto EAS será criado com o nome `campusshare` só nesta tarefa. Build de iOS instalável em aparelho exige conta paga do Apple Developer Program, fora do orçamento zero; para a demo, decidido (16/10): APK no Android e Expo Go no iPhone.
