@@ -1,8 +1,15 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { tema } from '@/tema';
+
+import type { NomeIcone } from './icones';
 
 export interface Opcao<Valor> {
   valor: Valor;
   rotulo: string;
+  // Ícone fixo do chip (ex.: "Minha localização"); os outros mostram o pin só quando selecionados
+  icone?: NomeIcone;
 }
 
 interface Props<Valor> {
@@ -12,9 +19,15 @@ interface Props<Valor> {
   aoMudar: (valor: Valor) => void;
   ajuda?: string;
   erro?: string;
+  // Uma linha só, rolando para o lado (pontos da tela inicial)
+  horizontal?: boolean;
+  // Ícone do chip selecionado sem ícone próprio (ex.: 'location' na tela inicial)
+  iconeSelecionado?: NomeIcone;
 }
 
-// Escolha única entre poucas opções, em "chips" (mesmo visual do SeletorGenero).
+const { cores } = tema;
+
+// Escolha única entre poucas opções, em "chips".
 export function SeletorOpcoes<Valor extends string | number | null>({
   rotulo,
   opcoes,
@@ -22,29 +35,59 @@ export function SeletorOpcoes<Valor extends string | number | null>({
   aoMudar,
   ajuda,
   erro,
+  horizontal = false,
+  iconeSelecionado,
 }: Props<Valor>) {
+  const chips = opcoes.map((opcao) => {
+    const selecionado = valor === opcao.valor;
+    const icone = opcao.icone ?? (selecionado ? iconeSelecionado : undefined);
+    return (
+      <Pressable
+        key={String(opcao.valor)}
+        accessibilityRole="radio"
+        accessibilityState={{ selected: selecionado }}
+        hitSlop={{ top: 4, bottom: 4 }}
+        onPress={() => aoMudar(opcao.valor)}
+        style={({ pressed }) => [
+          estilos.opcao,
+          selecionado ? estilos.opcaoSelecionada : pressed ? estilos.opcaoPressionada : null,
+        ]}
+      >
+        {icone ? (
+          <Ionicons
+            name={icone}
+            size={16}
+            color={selecionado ? cores.textoSobrePrimaria : cores.primaria}
+          />
+        ) : null}
+        <Text style={[estilos.textoOpcao, selecionado && estilos.textoSelecionado]}>
+          {opcao.rotulo}
+        </Text>
+      </Pressable>
+    );
+  });
+
   return (
     <View style={estilos.container}>
       <Text style={estilos.rotulo}>{rotulo}</Text>
       {ajuda ? <Text style={estilos.ajuda}>{ajuda}</Text> : null}
-      <View accessibilityRole="radiogroup" accessibilityLabel={rotulo} style={estilos.opcoes}>
-        {opcoes.map((opcao) => {
-          const selecionado = valor === opcao.valor;
-          return (
-            <Pressable
-              key={String(opcao.valor)}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: selecionado }}
-              onPress={() => aoMudar(opcao.valor)}
-              style={[estilos.opcao, selecionado && estilos.opcaoSelecionada]}
-            >
-              <Text style={[estilos.textoOpcao, selecionado && estilos.textoSelecionado]}>
-                {opcao.rotulo}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
+      {horizontal ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          accessibilityRole="radiogroup"
+          accessibilityLabel={rotulo}
+          contentContainerStyle={estilos.opcoesHorizontais}
+          // O último chip sai pela borda da tela: indica que dá para rolar
+          style={estilos.rolagem}
+        >
+          {chips}
+        </ScrollView>
+      ) : (
+        <View accessibilityRole="radiogroup" accessibilityLabel={rotulo} style={estilos.opcoes}>
+          {chips}
+        </View>
+      )}
       {erro ? (
         <Text accessibilityLiveRegion="polite" style={estilos.erro}>
           {erro}
@@ -55,22 +98,28 @@ export function SeletorOpcoes<Valor extends string | number | null>({
 }
 
 const estilos = StyleSheet.create({
-  container: { gap: 6 },
-  rotulo: { fontSize: 14, fontWeight: '600', color: '#1f2933' },
-  ajuda: { fontSize: 13, color: '#52606d' },
-  opcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  container: { gap: tema.espaco.x2 },
+  rotulo: { ...tema.tipografia.rotulo, color: cores.texto },
+  ajuda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
+  opcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: tema.espaco.x2 },
+  rolagem: { marginHorizontal: -tema.espaco.x5 },
+  opcoesHorizontais: { gap: tema.espaco.x2, paddingHorizontal: tema.espaco.x5 },
   opcao: {
-    minWidth: 44,
+    minHeight: tema.toque.chip,
+    minWidth: tema.toque.minimo,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderColor: '#cbd2d9',
-    borderRadius: 20,
+    borderColor: cores.borda,
+    borderRadius: tema.raio.pilula,
     paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: cores.superficie,
   },
-  opcaoSelecionada: { borderColor: '#1a56db', backgroundColor: '#eff4ff' },
-  textoOpcao: { fontSize: 15, color: '#1f2933' },
-  textoSelecionado: { color: '#1a56db', fontWeight: '600' },
-  erro: { fontSize: 13, color: '#b42318' },
+  opcaoPressionada: { backgroundColor: cores.superficieAlternativa },
+  opcaoSelecionada: { borderColor: cores.primaria, backgroundColor: cores.primaria },
+  textoOpcao: { ...tema.tipografia.rotulo, color: cores.texto },
+  textoSelecionado: { color: cores.textoSobrePrimaria },
+  erro: { ...tema.tipografia.legenda, color: cores.erro },
 });

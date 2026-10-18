@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { GENEROS, ROTULO_GENERO, type Genero } from '@/utils/genero';
+import { tema } from '@/tema';
 
 interface Props {
   valor: Genero | null;
@@ -42,19 +43,19 @@ export function SeletorGenero({ valor, aoMudar, erro }: Props) {
 
 const estilos = StyleSheet.create({
   container: { gap: 6 },
-  rotulo: { fontSize: 14, fontWeight: '600', color: '#1f2933' },
-  ajuda: { fontSize: 13, color: '#52606d' },
+  rotulo: { fontSize: 14, fontWeight: '600', color: tema.cores.texto },
+  ajuda: { fontSize: 13, color: tema.cores.textoSecundario },
   opcoes: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   opcao: {
     borderWidth: 1,
-    borderColor: '#cbd2d9',
+    borderColor: tema.cores.borda,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: tema.cores.superficie,
   },
-  opcaoSelecionada: { borderColor: '#1a56db', backgroundColor: '#eff4ff' },
-  textoOpcao: { fontSize: 15, color: '#1f2933' },
-  textoSelecionado: { color: '#1a56db', fontWeight: '600' },
-  erro: { fontSize: 13, color: '#b42318' },
+  opcaoSelecionada: { borderColor: tema.cores.primaria, backgroundColor: tema.cores.primaria },
+  textoOpcao: { fontSize: 15, color: tema.cores.texto },
+  textoSelecionado: { color: tema.cores.textoSobrePrimaria, fontWeight: '600' },
+  erro: { fontSize: 13, color: tema.cores.erro },
 });

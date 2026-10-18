@@ -1,27 +1,25 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { useCallback, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Avatar } from '@/components/Avatar';
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { EsqueletoLista } from '@/components/EsqueletoLista';
+import { EstadoVazio } from '@/components/EstadoVazio';
 import { ItemCarona } from '@/components/ItemCarona';
+import { OpcaoInterruptor } from '@/components/OpcaoInterruptor';
 import { SeletorOpcoes, type Opcao } from '@/components/SeletorOpcoes';
-import { StatusServidor } from '@/components/StatusServidor';
-import { sair } from '@/services/auth';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { obterLocalizacaoAtual, type Coordenadas } from '@/services/localizacao';
 import { obterMeuPerfil } from '@/services/perfil';
-import { limparPix } from '@/store/pix';
+import { tema } from '@/tema';
+import { textoContagemCaronas } from '@/utils/exibicao-carona';
 import { mostrarFiltroSomenteMulheres } from '@/utils/genero';
+import { primeiroNome } from '@/utils/nome';
 import { ID_MINHA_LOCALIZACAO, ID_PONTO_PADRAO, PONTOS_FIXOS, pontoPorId } from '@/utils/pontos';
 
 type Lista =
@@ -29,10 +27,15 @@ type Lista =
   | { tipo: 'erro'; mensagem: string }
   | { tipo: 'pronto'; caronas: CaronaResumo[] };
 
+const { cores } = tema;
+
 const OPCOES_PONTO: Opcao<string>[] = [
   ...PONTOS_FIXOS.map((ponto) => ({ valor: ponto.id, rotulo: ponto.rotulo })),
-  { valor: ID_MINHA_LOCALIZACAO, rotulo: 'Minha localização' },
+  { valor: ID_MINHA_LOCALIZACAO, rotulo: 'Minha localização', icone: 'locate-outline' },
 ];
+
+// Altura do botão flutuante e folga: o último card não fica embaixo dele
+const ESPACO_BOTAO_FLUTUANTE = 96;
 
 async function consultar(
   latitude: number,
@@ -50,39 +53,46 @@ async function consultar(
 }
 
 export default function TelaCaronasProximas() {
+  const insets = useSafeAreaInsets();
   const [idPonto, setIdPonto] = useState(ID_PONTO_PADRAO);
   const [minhaLocalizacao, setMinhaLocalizacao] = useState<Coordenadas | null>(null);
   const [somenteMulheres, setSomenteMulheres] = useState(false);
   const [exibirFiltro, setExibirFiltro] = useState(false);
+  const [nomeUsuario, setNomeUsuario] = useState('');
   const [lista, setLista] = useState<Lista>({ tipo: 'carregando' });
   const [atualizando, setAtualizando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
-  const [saindo, setSaindo] = useState(false);
 
   const centro =
     idPonto === ID_MINHA_LOCALIZACAO ? minhaLocalizacao : (pontoPorId(idPonto) ?? null);
   const latitude = centro?.latitude ?? null;
   const longitude = centro?.longitude ?? null;
+  // Quem não vê o filtro (ex.: mudou o gênero no Perfil) busca sempre sem ele
+  const filtroAtivo = exibirFiltro && somenteMulheres;
 
-  // O filtro "Somente mulheres" só aparece para quem verá resultado (a regra é do backend, RN18)
-  useEffect(() => {
-    let ativo = true;
-    const carregarPerfil = async () => {
-      try {
-        const perfil = await obterMeuPerfil();
-        if (ativo) {
-          setExibirFiltro(mostrarFiltroSomenteMulheres(perfil.genero));
+  // Do perfil: o nome da saudação e o filtro "Somente mulheres", que só aparece para quem verá
+  // resultado (a regra é do backend, RN18). Volta a ler ao voltar do Perfil, onde o nome muda.
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+      const carregarPerfil = async () => {
+        try {
+          const perfil = await obterMeuPerfil();
+          if (ativo) {
+            setExibirFiltro(mostrarFiltroSomenteMulheres(perfil.genero));
+            setNomeUsuario(perfil.nome_completo);
+          }
+        } catch {
+          // Sem perfil, segue sem o filtro e sem a saudação; a busca continua funcionando
         }
-      } catch {
-        // Sem perfil, segue sem o filtro; a busca continua funcionando
-      }
-    };
-    void carregarPerfil();
-    return () => {
-      ativo = false;
-    };
-  }, []);
+      };
+      void carregarPerfil();
+      return () => {
+        ativo = false;
+      };
+    }, []),
+  );
 
   // Recarrega ao voltar para a tela (depois de publicar) e ao mudar ponto ou filtro
   useFocusEffect(
@@ -92,7 +102,7 @@ export default function TelaCaronasProximas() {
       }
       let ativo = true;
       const carregar = async () => {
-        const resultado = await consultar(latitude, longitude, somenteMulheres);
+        const resultado = await consultar(latitude, longitude, filtroAtivo);
         if (ativo) {
           setLista(resultado);
           setAtualizando(false);
@@ -102,7 +112,7 @@ export default function TelaCaronasProximas() {
       return () => {
         ativo = false;
       };
-    }, [latitude, longitude, somenteMulheres]),
+    }, [latitude, longitude, filtroAtivo]),
   );
 
   const atualizar = async () => {
@@ -110,7 +120,7 @@ export default function TelaCaronasProximas() {
       return;
     }
     setAtualizando(true);
-    setLista(await consultar(latitude, longitude, somenteMulheres));
+    setLista(await consultar(latitude, longitude, filtroAtivo));
     setAtualizando(false);
   };
 
@@ -135,105 +145,162 @@ export default function TelaCaronasProximas() {
     }
   };
 
-  const aoSair = async () => {
-    setSaindo(true);
-    try {
-      await sair();
-      // O Pix em memória é da conta que saiu
-      limparPix();
-    } catch (falha) {
-      setAviso(normalizarErro(falha).message);
-      setSaindo(false);
-    }
-  };
+  const saudacao = primeiroNome(nomeUsuario);
+  const contagem = lista.tipo === 'pronto' ? textoContagemCaronas(lista.caronas.length) : null;
 
   const cabecalho = (
     <View style={estilos.cabecalho}>
-      <Botao titulo="Oferecer carona" onPress={() => router.push('/caronas/publicar')} />
+      <View style={estilos.topo}>
+        <View style={estilos.titulos}>
+          {saudacao ? <Text style={estilos.saudacao}>Olá, {saudacao}</Text> : null}
+          <Text style={estilos.titulo} maxFontSizeMultiplier={1.4} accessibilityRole="header">
+            Caronas próximas
+          </Text>
+        </View>
+        <View style={estilos.acoesTopo}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Minhas reservas"
+            onPress={() => router.push('/reservas')}
+            style={({ pressed }) => [estilos.botaoIcone, pressed && estilos.botaoIconePressionado]}
+          >
+            <Ionicons name="receipt-outline" size={22} color={cores.primaria} />
+          </Pressable>
+          <Avatar
+            nome={nomeUsuario}
+            tamanho={44}
+            accessibilityLabel="Meu perfil"
+            onPress={() => router.push('/perfil')}
+          />
+        </View>
+      </View>
+
       <SeletorOpcoes
         rotulo="Perto de"
         opcoes={OPCOES_PONTO}
         valor={idPonto}
         aoMudar={(id) => void aoEscolherPonto(id)}
+        horizontal
+        iconeSelecionado="location"
       />
-      {localizando ? <Text style={estilos.ajuda}>Obtendo sua localização…</Text> : null}
+      {localizando ? <Text style={estilos.legenda}>Obtendo sua localização…</Text> : null}
       {exibirFiltro ? (
-        <View style={estilos.filtro}>
-          <Text style={estilos.textoFiltro}>Somente mulheres</Text>
-          <Switch
-            accessibilityLabel="Mostrar só caronas somente mulheres"
-            value={somenteMulheres}
-            onValueChange={(valor) => {
-              setLista({ tipo: 'carregando' });
-              setSomenteMulheres(valor);
-            }}
-          />
-        </View>
+        <OpcaoInterruptor
+          icone="female-outline"
+          corIcone={cores.secundariaTexto}
+          titulo="Somente mulheres"
+          ajuda="Mostrar só caronas para passageiras"
+          accessibilityLabel="Mostrar só caronas somente mulheres"
+          valor={somenteMulheres}
+          aoMudar={(valor) => {
+            setLista({ tipo: 'carregando' });
+            setSomenteMulheres(valor);
+          }}
+        />
       ) : null}
-      {aviso ? <Aviso mensagem={aviso} /> : null}
-      {lista.tipo === 'carregando' ? <ActivityIndicator size="large" /> : null}
+      {aviso ? (
+        <Aviso
+          mensagem={aviso}
+          acao={{
+            titulo: 'Tentar de novo',
+            onPress: () => void aoEscolherPonto(ID_MINHA_LOCALIZACAO),
+          }}
+        />
+      ) : null}
       {lista.tipo === 'erro' ? (
-        <>
-          <Aviso mensagem={lista.mensagem} />
-          <Botao titulo="Tentar de novo" variante="secundario" onPress={() => void atualizar()} />
-        </>
+        <Aviso
+          mensagem={lista.mensagem}
+          acao={{ titulo: 'Tentar de novo', onPress: () => void atualizar() }}
+        />
       ) : null}
-    </View>
-  );
-
-  const rodape = (
-    <View style={estilos.rodape}>
-      <Botao
-        titulo="Minhas reservas"
-        variante="secundario"
-        onPress={() => router.push('/reservas')}
-      />
-      <Botao
-        titulo="Meus veículos"
-        variante="secundario"
-        onPress={() => router.push('/veiculos')}
-      />
-      <Botao titulo="Meu perfil" variante="secundario" onPress={() => router.push('/perfil')} />
-      <StatusServidor />
-      <Botao titulo="Sair" variante="secundario" carregando={saindo} onPress={aoSair} />
+      {contagem ? <Text style={[estilos.legenda, estilos.contagem]}>{contagem}</Text> : null}
+      {lista.tipo === 'carregando' ? <EsqueletoLista /> : null}
     </View>
   );
 
   return (
-    <FlatList
-      style={estilos.tela}
-      contentContainerStyle={estilos.lista}
-      data={lista.tipo === 'pronto' ? lista.caronas : []}
-      keyExtractor={(carona) => carona.id_carona}
-      renderItem={({ item }) => (
-        <ItemCarona
-          carona={item}
-          aoAbrir={() => router.push({ pathname: '/caronas/[id]', params: { id: item.id_carona } })}
-        />
-      )}
-      ListHeaderComponent={cabecalho}
-      ListEmptyComponent={
-        lista.tipo === 'pronto' ? (
-          <Text style={estilos.vazio}>
-            Nenhuma carona disponível perto deste ponto. Tente outro ponto ou volte mais tarde.
-          </Text>
-        ) : null
-      }
-      ListFooterComponent={rodape}
-      refreshControl={
-        <RefreshControl refreshing={atualizando} onRefresh={() => void atualizar()} />
-      }
-    />
+    <View style={estilos.tela}>
+      <FlatList
+        contentContainerStyle={[
+          estilos.lista,
+          {
+            paddingTop: insets.top + tema.espaco.x2,
+            paddingBottom: insets.bottom + ESPACO_BOTAO_FLUTUANTE,
+          },
+        ]}
+        data={lista.tipo === 'pronto' ? lista.caronas : []}
+        keyExtractor={(carona) => carona.id_carona}
+        renderItem={({ item }) => (
+          <ItemCarona
+            carona={item}
+            aoAbrir={() =>
+              router.push({ pathname: '/caronas/[id]', params: { id: item.id_carona } })
+            }
+          />
+        )}
+        ListHeaderComponent={cabecalho}
+        ListEmptyComponent={
+          lista.tipo === 'pronto' ? (
+            <EstadoVazio
+              icone="car-outline"
+              titulo="Nenhuma carona por aqui"
+              mensagem="Nenhuma carona disponível perto deste ponto. Tente outro ponto ou volte mais tarde."
+            />
+          ) : null
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={atualizando}
+            onRefresh={() => void atualizar()}
+            tintColor={cores.primaria}
+            colors={[cores.primaria]}
+          />
+        }
+      />
+      <Botao
+        titulo="Oferecer carona"
+        icone="add"
+        onPress={() => router.push('/caronas/publicar')}
+        estilo={[estilos.flutuante, { bottom: insets.bottom + tema.espaco.x4 }]}
+      />
+    </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: '#fff' },
-  lista: { padding: 24, gap: 12 },
-  cabecalho: { gap: 16, marginBottom: 4 },
-  ajuda: { fontSize: 13, color: '#52606d' },
-  filtro: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  textoFiltro: { fontSize: 15, color: '#1f2933' },
-  vazio: { fontSize: 15, color: '#52606d', textAlign: 'center', paddingVertical: 24 },
-  rodape: { gap: 12, marginTop: 24 },
+  tela: { flex: 1, backgroundColor: cores.fundo },
+  lista: { paddingHorizontal: tema.espaco.x5, gap: tema.espaco.x3 },
+  cabecalho: { gap: tema.espaco.x3, marginBottom: tema.espaco.x1 },
+  topo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: tema.espaco.x2,
+  },
+  titulos: { flex: 1 },
+  saudacao: { ...tema.tipografia.corpo, color: cores.textoSecundario },
+  titulo: { ...tema.tipografia.titulo, color: cores.texto },
+  acoesTopo: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x2 },
+  botaoIcone: {
+    width: tema.toque.minimo,
+    height: tema.toque.minimo,
+    borderRadius: tema.raio.pilula,
+    backgroundColor: cores.superficie,
+    borderWidth: 1,
+    borderColor: cores.borda,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  botaoIconePressionado: { backgroundColor: cores.superficieAlternativa },
+  legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
+  contagem: { marginTop: tema.espaco.x2 },
+  flutuante: {
+    position: 'absolute',
+    right: tema.espaco.x5,
+    alignSelf: 'auto',
+    borderRadius: tema.raio.pilula,
+    paddingVertical: 18,
+    paddingHorizontal: 22,
+    ...tema.sombra.flutuante,
+  },
 });

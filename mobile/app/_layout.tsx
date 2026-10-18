@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { ProvedorSessao, useSessao } from '@/store/sessao';
+import { tema } from '@/tema';
 
 function Navegacao() {
   const { sessao, carregando } = useSessao();
@@ -10,7 +11,7 @@ function Navegacao() {
   if (carregando) {
     return (
       <View style={estilos.carregando}>
-        <ActivityIndicator size="large" />
+        <ActivityIndicator size="large" color={tema.cores.primaria} />
       </View>
     );
   }
@@ -35,11 +36,17 @@ export default function LayoutRaiz() {
   return (
     <ProvedorSessao>
       <Navegacao />
-      <StatusBar style="auto" />
+      {/* Só modo claro (app.json: userInterfaceStyle light) */}
+      <StatusBar style="dark" />
     </ProvedorSessao>
   );
 }
 
 const estilos = StyleSheet.create({
-  carregando: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff' },
+  carregando: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tema.cores.fundo,
+  },
 });
