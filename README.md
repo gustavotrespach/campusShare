@@ -22,6 +22,42 @@ React Native + Expo (TypeScript) · Supabase (Auth, PostgreSQL + RLS, funções 
 
 Não há servidor próprio (Node.js/Express): o backend é o projeto Supabase — ver [ADR-009](docs/adr/ADR-009-backend-supabase.md).
 
+## Como instalar a demo
+
+A demo da AP2 usa o **Supabase remoto** e não precisa do computador de ninguém ligado. Roteiro da apresentação em [`docs/DEMO.md`](docs/DEMO.md).
+
+### iPhone — Expo Go + EAS Update
+
+Sem conta Apple Developer não há build instalável de iOS: o app abre dentro do **Expo Go**.
+
+1. Instale o **Expo Go** pela App Store (precisa suportar o **SDK 57**).
+2. Abra o update publicado no canal `preview`:
+   - pela página do update no expo.dev → botão **Preview** → leia o QR com a câmera:
+     [update de 18/10](https://expo.dev/accounts/trespaco/projects/campusshare/updates/6d573651-ecc2-460c-8686-4907d8518597);
+   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/6d573651-ecc2-460c-8686-4907d8518597`
+     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=6d573651-ecc2-460c-8686-4907d8518597)).
+3. Depois da primeira vez, o app aparece na lista de recentes do Expo Go.
+
+Cada `eas update` gera um grupo novo: depois de publicar de novo, use o link do update mais recente em [Updates](https://expo.dev/accounts/trespaco/projects/campusshare/updates).
+
+### Android — APK
+
+1. Abra a página da build no celular e toque em **Install** (ou leia o QR da página no computador):
+   [build preview](https://expo.dev/accounts/trespaco/projects/campusshare/builds/ec4c3641-7a24-4995-8430-191a85afcb30).
+   Link direto do APK (18/10): <https://expo.dev/artifacts/eas/YzwflGqMJGri7zXMBWuJ44CIOU3o8lFMSIhpkk9Xu5g.apk>.
+2. Permita a instalação de apps de fonte desconhecida quando o Android pedir.
+3. O APK é do canal `preview`: ao abrir, ele baixa o update mais recente desse canal (mesmo `runtimeVersion` 1.0.0).
+
+### Publicar de novo (Gustavo)
+
+```bash
+cd mobile
+npx eas-cli update --channel preview --environment preview --message "<o que mudou>"   # iPhone e APK
+npx eas-cli build --platform android --profile preview                               # só com dependência nativa nova, plugin do app.json ou nova version
+```
+
+O app da demo aponta para o remoto pelas variáveis `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` do ambiente `preview` do EAS (`npx eas-cli env:list --environment preview`). O `mobile/.env` local é ignorado pelo `eas update --environment`.
+
 ## Pré-requisitos
 
 - Node.js 20 LTS e npm (somente para o app Expo)

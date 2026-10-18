@@ -22,7 +22,7 @@ Decisão do Gustavo em 16/10: até a demo da AP2 (22/10) só entram as tarefas a
 | 19–20/10 | T19 (telas de publicar e buscar) — feita | T23 (webhook de pagamento) | |
 | 20–21/10 | | T25 (telas de reserva e pagamento) — feita | |
 | 18–21/10 | | | T32 (identidade visual) — feita (telas da demo; demais na Fase 16) |
-| 21–22/10 | | | T31 (build e roteiro da demo) |
+| 21–22/10 | | | T31 (build e roteiro da demo) — feita |
 
 As duas trilhas só se encontram na T21, que depende da T18. Cada tarefa continua sendo uma branch e um PR, com teste manual antes do merge.
 
@@ -212,7 +212,8 @@ Descrição: Aplicar a especificação de `docs/design/DESIGN.md`: `mobile/src/t
 Aceite: as telas 1, 5, 6, 8 e 9 seguem os mockups de `docs/design/mockups/`, nenhuma tela perde funcionalidade, nenhuma cor escrita à mão nas telas tocadas e `app.json` com o ícone, o ícone adaptativo e o splash.
 
 ### T31 — Build de demonstração (AP2)
-Status: a fazer · Depende de: T19, T25 (até 16/10: T25, T29)
-Descrição: Gerar builds Android (APK) e iOS pelo EAS e roteiro da demo.
+Status: feito · Responsável: Gustavo Trespach · Depende de: T19, T25 (até 16/10: T25, T29)
+Descrição: Projeto EAS `@trespaco/campusshare`; APK Android pelo EAS Build (perfil `preview`); iPhone pelo Expo Go abrindo o EAS Update do canal `preview` (sem conta Apple Developer não há build iOS); app apontando para o Supabase remoto pelas variáveis do ambiente `preview` do EAS; roteiro em `docs/DEMO.md`.
+Nota (18/10): confirmado pelo Gustavo no iPhone: o update abriu no Expo Go, login no remoto, "Servidor: ok" e reserva confirmada pelo webhook. Falta testar o APK num Android.
 Aceite: app instalado em pelo menos 2 celulares reais, fluxo completo cadastro → carona → reserva → pagamento sandbox funcionando.
 Nota (16/10): o projeto EAS será criado com o nome `campusshare` só nesta tarefa. Build de iOS instalável em aparelho exige conta paga do Apple Developer Program, fora do orçamento zero; para a demo, decidido (16/10): APK no Android e Expo Go no iPhone.
