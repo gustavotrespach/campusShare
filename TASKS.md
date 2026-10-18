@@ -212,7 +212,7 @@ Descrição: Aplicar a especificação de `docs/design/DESIGN.md`: `mobile/src/t
 Aceite: as telas 1, 5, 6, 8 e 9 seguem os mockups de `docs/design/mockups/`, nenhuma tela perde funcionalidade, nenhuma cor escrita à mão nas telas tocadas e `app.json` com o ícone, o ícone adaptativo e o splash.
 
 ### T31 — Build de demonstração (AP2)
-Status: a fazer · Depende de: T19, T25 (até 16/10: T25, T29)
-Descrição: Gerar builds Android (APK) e iOS pelo EAS e roteiro da demo.
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T19, T25 (até 16/10: T25, T29)
+Descrição: Projeto EAS `@trespaco/campusshare`; APK Android pelo EAS Build (perfil `preview`); iPhone pelo Expo Go abrindo o EAS Update do canal `preview` (sem conta Apple Developer não há build iOS); app apontando para o Supabase remoto pelas variáveis do ambiente `preview` do EAS; roteiro em `docs/DEMO.md`.
 Aceite: app instalado em pelo menos 2 celulares reais, fluxo completo cadastro → carona → reserva → pagamento sandbox funcionando.
 Nota (16/10): o projeto EAS será criado com o nome `campusshare` só nesta tarefa. Build de iOS instalável em aparelho exige conta paga do Apple Developer Program, fora do orçamento zero; para a demo, decidido (16/10): APK no Android e Expo Go no iPhone.
