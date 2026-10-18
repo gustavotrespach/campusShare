@@ -2,6 +2,7 @@ import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/d
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { formatarDataHoraCompleta, FUSO_APP } from '@/utils/data-hora';
+import { tema } from '@/tema';
 
 interface Props {
   rotulo: string;
@@ -70,17 +71,17 @@ export function SeletorDataHora({ rotulo, valor, aoMudar, erro }: Props) {
 
 const estilos = StyleSheet.create({
   container: { gap: 6 },
-  rotulo: { fontSize: 14, fontWeight: '600', color: '#1f2933' },
-  valor: { fontSize: 15, color: '#1f2933' },
+  rotulo: { fontSize: 14, fontWeight: '600', color: tema.cores.texto },
+  valor: { fontSize: 15, color: tema.cores.texto },
   seletorIos: { alignSelf: 'flex-start' },
   botoes: { flexDirection: 'row', gap: 8 },
   botao: {
     borderWidth: 1,
-    borderColor: '#1a56db',
+    borderColor: tema.cores.primaria,
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 10,
   },
-  textoBotao: { fontSize: 15, color: '#1a56db', fontWeight: '600' },
-  erro: { fontSize: 13, color: '#b42318' },
+  textoBotao: { fontSize: 15, color: tema.cores.primaria, fontWeight: '600' },
+  erro: { fontSize: 13, color: tema.cores.erro },
 });

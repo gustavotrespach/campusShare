@@ -1,29 +1,62 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
+
+import { tema } from '@/tema';
+
+import { Botao } from './Botao';
+import type { NomeIcone } from './icones';
+
+type Tipo = 'erro' | 'sucesso' | 'info';
 
 interface Props {
   mensagem: string;
-  tipo?: 'erro' | 'sucesso' | 'info';
+  tipo?: Tipo;
+  acao?: { titulo: string; onPress: () => void };
 }
 
-export function Aviso({ mensagem, tipo = 'erro' }: Props) {
+const { cores } = tema;
+
+const VISUAL: Record<Tipo, { fundo: string; cor: string; icone: NomeIcone }> = {
+  info: { fundo: cores.infoClaro, cor: cores.info, icone: 'information-circle' },
+  sucesso: { fundo: cores.sucessoClaro, cor: cores.sucesso, icone: 'checkmark-circle' },
+  erro: { fundo: cores.erroClaro, cor: cores.erro, icone: 'alert-circle' },
+};
+
+export function Aviso({ mensagem, tipo = 'erro', acao }: Props) {
+  const visual = VISUAL[tipo];
   return (
     <View
       accessibilityLiveRegion="polite"
       accessibilityRole="alert"
-      style={[estilos.caixa, estilos[tipo]]}
+      style={[estilos.caixa, { backgroundColor: visual.fundo, borderLeftColor: visual.cor }]}
     >
-      <Text style={[estilos.texto, estilos[`texto_${tipo}`]]}>{mensagem}</Text>
+      <Ionicons name={visual.icone} size={20} color={visual.cor} />
+      <View style={estilos.corpo}>
+        <Text style={[estilos.texto, { color: visual.cor }]}>{mensagem}</Text>
+        {acao ? (
+          <Botao
+            titulo={acao.titulo}
+            variante="texto"
+            onPress={acao.onPress}
+            estilo={estilos.acao}
+          />
+        ) : null}
+      </View>
     </View>
   );
 }
 
 const estilos = StyleSheet.create({
-  caixa: { borderRadius: 8, padding: 12, borderWidth: 1 },
-  erro: { backgroundColor: '#fef3f2', borderColor: '#fda29b' },
-  sucesso: { backgroundColor: '#ecfdf3', borderColor: '#6ce9a6' },
-  info: { backgroundColor: '#eff8ff', borderColor: '#84caff' },
-  texto: { fontSize: 14, lineHeight: 20 },
-  texto_erro: { color: '#912018' },
-  texto_sucesso: { color: '#05603a' },
-  texto_info: { color: '#175cd3' },
+  caixa: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderRadius: tema.raio.medio,
+    borderLeftWidth: 4,
+    paddingVertical: tema.espaco.x3,
+    paddingHorizontal: 14,
+    gap: 10,
+  },
+  corpo: { flex: 1, gap: tema.espaco.x1 },
+  texto: { ...tema.tipografia.apoio },
+  acao: { alignSelf: 'flex-start', paddingHorizontal: tema.espaco.x2, marginLeft: -8 },
 });

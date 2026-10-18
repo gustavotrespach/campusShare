@@ -32,6 +32,12 @@ export function reservaEmAberto(status: StatusReserva): boolean {
   return status === 'PENDENTE';
 }
 
+// A tela viu a reserva sair de PENDENTE para CONFIRMADA (anúncio para o leitor de tela). Abrir
+// uma reserva já confirmada não conta como confirmação nova.
+export function confirmouAgora(anterior: StatusReserva | null, atual: StatusReserva): boolean {
+  return anterior === 'PENDENTE' && atual === 'CONFIRMADA';
+}
+
 // Mensagens dos erros de reserva (docs/API.md → reservar-vaga). PAGAMENTO_INDISPONIVEL: a
 // reservar-vaga já desfez a reserva e devolveu a vaga, então tentar de novo é seguro.
 const MENSAGEM_POR_CODIGO: Record<string, string> = {

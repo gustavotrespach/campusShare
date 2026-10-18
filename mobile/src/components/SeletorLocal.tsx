@@ -6,6 +6,7 @@ import { SeletorOpcoes, type Opcao } from '@/components/SeletorOpcoes';
 import { normalizarErro } from '@/services/erros';
 import { obterLocalizacaoAtual } from '@/services/localizacao';
 import { ID_MINHA_LOCALIZACAO, PONTOS_FIXOS, pontoPorId, type Local } from '@/utils/pontos';
+import { tema } from '@/tema';
 
 const OPCOES: Opcao<string>[] = [
   ...PONTOS_FIXOS.map((ponto) => ({ valor: ponto.id, rotulo: ponto.rotulo })),
@@ -83,6 +84,6 @@ export function SeletorLocal({ rotulo, idInicial, valor, aoMudar, erro }: Props)
 
 const estilos = StyleSheet.create({
   container: { gap: 8 },
-  ajuda: { fontSize: 13, color: '#52606d' },
-  aviso: { fontSize: 13, color: '#b42318' },
+  ajuda: { fontSize: 13, color: tema.cores.textoSecundario },
+  aviso: { fontSize: 13, color: tema.cores.erro },
 });

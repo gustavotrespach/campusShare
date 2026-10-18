@@ -50,6 +50,24 @@ export function formatarDataHoraCurta(instante: Date | string): string {
   );
 }
 
+// Card da lista, hora e dia separados: "12:30"
+export function formatarHora(instante: Date | string): string {
+  const p = partesEmBrasilia(instante);
+  return `${doisDigitos(p.hora)}:${doisDigitos(p.minuto)}`;
+}
+
+// Card da lista: "dom 18/10"
+export function formatarDiaCurto(instante: Date | string): string {
+  const p = partesEmBrasilia(instante);
+  return `${DIAS_SEMANA_CURTOS[p.diaSemana]} ${doisDigitos(p.dia)}/${doisDigitos(p.mes)}`;
+}
+
+// Detalhe, acima da hora: "domingo, 18/10/2026"
+export function formatarDataLonga(instante: Date | string): string {
+  const p = partesEmBrasilia(instante);
+  return `${DIAS_SEMANA[p.diaSemana]}, ${doisDigitos(p.dia)}/${doisDigitos(p.mes)}/${p.ano}`;
+}
+
 // Detalhe e formulário: "sábado, 18/10/2026 às 12:30"
 export function formatarDataHoraCompleta(instante: Date | string): string {
   const p = partesEmBrasilia(instante);
