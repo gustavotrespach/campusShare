@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-nati
 
 import { normalizarErro } from '@/services/erros';
 import { verificarSaude } from '@/services/sistema';
+import { tema } from '@/tema';
 
 type EstadoSaude =
   { tipo: 'carregando' } | { tipo: 'ok'; status: string } | { tipo: 'erro'; mensagem: string };
@@ -58,7 +59,7 @@ export function StatusServidor() {
 
 const estilos = StyleSheet.create({
   container: { alignItems: 'center', gap: 6 },
-  ok: { fontSize: 13, color: '#1b7f3b' },
-  erro: { fontSize: 13, color: '#b42318', textAlign: 'center' },
-  link: { fontSize: 13, color: '#1a56db', fontWeight: '600' },
+  ok: { fontSize: 13, color: tema.cores.sucesso },
+  erro: { fontSize: 13, color: tema.cores.erro, textAlign: 'center' },
+  link: { fontSize: 13, color: tema.cores.primaria, fontWeight: '600' },
 });
