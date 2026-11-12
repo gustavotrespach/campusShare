@@ -223,3 +223,9 @@ Status: feito · Responsável: Gustavo Trespach · Depende de: T31
 Descrição: APK de produção pelo EAS Build anexado à release `v1.0.0` do GitHub (link permanente; o artefato do EAS expira), backend Supabase reativado e conferido (`health`, Edge Functions e segredos), workflow `manter-ativo.yml` para o plano gratuito não pausar o projeto, varredura de segredos no histórico e `docs/DEPLOY.md` com links, variáveis e checklist.
 Aceite: APK baixado e instalado por link público em aba anônima, fora da máquina de quem publicou; nenhum segredo no repositório.
 Nota (12/11): release `v1.0.0` com o APK publicada; APK instalado num Android de outra pessoa com login no remoto. O Expo Go do iPhone passou para o SDK 58 e não abre mais o app (SDK 57): migrar o SDK é a próxima tarefa.
+
+### T34 — Migrar para o Expo SDK 58
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T33
+Descrição: Atualizar o app (`mobile/`) do Expo SDK 57 para o 58, porque o Expo Go da App Store passou para o SDK 58 e o iPhone só roda o app pelo Expo Go. A versão do app passa para `1.1.0`: com `runtimeVersion` pela policy `appVersion`, o runtime novo isola os updates do SDK 58, e o APK `1.0.0` da release `v1.0.0` continua recebendo só o update antigo.
+Aceite: app abre no Expo Go SDK 58 do iPhone com login, "Caronas próximas", detalhe e reserva com Pix; APK 1.0.0 intacto; APK 1.1.0 publicado.
+Nota (12/11, Parte A): código no SDK 58 (expo 58.0.25, React Native 0.88.1, React 19.3), `expo-doctor` 20/20, lint, typecheck e 284 testes verdes; `version` 1.1.0 e `versionCode` 2; `expo-font` adicionado (peer obrigatória do `@expo/vector-icons`); `@supabase/supabase-js` fixo em 2.118.0. Teste no iPhone pelo `npx expo start` (`.env` no remoto): resultado ainda não registrado. Nada publicado na Expo: update e APK 1.1.0 ficam para a Parte B, depois do merge.
