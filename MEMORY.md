@@ -9,6 +9,7 @@ Sprint 1 concluída: backend e app de autenticação prontos e publicados (Fases
 
 ## Progresso recente
 
+- [ ] T33 — Deploy público (12/11): projeto Supabase reativado (estava pausado por inatividade); APK da release `v1.0.0` no GitHub; workflow `Manter ativo` a cada 3 dias; `docs/DEPLOY.md`. O painel do Supabase é da conta original do Gustavo (login por e-mail e senha, não pelo GitHub); recuperação de acesso pedida ao suporte em 12/11
 - [x] T31 — Demo da AP2: projeto EAS `@trespaco/campusshare`, EAS Update no canal `preview` (iPhone pelo Expo Go), APK Android pelo EAS Build (perfil `preview`) e roteiro `docs/DEMO.md` (18/10)
 - [x] T32 — Identidade visual das telas da demo: `src/tema.ts` (idêntico ao §2 do `docs/design/DESIGN.md`), componentes base (Botao, CampoTexto, Aviso, SeloStatus, EstadoVazio, LinhaRota, Avatar e auxiliares), header padrão, telas 1, 5, 6, 8 e 9, ícone e splash no `app.json`; `@expo/vector-icons` e `expo-splash-screen` (18/10). Demais telas: Fase 16
 - [x] T25 — Telas de reserva e pagamento: botão "Reservar vaga" no detalhe (confirmação com o valor, sem duplo toque), tela de pagamento com QR e copia e cola do Pix e status por polling (5 s, para ao confirmar, ao sair e após 15 min), "Minhas reservas" pela função `minhas_reservas`; `expo-clipboard`; pgTAP `13_minhas_reservas` e Jest (17/10)
