@@ -42,11 +42,13 @@ Cada `eas update` gera um grupo novo: depois de publicar de novo, use o link do 
 
 ### Android — APK
 
-1. Abra a página da build no celular e toque em **Install** (ou leia o QR da página no computador):
-   [build preview](https://expo.dev/accounts/trespaco/projects/campusshare/builds/ec4c3641-7a24-4995-8430-191a85afcb30).
-   Link direto do APK (18/10): <https://expo.dev/artifacts/eas/YzwflGqMJGri7zXMBWuJ44CIOU3o8lFMSIhpkk9Xu5g.apk>.
+1. No celular, baixe o APK da release **v1.0.0** (link permanente):
+   <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk>
+   ([página da release](https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0)).
 2. Permita a instalação de apps de fonte desconhecida quando o Android pedir.
 3. O APK é do canal `preview`: ao abrir, ele baixa o update mais recente desse canal (mesmo `runtimeVersion` 1.0.0).
+
+Links, variáveis e checklist da publicação: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
 ### Publicar de novo (Gustavo)
 
