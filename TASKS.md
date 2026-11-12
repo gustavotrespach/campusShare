@@ -219,6 +219,7 @@ Aceite: app instalado em pelo menos 2 celulares reais, fluxo completo cadastro �
 Nota (16/10): o projeto EAS será criado com o nome `campusshare` só nesta tarefa. Build de iOS instalável em aparelho exige conta paga do Apple Developer Program, fora do orçamento zero; para a demo, decidido (16/10): APK no Android e Expo Go no iPhone.
 
 ### T33 — Deploy público (TD de deploy)
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T31
+Status: feito · Responsável: Gustavo Trespach · Depende de: T31
 Descrição: APK de produção pelo EAS Build anexado à release `v1.0.0` do GitHub (link permanente; o artefato do EAS expira), backend Supabase reativado e conferido (`health`, Edge Functions e segredos), workflow `manter-ativo.yml` para o plano gratuito não pausar o projeto, varredura de segredos no histórico e `docs/DEPLOY.md` com links, variáveis e checklist.
 Aceite: APK baixado e instalado por link público em aba anônima, fora da máquina de quem publicou; nenhum segredo no repositório.
+Nota (12/11): release `v1.0.0` com o APK publicada; APK instalado num Android de outra pessoa com login no remoto. O Expo Go do iPhone passou para o SDK 58 e não abre mais o app (SDK 57): migrar o SDK é a próxima tarefa.
