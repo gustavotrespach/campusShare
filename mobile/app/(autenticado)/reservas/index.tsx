@@ -108,9 +108,9 @@ export default function TelaMinhasReservas() {
       data={lista.tipo === 'pronto' ? lista.reservas : []}
       keyExtractor={(reserva) => reserva.id_reserva}
       renderItem={({ item }) => <ItemReserva reserva={item} />}
-      ListHeaderComponent={lista.tipo === 'carregando' ? <EsqueletoLista /> : null}
+      ListHeaderComponent={lista.tipo === 'carregando' ? <EsqueletoLista /> : undefined}
       ListEmptyComponent={
-        lista.tipo === 'carregando' ? null : (
+        lista.tipo === 'carregando' ? undefined : (
           // Estado vazio no meio da tela
           <View style={estilos.vazio}>
             {lista.tipo === 'erro' ? (

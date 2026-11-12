@@ -8,7 +8,6 @@
 |---|---|
 | APK Android (permanente) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| iPhone (Expo Go, EAS Update do canal `preview`) | [QR do update](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=6d573651-ecc2-460c-8686-4907d8518597) |
 | Backend (Supabase, projeto **CampusShare**, região São Paulo) | <https://yqovnmlrbpkgwzmlnncb.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
 
@@ -19,7 +18,7 @@ O link de artefato do EAS expira (o do APK de 18/10 deixou de funcionar em 01/11
 | Parte | Plataforma | Como é publicada |
 |---|---|---|
 | App Android | EAS Build (perfil `preview`, APK) + GitHub Releases | `npx eas-cli build -p android --profile preview` e upload na release |
-| App iPhone | Expo Go + EAS Update (canal `preview`) | `npx eas-cli update --channel preview --environment preview` |
+| App iPhone | Expo Go + EAS Update (canal `preview`) | **Indisponível desde 12/11:** o Expo Go da App Store passou para o SDK 58 e o app usa o SDK 57 (migração pendente) |
 | Banco, Auth, RLS e funções SQL | Supabase (free) | workflow **Deploy** a cada merge na `main` (`db push`) |
 | Edge Functions | Supabase Edge Functions | workflow **Deploy** (`functions deploy`) |
 | Projeto ativo | GitHub Actions | workflow **Manter ativo** a cada 3 dias (o free pausa após ~7 dias sem uso) |
@@ -41,10 +40,11 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] Variáveis de ambiente cadastradas na plataforma (EAS `preview`, Supabase secrets, GitHub secrets)
 - [x] Nenhum segredo no repositório: histórico completo varrido (`.env` reais nunca commitados; nenhum padrão de chave do Mercado Pago, Resend, `service_role`/`sb_secret_`, GitHub ou Google)
 - [x] HTTPS ativo (Supabase, GitHub Releases e expo.dev só respondem em HTTPS)
-- [x] Link testado em aba anônima, fora da máquina de quem fez o deploy
+- [x] Link testado em aba anônima, fora da máquina de quem fez o deploy (Android de outra pessoa: APK baixado, instalado e login no Supabase de produção)
 
 ## Observações
 
+- **iPhone:** o Expo Go só existe na versão mais recente (SDK 58) e não abre projetos SDK 57. Até a migração do SDK, o acesso público é só pelo APK Android.
 - O projeto Supabase foi pausado por inatividade depois da AP2 e reativado em 12/11; o workflow **Manter ativo** evita nova pausa. O GitHub desliga workflows agendados após 60 dias sem atividade no repositório: reative em Actions se isso acontecer.
 - Para reativar à mão: painel do Supabase → projeto → **Restore project**, e depois Actions → Deploy → *Run workflow* se houver migration nova.
 - Contas de teste: o cadastro só aceita e-mail `@rede.ulbra.br`; o envio pelo Resend em modo de teste só entrega ao dono da conta, então contas extras são criadas no painel (Add user → Auto Confirm).
