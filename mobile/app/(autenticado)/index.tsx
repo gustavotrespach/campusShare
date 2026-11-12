@@ -246,7 +246,7 @@ export default function TelaCaronasProximas() {
               titulo="Nenhuma carona por aqui"
               mensagem="Nenhuma carona disponível perto deste ponto. Tente outro ponto ou volte mais tarde."
             />
-          ) : null
+          ) : undefined
         }
         refreshControl={
           <RefreshControl
