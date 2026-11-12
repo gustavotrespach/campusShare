@@ -28,27 +28,28 @@ A demo da AP2 usa o **Supabase remoto** e não precisa do computador de ninguém
 
 ### iPhone — Expo Go + EAS Update
 
-> **Indisponível desde 12/11/2026:** o Expo Go da App Store passou para o SDK 58 e o app ainda usa o SDK 57. Até a migração, use o APK Android.
-
 Sem conta Apple Developer não há build instalável de iOS: o app abre dentro do **Expo Go**.
 
-1. Instale o **Expo Go** pela App Store (precisa suportar o **SDK 57**).
+1. Instale o **Expo Go** pela App Store (versão do **SDK 58**; o app foi migrado do SDK 57 na T34, versão 1.1.0).
 2. Abra o update publicado no canal `preview`:
    - pela página do update no expo.dev → botão **Preview** → leia o QR com a câmera:
-     [update de 18/10](https://expo.dev/accounts/trespaco/projects/campusshare/updates/6d573651-ecc2-460c-8686-4907d8518597);
-   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/6d573651-ecc2-460c-8686-4907d8518597`
-     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=6d573651-ecc2-460c-8686-4907d8518597)).
+     [update de 12/11 (SDK 58, versão 1.1.0)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/5037009b-8cd2-46bd-ac9a-68c8f88ea4c9);
+   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/5037009b-8cd2-46bd-ac9a-68c8f88ea4c9`
+     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=5037009b-8cd2-46bd-ac9a-68c8f88ea4c9)).
 3. Depois da primeira vez, o app aparece na lista de recentes do Expo Go.
 
 Cada `eas update` gera um grupo novo: depois de publicar de novo, use o link do update mais recente em [Updates](https://expo.dev/accounts/trespaco/projects/campusshare/updates).
 
 ### Android — APK
 
-1. No celular, baixe o APK da release **v1.0.0** (link permanente):
-   <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk>
-   ([página da release](https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0)).
-2. Permita a instalação de apps de fonte desconhecida quando o Android pedir.
-3. O APK é do canal `preview`: ao abrir, ele baixa o update mais recente desse canal (mesmo `runtimeVersion` 1.0.0).
+1. No celular, baixe o APK atual, da release **v1.1.0** (SDK 58, link permanente):
+   <https://github.com/gustavotrespach/campusShare/releases/download/v1.1.0/CampusShare-1.1.0.apk>
+   ([página da release](https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0)).
+2. Permita a instalação de apps de fonte desconhecida quando o Android pedir. Quem tem a 1.0.0 pode instalar a 1.1.0 por cima.
+3. O APK é do canal `preview`: ao abrir, ele baixa o update mais recente desse canal para o `runtimeVersion` dele (1.1.0).
+
+A release **v1.0.0** (SDK 57) é a versão entregue na TD de deploy e continua disponível sem mudança:
+<https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk>. Ela tem `runtimeVersion` 1.0.0 e não recebe os updates do SDK 58.
 
 Links, variáveis e checklist da publicação: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
@@ -59,6 +60,8 @@ cd mobile
 npx eas-cli update --channel preview --environment preview --message "<o que mudou>"   # iPhone e APK
 npx eas-cli build --platform android --profile preview                               # só com dependência nativa nova, plugin do app.json ou nova version
 ```
+
+Ao trocar de SDK, suba a `version` no `mobile/app.json` (e o `android.versionCode`) **antes** do `eas update`: o `runtimeVersion` segue a `version`, e é isso que impede um update de SDK novo de chegar a um APK antigo.
 
 O app da demo aponta para o remoto pelas variáveis `EXPO_PUBLIC_SUPABASE_URL` e `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` do ambiente `preview` do EAS (`npx eas-cli env:list --environment preview`). O `mobile/.env` local é ignorado pelo `eas update --environment`.
 
