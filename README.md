@@ -28,6 +28,8 @@ A demo da AP2 usa o **Supabase remoto** e não precisa do computador de ninguém
 
 ### iPhone — Expo Go + EAS Update
 
+> **Indisponível desde 12/11/2026:** o Expo Go da App Store passou para o SDK 58 e o app ainda usa o SDK 57. Até a migração, use o APK Android.
+
 Sem conta Apple Developer não há build instalável de iOS: o app abre dentro do **Expo Go**.
 
 1. Instale o **Expo Go** pela App Store (precisa suportar o **SDK 57**).
