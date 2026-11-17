@@ -162,8 +162,10 @@ site_url = "campusshare://"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# exp://** cobre o Expo Go em desenvolvimento (o IP da máquina muda de rede para rede).
-additional_redirect_urls = ["campusshare://**", "exp://**"]
+# exp://** cobre o Expo Go em desenvolvimento (o IP da máquina muda de rede para rede). exps://** cobre
+# o Expo Go carregado de servidor HTTPS (npx expo start --tunnel): desde o SDK 58 o expo-linking gera
+# exps://<host>/--/confirmacao nesse caso (T35).
+additional_redirect_urls = ["campusshare://**", "exp://**", "exps://**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.

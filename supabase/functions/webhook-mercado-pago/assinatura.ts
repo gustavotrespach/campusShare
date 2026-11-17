@@ -2,9 +2,12 @@
 // x-signature: "ts=<segundos>,v1=<hmac hex>". Manifest:
 //   id:<data.id da URL>;request-id:<x-request-id>;ts:<ts>;
 // Segmento cujo valor está ausente sai do manifest. HMAC-SHA256 com a assinatura secreta, em hex.
-// O data.id vale em duas variantes (Fase 13.2): em minúsculas, como manda a documentação, e como
-// veio na URL. As notificações reais de order (ids "ORDTST…") falharam com o id em minúsculas;
-// o simulador do painel, com id numérico, não mostra a diferença.
+// O data.id vale em duas variantes: em minúsculas, como manda a documentação e como as notificações
+// reais de order assinam (confirmado na Fase 13.4), e como veio na URL. A variante "original" entrou
+// na Fase 13.2 pela hipótese de que o Mercado Pago assinava o id de order sem passar para
+// minúsculas; ela fica só como tolerância. A causa real das falhas de 17/10 era o segredo: no
+// sandbox, as notificações das orders são assinadas com a assinatura secreta da aplicação do
+// vendedor de teste (Test User), não com a da aplicação CampusShare (docs/SECURITY.md).
 // Sem janela de tempo no ts (Fase 13.1): o simulador do painel foi recusado por ela, e o replay
 // não tem efeito novo, porque a decisão vem do GET /v1/orders/{id} e a confirmar_pagamento é
 // idempotente. O ts continua obrigatório e entra no HMAC exatamente como veio.
