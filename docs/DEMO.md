@@ -98,6 +98,7 @@ cancelamento e expiração de reservas).
 |---|---|
 | **Sem internet** | Trocar para o 4G/hotspot. Se continuar sem rede, tocar o **vídeo gravado** e narrar os mesmos passos por cima dele. |
 | **E-mail de confirmação demorando** (opção B) | Não esperar: dizer "o e-mail chega em instantes" e seguir com a conta da passageira já pronta. Voltar ao e-mail no fim, se ele tiver chegado. |
+| **O update não abre no Expo Go do iPhone** | Rodar o app pelo Mac: `npx expo start --tunnel` em `mobile/`, com o `mobile/.env` apontando para o Supabase remoto, e abrir pelo QR do terminal (o Mac precisa ficar ligado e com internet). Nesse modo o link de confirmação de e-mail volta como `exps://…/--/confirmacao`, aceito pelo Auth desde a T35 (`exps://**` na allowlist). |
 | **Link do e-mail não abre o app** | A conta já está confirmada: voltar ao app e Entrar com a senha. |
 | **Publicar carona falha** | Usar a carona de plano B publicada na véspera. |
 | **"Você já tem uma reserva nesta carona"** | Tocar em "Ver minhas reservas" e abrir a reserva existente; ou reservar na carona de plano B. |
