@@ -150,6 +150,21 @@ describe('sessão persistente e logout', () => {
     expect(await servico.obterSessao()).toBeNull();
   });
 
+  it('servidor com erro (500) no logout: sair ainda limpa a sessão, sem erro na tela', async () => {
+    mockFetch.mockResolvedValue(resposta(200, SESSAO));
+    const servico = carregarServico();
+    await servico.entrar('mariana.souza@rede.ulbra.br', 'Senha123!');
+    mockFetch.mockResolvedValue(
+      resposta(500, { code: 500, error_code: 'unexpected_failure', msg: 'Unexpected failure' }),
+    );
+
+    await expect(servico.sair()).resolves.toBeUndefined();
+
+    expect(chamadasPara('/auth/v1/logout')).toBeGreaterThanOrEqual(1);
+    expect(mockSecureStore.size).toBe(0);
+    expect(await carregarServico().obterSessao()).toBeNull();
+  });
+
   it('observarSessao avisa o login e o logout', async () => {
     const servico = carregarServico();
     const eventos: (string | null)[] = [];

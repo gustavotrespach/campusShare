@@ -31,12 +31,24 @@ export async function entrar(email: string, senha: string): Promise<Sessao> {
   }
 }
 
-// Logout sempre limpa a sessão do aparelho (SecureStore): o auth-js apaga a sessão local mesmo
-// quando o servidor não responde (sem internet), e aí o refresh token expira sozinho no servidor.
-// Por isso o erro da revogação remota não é repassado à tela.
+// Logout sempre limpa a sessão do aparelho (SecureStore). O signOut() padrão (scope global) revoga
+// as sessões no servidor e só então apaga a local; desde o auth-js 2.119, se a revogação falha (sem
+// internet, 5xx), ele devolve o erro e mantém a sessão no aparelho. Nesse caso, o scope local apaga
+// a sessão do aparelho antes de qualquer pedido à rede, e o refresh token expira sozinho no
+// servidor. O erro da revogação remota não vai para a tela; o de limpeza local, sim.
 export async function sair(): Promise<void> {
+  const auth = obterSupabase().auth;
   try {
-    await obterSupabase().auth.signOut();
+    const { error } = await auth.signOut();
+    if (!error) {
+      return;
+    }
+  } catch {
+    // Mesma saída do erro devolvido: cai na limpeza local abaixo
+  }
+  try {
+    // O error devolvido aqui é o da nova tentativa de revogação, já sem sessão no aparelho
+    await auth.signOut({ scope: 'local' });
   } catch (erro) {
     throw normalizarErro(erro);
   }
