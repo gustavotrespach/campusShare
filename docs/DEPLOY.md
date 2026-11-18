@@ -1,6 +1,6 @@
 # Deploy público — CampusShare (T33)
 
-> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34) e com as correções pós-deploy (T35, 17/11).
+> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34) com as correções pós-deploy (T35, 17/11) e com a navegação após "Sair" (T37, 17/11).
 
 ## Links
 
@@ -10,7 +10,7 @@
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
 | APK v1.0.0, SDK 57 — versão entregue na TD de deploy (continua disponível) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/9733805e-ebe6-41ff-bb63-dbf9f4f67ee0` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=9733805e-ebe6-41ff-bb63-dbf9f4f67ee0) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/9733805e-ebe6-41ff-bb63-dbf9f4f67ee0) |
+| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/b9a904a8-3a58-453d-8ebb-f03b6fffb650` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=b9a904a8-3a58-453d-8ebb-f03b6fffb650) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/b9a904a8-3a58-453d-8ebb-f03b6fffb650) |
 | Backend (Supabase, projeto **CampusShare**, região São Paulo) | <https://yqovnmlrbpkgwzmlnncb.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
 
@@ -57,7 +57,13 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] `exps://**` na allowlist de redirect do Auth remoto (`supabase config push` do Gustavo; o Auth foi aplicado, e a etapa de Storage terminou com 402, sem alterar nada: ver Observações)
 - [x] EAS Update da `main` com runtime 1.1.0 (grupo `9733805e-ebe6-41ff-bb63-dbf9f4f67ee0`, logout sem internet); runtime 1.0.0 conferido com o update de 18/10
 - [x] Testado no iPhone (Expo Go SDK 58): "Sair" apaga a sessão com e sem internet (ao reabrir, abre no login)
-- [ ] Bug conhecido: depois do "Sair" aparece a tela "Unmatched Route — Page could not be found" em vez do login (correção na T37)
+- [x] Bug: depois do "Sair" aparecia a tela "Unmatched Route — Page could not be found" em vez do login (corrigido na T37, abaixo)
+
+## Navegação após "Sair" (T37, 17/11/2026)
+
+- [x] Causa: sem sessão, o guard do Expo Router 58 mandava para `"/(publico)"`, grupo sem `index`; corrigido com `redirectTo` nos `Stack.Protected` do `app/_layout.tsx`, com teste automatizado
+- [x] EAS Update da `main` com runtime 1.1.0 (grupo `b9a904a8-3a58-453d-8ebb-f03b6fffb650`); runtime 1.0.0 conferido com o update de 18/10
+- [x] Testado no iPhone pelo link público (Expo Go SDK 58, sem o Mac): "Sair" com Wi-Fi, "Sair" em modo avião e reabrir deslogado levam ao login
 
 ## Observações
 
