@@ -8,11 +8,14 @@
 |---|---|
 | APK Android atual — v1.1.0, SDK 58 (permanente) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.1.0/CampusShare-1.1.0.apk> |
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
-| APK v1.0.0, SDK 57 — versão entregue na TD de deploy (continua disponível) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
+| APK v1.0.0, SDK 57 — versão entregue na TD de deploy (aponta para o backend antigo, inativo desde a T36) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
 | App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/b9a904a8-3a58-453d-8ebb-f03b6fffb650` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=b9a904a8-3a58-453d-8ebb-f03b6fffb650) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/b9a904a8-3a58-453d-8ebb-f03b6fffb650) |
-| Backend (Supabase, projeto **CampusShare**, região São Paulo) | <https://yqovnmlrbpkgwzmlnncb.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
+| Backend (Supabase, projeto `cofhvybajjzczrbojttv`, região São Paulo, desde a T36) | <https://cofhvybajjzczrbojttv.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
+| Webhook do Mercado Pago (aplicação do vendedor de teste) | `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
+
+**A versão atual é a v1.1.0.** O APK v1.0.0 continua baixável, mas o update dele (runtime 1.0.0, de 18/10) aponta para o projeto Supabase antigo (`yqovnmlrbpkgwzmlnncb`), que ficou sem uso desde a migração da T36 e pausa sozinho: o login nele deixa de funcionar.
 
 O link de artefato do EAS expira (o do APK de 18/10 deixou de funcionar em 01/11); por isso o APK fica anexado à release do GitHub.
 
@@ -69,7 +72,8 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 
 - **iPhone:** o Expo Go só existe na versão mais recente e abre um único SDK. De 12/11 até a T34 o app (SDK 57) ficou indisponível no iPhone; desde a versão 1.1.0 (SDK 58) abre de novo pelo link acima.
 - **Versões e runtime:** o `runtimeVersion` segue a `version` do app (policy `appVersion`). O APK v1.0.0 (runtime 1.0.0) só recebe updates de runtime 1.0.0 e continua com o update de 18/10 (SDK 57); o APK v1.1.0 e o Expo Go recebem os de runtime 1.1.0. Ao trocar de SDK, suba a `version` antes de publicar.
-- O projeto Supabase foi pausado por inatividade depois da AP2 e reativado em 12/11; o workflow **Manter ativo** evita nova pausa. O GitHub desliga workflows agendados após 60 dias sem atividade no repositório: reative em Actions se isso acontecer.
-- **`supabase config push` e o erro 402:** o bloco `[remotes.producao.storage.analytics]` do `config.toml` tem `enabled = true` (Analytics Buckets/Iceberg, recurso pago). O push aplica o Auth e para na etapa de Storage com 402, sem alterar o Storage. Confira no diff que só o Auth muda; alinhar esse bloco fica para uma tarefa própria.
+- **Migração (T36):** o projeto antigo (`yqovnmlrbpkgwzmlnncb`) ficou numa conta cujo painel não se acessa; o backend passou para o `cofhvybajjzczrbojttv`, na conta do Gustavo com login pelo GitHub. O projeto antigo não foi apagado nem alterado. O APK v1.1.0 tem a URL antiga no bundle embutido e passa para a nova ao baixar o EAS Update (aplicado na abertura seguinte à do download).
+- O projeto Supabase antigo foi pausado por inatividade depois da AP2 e reativado em 12/11; o workflow **Manter ativo** evita nova pausa. O GitHub desliga workflows agendados após 60 dias sem atividade no repositório: reative em Actions se isso acontecer.
+- **`supabase config push` e o erro 402:** Analytics Buckets (Iceberg) e Vector Buckets são do plano Pro, e qualquer escrita de Storage no plano gratuito pode voltar `402 entitlement_required` (`storage.iceberg_catalog`). Desde a T36 o `[remotes.producao]` declara os dois desligados. Se o push ainda mostrar uma mudança de Storage, responda **"n"** a ela: a CLI 2.119 pula só o Storage e termina com sucesso (código 0), e o Auth, que vem antes, já foi aplicado. O `storage.enabled` não evita a escrita: na 2.119 ele só controla o Storage local.
 - Para reativar à mão: painel do Supabase → projeto → **Restore project**, e depois Actions → Deploy → *Run workflow* se houver migration nova.
 - Contas de teste: o cadastro só aceita e-mail `@rede.ulbra.br`; o envio pelo Resend em modo de teste só entrega ao dono da conta, então contas extras são criadas no painel (Add user → Auto Confirm).

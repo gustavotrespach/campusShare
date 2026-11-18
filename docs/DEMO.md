@@ -1,7 +1,7 @@
 # Roteiro da demo — AP2 (22/10/2026)
 
 Apresentação de 5 a 7 minutos do fluxo completo do CampusShare, rodando no **Supabase remoto**
-(`yqovnmlrbpkgwzmlnncb`), sem depender do Mac do Gustavo nem do Wi-Fi da faculdade.
+(`cofhvybajjzczrbojttv` desde a T36; na AP2 era o `yqovnmlrbpkgwzmlnncb`), sem depender do Mac do Gustavo nem do Wi-Fi da faculdade.
 
 | Papel | Quem | Aparelho | Conta |
 |---|---|---|---|
@@ -47,7 +47,7 @@ Como instalar: README → "Como instalar a demo".
 
 - `health` remota respondendo (Perfil → "Servidor: ok").
 - Webhook do Mercado Pago apontando para
-  `https://yqovnmlrbpkgwzmlnncb.supabase.co/functions/v1/webhook-mercado-pago`, com o segredo
+  `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago`, com o segredo
   da aplicação do **vendedor de teste** no `MERCADO_PAGO_WEBHOOK_SECRET` (MEMORY → "Segredo do
   webhook no sandbox").
 - Fazer **um ensaio completo** na véspera, até "Pagamento confirmado!", e anotar quanto o Pix
