@@ -1,6 +1,6 @@
 # Deploy público — CampusShare (T33)
 
-> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34).
+> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34) e com as correções pós-deploy (T35, 17/11).
 
 ## Links
 
@@ -10,7 +10,7 @@
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
 | APK v1.0.0, SDK 57 — versão entregue na TD de deploy (continua disponível) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/5037009b-8cd2-46bd-ac9a-68c8f88ea4c9` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=5037009b-8cd2-46bd-ac9a-68c8f88ea4c9) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/5037009b-8cd2-46bd-ac9a-68c8f88ea4c9) |
+| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/9733805e-ebe6-41ff-bb63-dbf9f4f67ee0` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=9733805e-ebe6-41ff-bb63-dbf9f4f67ee0) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/9733805e-ebe6-41ff-bb63-dbf9f4f67ee0) |
 | Backend (Supabase, projeto **CampusShare**, região São Paulo) | <https://yqovnmlrbpkgwzmlnncb.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
 
@@ -52,10 +52,18 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] APK 1.1.0 (versionCode 2, mesma keystore) anexado à release `v1.1.0`; release `v1.0.0` intacta
 - [x] Os dois links de APK respondem 200
 
+## Correções pós-deploy (T35, 17/11/2026)
+
+- [x] `exps://**` na allowlist de redirect do Auth remoto (`supabase config push` do Gustavo; o Auth foi aplicado, e a etapa de Storage terminou com 402, sem alterar nada: ver Observações)
+- [x] EAS Update da `main` com runtime 1.1.0 (grupo `9733805e-ebe6-41ff-bb63-dbf9f4f67ee0`, logout sem internet); runtime 1.0.0 conferido com o update de 18/10
+- [x] Testado no iPhone (Expo Go SDK 58): "Sair" apaga a sessão com e sem internet (ao reabrir, abre no login)
+- [ ] Bug conhecido: depois do "Sair" aparece a tela "Unmatched Route — Page could not be found" em vez do login (correção na T37)
+
 ## Observações
 
 - **iPhone:** o Expo Go só existe na versão mais recente e abre um único SDK. De 12/11 até a T34 o app (SDK 57) ficou indisponível no iPhone; desde a versão 1.1.0 (SDK 58) abre de novo pelo link acima.
 - **Versões e runtime:** o `runtimeVersion` segue a `version` do app (policy `appVersion`). O APK v1.0.0 (runtime 1.0.0) só recebe updates de runtime 1.0.0 e continua com o update de 18/10 (SDK 57); o APK v1.1.0 e o Expo Go recebem os de runtime 1.1.0. Ao trocar de SDK, suba a `version` antes de publicar.
 - O projeto Supabase foi pausado por inatividade depois da AP2 e reativado em 12/11; o workflow **Manter ativo** evita nova pausa. O GitHub desliga workflows agendados após 60 dias sem atividade no repositório: reative em Actions se isso acontecer.
+- **`supabase config push` e o erro 402:** o bloco `[remotes.producao.storage.analytics]` do `config.toml` tem `enabled = true` (Analytics Buckets/Iceberg, recurso pago). O push aplica o Auth e para na etapa de Storage com 402, sem alterar o Storage. Confira no diff que só o Auth muda; alinhar esse bloco fica para uma tarefa própria.
 - Para reativar à mão: painel do Supabase → projeto → **Restore project**, e depois Actions → Deploy → *Run workflow* se houver migration nova.
 - Contas de teste: o cadastro só aceita e-mail `@rede.ulbra.br`; o envio pelo Resend em modo de teste só entrega ao dono da conta, então contas extras são criadas no painel (Add user → Auto Confirm).
