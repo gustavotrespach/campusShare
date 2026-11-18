@@ -1,6 +1,6 @@
 # Deploy público — CampusShare (T33)
 
-> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34) com as correções pós-deploy (T35, 17/11) e com a navegação após "Sair" (T37, 17/11).
+> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11) e com a navegação após "Sair" (T37, 17/11).
 
 ## Links
 
