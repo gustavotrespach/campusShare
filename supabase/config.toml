@@ -428,11 +428,12 @@ verify_jwt = true
 verify_jwt = false
 
 # ============================================================
-# Projeto remoto (yqovnmlrbpkgwzmlnncb). O CLI aplica este bloco por cima da configuração acima
-# quando o comando roda contra o projeto linkado (config push / config diff).
+# Projeto remoto (cofhvybajjzczrbojttv, desde a T36; o antigo, yqovnmlrbpkgwzmlnncb, ficou inativo).
+# O CLI aplica este bloco por cima da configuração acima quando o comando roda contra o projeto
+# linkado (config push / config diff).
 # ============================================================
 [remotes.producao]
-project_id = "yqovnmlrbpkgwzmlnncb"
+project_id = "cofhvybajjzczrbojttv"
 
 # Resend com o remetente de teste (sem domínio próprio no MVP). A senha é a API key, lida de
 # supabase/.env (fora do git); no remoto ela fica guardada no Auth pelo `config push`.
@@ -445,7 +446,7 @@ pass = "env(RESEND_API_KEY)"
 admin_email = "onboarding@resend.dev"
 sender_name = "CampusShare"
 
-# Valores atuais do remoto, mantidos para o `config push` não mexer no que não é do Auth/T08.
+# Valores do remoto antigo, mantidos no novo para o Auth e o banco se comportarem igual.
 [remotes.producao.auth.email]
 otp_length = 8
 
@@ -457,6 +458,14 @@ verify_enabled = true
 default_pool_size = 15
 max_client_conn = 200
 
+# Analytics Buckets (Iceberg) e Vector Buckets são do plano Pro: no remoto ficam declarados
+# desligados, e o local continua como está acima. Qualquer escrita de Storage no plano gratuito
+# pode voltar 402 entitlement_required (storage.iceberg_catalog). Se o config push mostrar uma
+# mudança de Storage, responda "n" a ela: a CLI (2.119) pula só o Storage e termina com sucesso,
+# e o Auth, que vem antes, já foi aplicado. O storage.enabled não serve para isso: desde a 2.119
+# ele só liga e desliga o Storage local (Docker), não a escrita no remoto.
 [remotes.producao.storage.analytics]
-enabled = true
-max_namespaces = 10
+enabled = false
+
+[remotes.producao.storage.vector]
+enabled = false
