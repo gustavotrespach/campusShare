@@ -1,8 +1,10 @@
 import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 
 import { formatarDataHoraCompleta, FUSO_APP } from '@/utils/data-hora';
 import { tema } from '@/tema';
+
+import { Botao } from './Botao';
 
 interface Props {
   rotulo: string;
@@ -44,20 +46,20 @@ export function SeletorDataHora({ rotulo, valor, aoMudar, erro }: Props) {
         />
       ) : (
         <View style={estilos.botoes}>
-          <Pressable
-            accessibilityRole="button"
+          <Botao
+            titulo="Mudar data"
+            icone="calendar-outline"
+            variante="secundario"
             onPress={() => abrirNoAndroid('date')}
-            style={estilos.botao}
-          >
-            <Text style={estilos.textoBotao}>Mudar data</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
+            estilo={estilos.botao}
+          />
+          <Botao
+            titulo="Mudar hora"
+            icone="time-outline"
+            variante="secundario"
             onPress={() => abrirNoAndroid('time')}
-            style={estilos.botao}
-          >
-            <Text style={estilos.textoBotao}>Mudar hora</Text>
-          </Pressable>
+            estilo={estilos.botao}
+          />
         </View>
       )}
       {erro ? (
@@ -70,18 +72,12 @@ export function SeletorDataHora({ rotulo, valor, aoMudar, erro }: Props) {
 }
 
 const estilos = StyleSheet.create({
-  container: { gap: 6 },
-  rotulo: { fontSize: 14, fontWeight: '600', color: tema.cores.texto },
-  valor: { fontSize: 15, color: tema.cores.texto },
+  container: { gap: tema.espaco.x2 },
+  rotulo: { ...tema.tipografia.rotulo, color: tema.cores.texto },
+  valor: { ...tema.tipografia.corpoForte, color: tema.cores.texto },
   seletorIos: { alignSelf: 'flex-start' },
-  botoes: { flexDirection: 'row', gap: 8 },
-  botao: {
-    borderWidth: 1,
-    borderColor: tema.cores.primaria,
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
-  textoBotao: { fontSize: 15, color: tema.cores.primaria, fontWeight: '600' },
-  erro: { fontSize: 13, color: tema.cores.erro },
+  botoes: { flexDirection: 'row', gap: tema.espaco.x2 },
+  // Lado a lado, cada um com metade da linha
+  botao: { flex: 1, alignSelf: 'auto', paddingHorizontal: tema.espaco.x3 },
+  erro: { ...tema.tipografia.legenda, color: tema.cores.erro },
 });

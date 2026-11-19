@@ -1,9 +1,9 @@
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { tema } from '@/tema';
 
 import { Botao } from './Botao';
+import { IconeEmCirculo } from './IconeEmCirculo';
 import type { NomeIcone } from './icones';
 
 interface Props {
@@ -11,15 +11,15 @@ interface Props {
   titulo: string;
   mensagem: string;
   acao?: { titulo: string; icone?: NomeIcone; onPress: () => void };
+  // Botão de texto abaixo da ação principal (ex.: "Voltar" no erro de carregamento)
+  acaoSecundaria?: { titulo: string; onPress: () => void };
 }
 
 // Lista vazia ou erro de carregamento: ícone, título, explicação e, se houver, uma ação
-export function EstadoVazio({ icone, titulo, mensagem, acao }: Props) {
+export function EstadoVazio({ icone, titulo, mensagem, acao, acaoSecundaria }: Props) {
   return (
     <View style={estilos.container}>
-      <View style={estilos.circulo}>
-        <Ionicons name={icone} size={36} color={tema.cores.primaria} />
-      </View>
+      <IconeEmCirculo icone={icone} />
       <Text style={estilos.titulo}>{titulo}</Text>
       <Text style={estilos.mensagem}>{mensagem}</Text>
       {acao ? (
@@ -28,6 +28,14 @@ export function EstadoVazio({ icone, titulo, mensagem, acao }: Props) {
           icone={acao.icone}
           onPress={acao.onPress}
           estilo={estilos.acao}
+        />
+      ) : null}
+      {acaoSecundaria ? (
+        <Botao
+          titulo={acaoSecundaria.titulo}
+          variante="texto"
+          onPress={acaoSecundaria.onPress}
+          estilo={estilos.acaoSecundaria}
         />
       ) : null}
     </View>
@@ -39,14 +47,6 @@ const estilos = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: tema.espaco.x10,
     paddingVertical: tema.espaco.x12,
-  },
-  circulo: {
-    width: 80,
-    height: 80,
-    borderRadius: tema.raio.pilula,
-    backgroundColor: tema.cores.primariaClara,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   titulo: {
     ...tema.tipografia.subtitulo,
@@ -61,4 +61,5 @@ const estilos = StyleSheet.create({
     marginTop: tema.espaco.x2,
   },
   acao: { marginTop: tema.espaco.x6 },
+  acaoSecundaria: { marginTop: tema.espaco.x2 },
 });

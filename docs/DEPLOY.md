@@ -1,6 +1,6 @@
 # Deploy público — CampusShare (T33)
 
-> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11) e com a navegação após "Sair" (T37, 17/11).
+> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11), com a navegação após "Sair" (T37, 17/11) e com a migração do backend para o projeto Supabase novo (T36, 18/11).
 
 ## Links
 
@@ -10,9 +10,9 @@
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
 | APK v1.0.0, SDK 57 — versão entregue na TD de deploy (aponta para o backend antigo, inativo desde a T36) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/b9a904a8-3a58-453d-8ebb-f03b6fffb650` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=b9a904a8-3a58-453d-8ebb-f03b6fffb650) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/b9a904a8-3a58-453d-8ebb-f03b6fffb650) |
+| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/9a0e79e7-753c-4bba-93db-7df6bdeba244` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=9a0e79e7-753c-4bba-93db-7df6bdeba244) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/9a0e79e7-753c-4bba-93db-7df6bdeba244) |
 | Backend (Supabase, projeto `cofhvybajjzczrbojttv`, região São Paulo, desde a T36) | <https://cofhvybajjzczrbojttv.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
-| Webhook do Mercado Pago (aplicação do vendedor de teste) | `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago` |
+| Webhook do Mercado Pago (aba Teste da aplicação CampusShare e aplicação do vendedor de teste; ver Observações) | `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
 
 **A versão atual é a v1.1.0.** O APK v1.0.0 continua baixável, mas o update dele (runtime 1.0.0, de 18/10) aponta para o projeto Supabase antigo (`yqovnmlrbpkgwzmlnncb`), que ficou sem uso desde a migração da T36 e pausa sozinho: o login nele deixa de funcionar.
@@ -68,11 +68,21 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] EAS Update da `main` com runtime 1.1.0 (grupo `b9a904a8-3a58-453d-8ebb-f03b6fffb650`); runtime 1.0.0 conferido com o update de 18/10
 - [x] Testado no iPhone pelo link público (Expo Go SDK 58, sem o Mac): "Sair" com Wi-Fi, "Sair" em modo avião e reabrir deslogado levam ao login
 
+## Migração do backend (T36, 18/11/2026)
+
+- [x] Projeto novo `cofhvybajjzczrbojttv` com as 12 migrations e as 3 Edge Functions pelo workflow **Deploy** (release #56); sem login, `health` responde 200, `reservar-vaga` 401 e `webhook-mercado-pago` 401 (`ASSINATURA_INVALIDA`)
+- [x] Auth (hook de domínio, SMTP do Resend, `exps://**`) aplicado por `config push` do Gustavo, com `config diff` zerado; segredos do Mercado Pago cadastrados; webhook apontando para o projeto novo (notificação assinada: 200 com a assinatura certa, 401 com a errada)
+- [x] Variáveis do EAS `preview` com a URL e a chave publicável novas; EAS Update da `main` (`7664eac`) com runtime 1.1.0, grupo `9a0e79e7-753c-4bba-93db-7df6bdeba244`, com só a URL nova no bundle (iOS e Android); runtime 1.0.0 conferido com o update de 18/10
+- [x] Testado pelo Gustavo no iPhone pelo link público: login com a segunda conta, cadastro de veículo, publicação de carona, "Sair", login com a conta dele, reserva, Pix e confirmação automática pelo webhook em menos de 2 minutos
+- [x] APK 1.1.0 (versionCode 3) gerado com o backend novo, substituído na release v1.1.0 com o mesmo link (T38, 19/11)
+- [ ] Teste do APK 1.1.0 (versionCode 3) num Android real: login e "Caronas próximas" na primeira abertura
+
 ## Observações
 
 - **iPhone:** o Expo Go só existe na versão mais recente e abre um único SDK. De 12/11 até a T34 o app (SDK 57) ficou indisponível no iPhone; desde a versão 1.1.0 (SDK 58) abre de novo pelo link acima.
 - **Versões e runtime:** o `runtimeVersion` segue a `version` do app (policy `appVersion`). O APK v1.0.0 (runtime 1.0.0) só recebe updates de runtime 1.0.0 e continua com o update de 18/10 (SDK 57); o APK v1.1.0 e o Expo Go recebem os de runtime 1.1.0. Ao trocar de SDK, suba a `version` antes de publicar.
-- **Migração (T36):** o projeto antigo (`yqovnmlrbpkgwzmlnncb`) ficou numa conta cujo painel não se acessa; o backend passou para o `cofhvybajjzczrbojttv`, na conta do Gustavo com login pelo GitHub. O projeto antigo não foi apagado nem alterado. O APK v1.1.0 tem a URL antiga no bundle embutido e passa para a nova ao baixar o EAS Update (aplicado na abertura seguinte à do download).
+- **Migração (T36):** o projeto antigo (`yqovnmlrbpkgwzmlnncb`) ficou numa conta cujo painel não se acessa; o backend passou para o `cofhvybajjzczrbojttv`, na conta do Gustavo com login pelo GitHub. O projeto antigo não foi apagado nem alterado. Migração concluída em 18/11 (checklist acima). O primeiro APK v1.1.0 (versionCode 2, de 12/11) tinha a URL antiga embutida e só passava para a nova depois de baixar o EAS Update (o login falhava na primeira abertura); desde 19/11 a release `v1.1.0` tem, no mesmo link, o APK com versionCode 3 gerado com o backend novo (T38). Quem já instalou o anterior recebe o backend novo pelo EAS Update ou pode instalar o novo por cima (mesma keystore, versionCode maior).
+- **Webhook do Mercado Pago no sandbox:** as orders de teste (`ORDTST…`) são notificadas pela URL da aba **Teste** em "Configuração de webhooks" da aplicação CampusShare. A aplicação do vendedor de teste só tem modo produção, com a URL dela. Ao trocar de backend, atualize **as duas URLs** e **não gere segredo novo**: o `MERCADO_PAGO_WEBHOOK_SECRET` cadastrado continua valendo, e um segredo novo obrigaria a refazer o `supabase secrets set`.
 - O projeto Supabase antigo foi pausado por inatividade depois da AP2 e reativado em 12/11; o workflow **Manter ativo** evita nova pausa. O GitHub desliga workflows agendados após 60 dias sem atividade no repositório: reative em Actions se isso acontecer.
 - **`supabase config push` e o erro 402:** Analytics Buckets (Iceberg) e Vector Buckets são do plano Pro, e qualquer escrita de Storage no plano gratuito pode voltar `402 entitlement_required` (`storage.iceberg_catalog`). Desde a T36 o `[remotes.producao]` declara os dois desligados. Se o push ainda mostrar uma mudança de Storage, responda **"n"** a ela: a CLI 2.119 pula só o Storage e termina com sucesso (código 0), e o Auth, que vem antes, já foi aplicado. O `storage.enabled` não evita a escrita: na 2.119 ele só controla o Storage local.
 - Para reativar à mão: painel do Supabase → projeto → **Restore project**, e depois Actions → Deploy → *Run workflow* se houver migration nova.

@@ -37,7 +37,7 @@ export function CampoTexto({
   const borda = erro
     ? estilos.caixaErro
     : focado
-      ? estilos.caixaFoco
+      ? estilosCaixaCampo.foco
       : somenteLeitura
         ? estilos.caixaLeitura
         : null;
@@ -45,7 +45,7 @@ export function CampoTexto({
   return (
     <View style={estilos.container}>
       <Text style={estilos.rotulo}>{rotulo}</Text>
-      <View style={[estilos.caixa, borda]}>
+      <View style={[estilosCaixaCampo.caixa, borda]}>
         {icone ? (
           <Ionicons
             name={icone}
@@ -66,7 +66,7 @@ export function CampoTexto({
             setFocado(false);
             onBlur?.(evento);
           }}
-          style={[estilos.entrada, somenteLeitura ? estilos.entradaLeitura : null, style]}
+          style={[estilosCaixaCampo.entrada, somenteLeitura ? estilos.entradaLeitura : null, style]}
           {...props}
         />
         {senha ? (
@@ -98,9 +98,8 @@ export function CampoTexto({
   );
 }
 
-const estilos = StyleSheet.create({
-  container: { gap: 6 },
-  rotulo: { ...tema.tipografia.rotulo, color: cores.texto },
+// Caixa do campo (3.2), também usada pela barra de busca da tela inicial (BuscaLocal)
+export const estilosCaixaCampo = StyleSheet.create({
   caixa: {
     minHeight: tema.toque.campo,
     borderRadius: tema.raio.medio,
@@ -113,15 +112,21 @@ const estilos = StyleSheet.create({
     gap: 10,
   },
   // Borda 2 com padding 13.5: o texto não pula ao focar
-  caixaFoco: { borderWidth: 2, borderColor: cores.primaria, paddingHorizontal: 13.5 },
-  caixaErro: { borderWidth: 2, borderColor: cores.erro, paddingHorizontal: 13.5 },
-  caixaLeitura: { backgroundColor: cores.neutroClaro, borderWidth: 1, borderColor: cores.borda },
+  foco: { borderWidth: 2, borderColor: cores.primaria, paddingHorizontal: 13.5 },
+  // Texto digitado
   entrada: {
     flex: 1,
     ...tema.tipografia.corpo,
     color: cores.texto,
     paddingVertical: tema.espaco.x3,
   },
+});
+
+const estilos = StyleSheet.create({
+  container: { gap: 6 },
+  rotulo: { ...tema.tipografia.rotulo, color: cores.texto },
+  caixaErro: { borderWidth: 2, borderColor: cores.erro, paddingHorizontal: 13.5 },
+  caixaLeitura: { backgroundColor: cores.neutroClaro, borderWidth: 1, borderColor: cores.borda },
   entradaLeitura: { color: cores.textoSecundario },
   botaoSenha: {
     width: tema.toque.minimo,

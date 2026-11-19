@@ -7,20 +7,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Avatar } from '@/components/Avatar';
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { BuscaLocal } from '@/components/BuscaLocal';
 import { EsqueletoLista } from '@/components/EsqueletoLista';
 import { EstadoVazio } from '@/components/EstadoVazio';
 import { ItemCarona } from '@/components/ItemCarona';
 import { OpcaoInterruptor } from '@/components/OpcaoInterruptor';
-import { SeletorOpcoes, type Opcao } from '@/components/SeletorOpcoes';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
-import { obterLocalizacaoAtual, type Coordenadas } from '@/services/localizacao';
+import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
 import { obterMeuPerfil } from '@/services/perfil';
 import { tema } from '@/tema';
 import { textoContagemCaronas } from '@/utils/exibicao-carona';
 import { mostrarFiltroSomenteMulheres } from '@/utils/genero';
 import { primeiroNome } from '@/utils/nome';
-import { ID_MINHA_LOCALIZACAO, ID_PONTO_PADRAO, PONTOS_FIXOS, pontoPorId } from '@/utils/pontos';
+import { pontoPorTexto } from '@/utils/busca-local';
+import { ID_PONTO_PADRAO, pontoPorId, type PontoFixo } from '@/utils/pontos';
 
 type Lista =
   | { tipo: 'carregando' }
@@ -29,10 +30,21 @@ type Lista =
 
 const { cores } = tema;
 
-const OPCOES_PONTO: Opcao<string>[] = [
-  ...PONTOS_FIXOS.map((ponto) => ({ valor: ponto.id, rotulo: ponto.rotulo })),
-  { valor: ID_MINHA_LOCALIZACAO, rotulo: 'Minha localização', icone: 'locate-outline' },
-];
+// O centro da busca e o nome dele na legenda "Caronas perto de: …"
+interface CentroBusca {
+  rotulo: string;
+  latitude: number;
+  longitude: number;
+}
+
+type AvisoBusca = { mensagem: string; tentarDeNovo?: () => void } | null;
+
+function centroDoPonto(ponto: PontoFixo): CentroBusca {
+  return { rotulo: ponto.rotulo, latitude: ponto.latitude, longitude: ponto.longitude };
+}
+
+const PONTO_PADRAO = pontoPorId(ID_PONTO_PADRAO);
+const CENTRO_INICIAL: CentroBusca | null = PONTO_PADRAO ? centroDoPonto(PONTO_PADRAO) : null;
 
 // Altura do botão flutuante e folga: o último card não fica embaixo dele
 const ESPACO_BOTAO_FLUTUANTE = 96;
@@ -54,18 +66,17 @@ async function consultar(
 
 export default function TelaCaronasProximas() {
   const insets = useSafeAreaInsets();
-  const [idPonto, setIdPonto] = useState(ID_PONTO_PADRAO);
-  const [minhaLocalizacao, setMinhaLocalizacao] = useState<Coordenadas | null>(null);
+  const [centro, setCentro] = useState<CentroBusca | null>(CENTRO_INICIAL);
+  const [texto, setTexto] = useState('');
+  const [buscandoTexto, setBuscandoTexto] = useState<string | null>(null);
   const [somenteMulheres, setSomenteMulheres] = useState(false);
   const [exibirFiltro, setExibirFiltro] = useState(false);
   const [nomeUsuario, setNomeUsuario] = useState('');
   const [lista, setLista] = useState<Lista>({ tipo: 'carregando' });
   const [atualizando, setAtualizando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
-  const [aviso, setAviso] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<AvisoBusca>(null);
 
-  const centro =
-    idPonto === ID_MINHA_LOCALIZACAO ? minhaLocalizacao : (pontoPorId(idPonto) ?? null);
   const latitude = centro?.latitude ?? null;
   const longitude = centro?.longitude ?? null;
   // Quem não vê o filtro (ex.: mudou o gênero no Perfil) busca sempre sem ele
@@ -124,24 +135,56 @@ export default function TelaCaronasProximas() {
     setAtualizando(false);
   };
 
-  const aoEscolherPonto = async (id: string) => {
+  // Novo centro: a lista anterior dá lugar ao esqueleto até a busca responder (mesmo centro: nada
+  // muda e a lista fica)
+  const usarCentro = (novo: CentroBusca) => {
     setAviso(null);
-    if (id !== ID_MINHA_LOCALIZACAO) {
+    setTexto('');
+    if (novo.latitude !== latitude || novo.longitude !== longitude) {
       setLista({ tipo: 'carregando' });
-      setIdPonto(id);
-      return;
     }
+    setCentro(novo);
+  };
+
+  const aoUsarMinhaLocalizacao = async () => {
+    setAviso(null);
     setLocalizando(true);
     try {
+      // Só pede a permissão aqui, no toque (nunca ao abrir o app)
       const coordenadas = await obterLocalizacaoAtual();
-      setLista({ tipo: 'carregando' });
-      setMinhaLocalizacao(coordenadas);
-      setIdPonto(id);
+      usarCentro({ rotulo: 'sua localização', ...coordenadas });
     } catch (falha) {
-      // Mantém o ponto anterior
-      setAviso(normalizarErro(falha).message);
+      // Mantém o centro e a lista anteriores
+      setAviso({
+        mensagem: normalizarErro(falha).message,
+        tentarDeNovo: () => void aoUsarMinhaLocalizacao(),
+      });
     } finally {
       setLocalizando(false);
+    }
+  };
+
+  // Texto livre: um ponto fixo pelo nome ou o geocodificador do aparelho (sem chamada ao backend)
+  const aoBuscarTexto = async () => {
+    const digitado = texto.replace(/\s+/g, ' ').trim();
+    if (!digitado) {
+      return;
+    }
+    const ponto = pontoPorTexto(digitado);
+    if (ponto) {
+      usarCentro(centroDoPonto(ponto));
+      return;
+    }
+    setAviso(null);
+    setBuscandoTexto(digitado);
+    try {
+      const coordenadas = await localizarEndereco(digitado);
+      usarCentro({ rotulo: digitado, ...coordenadas });
+    } catch (falha) {
+      // O texto e a lista anterior ficam: o usuário corrige e busca de novo
+      setAviso({ mensagem: normalizarErro(falha).message });
+    } finally {
+      setBuscandoTexto(null);
     }
   };
 
@@ -175,15 +218,23 @@ export default function TelaCaronasProximas() {
         </View>
       </View>
 
-      <SeletorOpcoes
-        rotulo="Perto de"
-        opcoes={OPCOES_PONTO}
-        valor={idPonto}
-        aoMudar={(id) => void aoEscolherPonto(id)}
-        horizontal
-        iconeSelecionado="location"
+      <BuscaLocal
+        texto={texto}
+        aoMudarTexto={setTexto}
+        aoBuscarTexto={() => void aoBuscarTexto()}
+        aoEscolherPonto={(ponto) => usarCentro(centroDoPonto(ponto))}
+        aoUsarMinhaLocalizacao={() => void aoUsarMinhaLocalizacao()}
+        localizando={localizando}
       />
-      {localizando ? <Text style={estilos.legenda}>Obtendo sua localização…</Text> : null}
+      <Text style={estilos.legenda} accessibilityLiveRegion="polite">
+        {localizando
+          ? 'Obtendo sua localização…'
+          : buscandoTexto
+            ? `Buscando “${buscandoTexto}”…`
+            : centro
+              ? `Caronas perto de: ${centro.rotulo}`
+              : null}
+      </Text>
       {exibirFiltro ? (
         <OpcaoInterruptor
           icone="female-outline"
@@ -200,11 +251,12 @@ export default function TelaCaronasProximas() {
       ) : null}
       {aviso ? (
         <Aviso
-          mensagem={aviso}
-          acao={{
-            titulo: 'Tentar de novo',
-            onPress: () => void aoEscolherPonto(ID_MINHA_LOCALIZACAO),
-          }}
+          mensagem={aviso.mensagem}
+          acao={
+            aviso.tentarDeNovo
+              ? { titulo: 'Tentar de novo', onPress: aviso.tentarDeNovo }
+              : undefined
+          }
         />
       ) : null}
       {lista.tipo === 'erro' ? (
@@ -229,6 +281,9 @@ export default function TelaCaronasProximas() {
           },
         ]}
         data={lista.tipo === 'pronto' ? lista.caronas : []}
+        // Tocar numa sugestão com o teclado aberto já escolhe (sem um toque só para fechar o teclado)
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         keyExtractor={(carona) => carona.id_carona}
         renderItem={({ item }) => (
           <ItemCarona

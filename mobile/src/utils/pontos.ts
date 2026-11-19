@@ -60,6 +60,8 @@ export const PONTOS_FIXOS: readonly PontoFixo[] = [
 ];
 
 export const ID_PONTO_PADRAO = 'centro-torres';
+// Referência para desempatar resultados da busca por texto (T40): o campus
+export const ID_PONTO_REFERENCIA = 'ulbra-torres';
 export const ID_MINHA_LOCALIZACAO = 'minha-localizacao';
 
 export function pontoPorId(id: string): PontoFixo | undefined {
