@@ -3,6 +3,7 @@ import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-na
 
 import { FormularioVeiculo } from '@/components/FormularioVeiculo';
 import { cadastrarVeiculo, type DadosVeiculo } from '@/services/veiculos';
+import { tema } from '@/tema';
 
 export default function TelaNovoVeiculo() {
   // Volta para a lista, que recarrega ao ganhar o foco
@@ -17,13 +18,13 @@ export default function TelaNovoVeiculo() {
       style={estilos.tela}
     >
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
-        <FormularioVeiculo tituloBotao="Cadastrar" aoSalvar={aoSalvar} />
+        <FormularioVeiculo tituloBotao="Cadastrar veículo" aoSalvar={aoSalvar} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const estilos = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: '#fff' },
-  conteudo: { padding: 24 },
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  conteudo: { padding: tema.espaco.x5 },
 });

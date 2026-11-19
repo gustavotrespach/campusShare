@@ -1,25 +1,23 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
 import { CampoTexto } from '@/components/CampoTexto';
+import { CarregandoTela } from '@/components/CarregandoTela';
+import { Cartao } from '@/components/Cartao';
+import { ErroCarregamento } from '@/components/ErroCarregamento';
+import { EstadoVazio } from '@/components/EstadoVazio';
+import { MarcadorRota } from '@/components/LinhaRota';
+import { OpcaoInterruptor } from '@/components/OpcaoInterruptor';
 import { SeletorDataHora } from '@/components/SeletorDataHora';
 import { SeletorLocal } from '@/components/SeletorLocal';
 import { SeletorOpcoes, type Opcao } from '@/components/SeletorOpcoes';
 import { publicarCarona } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { listarMeusVeiculos, type Veiculo } from '@/services/veiculos';
+import { tema } from '@/tema';
 import { partidaSugerida } from '@/utils/data-hora';
 import { lerReais } from '@/utils/dinheiro';
 import { campoDoErroDePublicacao } from '@/utils/erros-carona';
@@ -39,6 +37,9 @@ type Veiculos =
 const ID_ORIGEM_PADRAO = 'centro-torres';
 const ID_DESTINO_PADRAO = 'ulbra-torres';
 const VAGAS_PADRAO = 3;
+// O valor por passageiro não aparece aqui: quem calcula é o backend (ADR-005)
+const AJUDA_CUSTO =
+  'O valor é dividido entre você e os passageiros. O valor por passageiro aparece no detalhe da carona depois de publicar.';
 const TOLERANCIAS = [0, 5, 10, 15, 20, 30];
 const OPCOES_TOLERANCIA: Opcao<number>[] = TOLERANCIAS.map((minutos) => ({
   valor: minutos,
@@ -150,38 +151,34 @@ export default function TelaPublicarCarona() {
   };
 
   if (estadoVeiculos.tipo === 'carregando') {
-    return (
-      <View style={estilos.centro}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <CarregandoTela />;
   }
 
   if (estadoVeiculos.tipo === 'erro') {
     return (
-      <View style={estilos.centro}>
-        <Aviso mensagem={estadoVeiculos.mensagem} />
-        <Botao
-          titulo="Tentar de novo"
-          onPress={async () => {
+      <ScrollView contentContainerStyle={estilos.centro}>
+        <ErroCarregamento
+          mensagem={estadoVeiculos.mensagem}
+          aoTentarDeNovo={async () => {
             setEstadoVeiculos({ tipo: 'carregando' });
             setEstadoVeiculos(await consultarVeiculos());
           }}
         />
-      </View>
+      </ScrollView>
     );
   }
 
   // RN04: sem veículo não há carona; a publicar_carona também recusa (SEM_VEICULO)
   if (veiculos.length === 0) {
     return (
-      <View style={estilos.centro}>
-        <Text style={estilos.titulo}>Cadastre um veículo primeiro</Text>
-        <Text style={estilos.ajuda}>
-          Para oferecer uma carona, informe o carro que você vai usar.
-        </Text>
-        <Botao titulo="Cadastrar veículo" onPress={() => router.push('/veiculos/novo')} />
-      </View>
+      <ScrollView contentContainerStyle={estilos.centro}>
+        <EstadoVazio
+          icone="car-sport-outline"
+          titulo="Cadastre um veículo primeiro"
+          mensagem="Para oferecer uma carona, informe o carro que você vai usar."
+          acao={{ titulo: 'Cadastrar veículo', onPress: () => router.push('/veiculos/novo') }}
+        />
+      </ScrollView>
     );
   }
 
@@ -196,70 +193,92 @@ export default function TelaPublicarCarona() {
       style={estilos.tela}
     >
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
-        <SeletorOpcoes
-          rotulo="Veículo"
-          opcoes={opcoesVeiculo}
-          valor={idVeiculo ?? ''}
-          aoMudar={setIdVeiculo}
-          erro={errosCampo.veiculo}
-        />
-        <SeletorLocal
-          rotulo="Origem"
-          idInicial={ID_ORIGEM_PADRAO}
-          valor={origem}
-          aoMudar={setOrigem}
-          erro={errosCampo.origem}
-        />
-        <SeletorLocal
-          rotulo="Destino"
-          idInicial={ID_DESTINO_PADRAO}
-          valor={destino}
-          aoMudar={setDestino}
-          erro={errosCampo.destino}
-        />
-        <SeletorDataHora
-          rotulo="Partida"
-          valor={partida}
-          aoMudar={setPartida}
-          erro={errosCampo.partida}
-        />
-        <SeletorOpcoes
-          rotulo="Vagas para passageiros"
-          ajuda="Sem contar você, que dirige."
-          opcoes={opcoesVagas}
-          valor={vagasEfetivas}
-          aoMudar={setVagas}
-          erro={errosCampo.vagas}
-        />
-        <CampoTexto
-          rotulo="Custo total da viagem (R$)"
-          value={custoTotal}
-          onChangeText={setCustoTotal}
-          erro={errosCampo.custo_total}
-          keyboardType="decimal-pad"
-          placeholder="Ex.: 24,00"
-        />
-        <Text style={estilos.ajuda}>
-          O valor é dividido entre você e os passageiros. O valor por passageiro aparece no detalhe
-          da carona depois de publicar.
-        </Text>
-        <SeletorOpcoes
-          rotulo="Tolerância de espera"
-          opcoes={OPCOES_TOLERANCIA}
-          valor={tolerancia}
-          aoMudar={setTolerancia}
-        />
-        <View style={estilos.linhaSwitch}>
-          <View style={estilos.textoSwitch}>
-            <Text style={estilos.rotulo}>Somente mulheres</Text>
-            <Text style={estilos.ajuda}>Só passageiras poderão ver e reservar.</Text>
-          </View>
-          <Switch
-            accessibilityLabel="Carona somente para mulheres"
-            value={somenteMulheres}
-            onValueChange={setSomenteMulheres}
+        <Cartao titulo="Carro">
+          <SeletorOpcoes
+            rotulo="Veículo"
+            opcoes={opcoesVeiculo}
+            valor={idVeiculo ?? ''}
+            aoMudar={setIdVeiculo}
+            erro={errosCampo.veiculo}
           />
-        </View>
+        </Cartao>
+
+        <Cartao titulo="Trajeto">
+          <View style={estilos.trajeto}>
+            <View style={estilos.ponto}>
+              <MarcadorRota tipo="origem" distanciaAteDestino={ESPACO_ENTRE_PONTOS} />
+              <View style={estilos.campoPonto}>
+                <SeletorLocal
+                  rotulo="Origem"
+                  rotuloDescricao="Descrição da origem"
+                  idInicial={ID_ORIGEM_PADRAO}
+                  valor={origem}
+                  aoMudar={setOrigem}
+                  erro={errosCampo.origem}
+                />
+              </View>
+            </View>
+            <View style={estilos.ponto}>
+              <MarcadorRota tipo="destino" />
+              <View style={estilos.campoPonto}>
+                <SeletorLocal
+                  rotulo="Destino"
+                  rotuloDescricao="Descrição do destino"
+                  idInicial={ID_DESTINO_PADRAO}
+                  valor={destino}
+                  aoMudar={setDestino}
+                  erro={errosCampo.destino}
+                />
+              </View>
+            </View>
+          </View>
+        </Cartao>
+
+        <Cartao titulo="Quando">
+          <SeletorDataHora
+            rotulo="Partida"
+            valor={partida}
+            aoMudar={setPartida}
+            erro={errosCampo.partida}
+          />
+        </Cartao>
+
+        <Cartao titulo="Vagas e valor">
+          <SeletorOpcoes
+            rotulo="Vagas para passageiros"
+            ajuda="Sem contar você, que dirige."
+            opcoes={opcoesVagas}
+            valor={vagasEfetivas}
+            aoMudar={setVagas}
+            erro={errosCampo.vagas}
+          />
+          <CampoTexto
+            rotulo="Custo total da viagem (R$)"
+            icone="cash-outline"
+            ajuda={AJUDA_CUSTO}
+            value={custoTotal}
+            onChangeText={setCustoTotal}
+            erro={errosCampo.custo_total}
+            keyboardType="decimal-pad"
+            placeholder="Ex.: 24,00"
+          />
+          <SeletorOpcoes
+            rotulo="Tolerância de espera"
+            opcoes={OPCOES_TOLERANCIA}
+            valor={tolerancia}
+            aoMudar={setTolerancia}
+          />
+        </Cartao>
+
+        <OpcaoInterruptor
+          icone="female-outline"
+          corIcone={tema.cores.secundariaTexto}
+          titulo="Somente mulheres"
+          ajuda="Só passageiras poderão ver e reservar."
+          valor={somenteMulheres}
+          aoMudar={setSomenteMulheres}
+          accessibilityLabel="Carona somente para mulheres"
+        />
 
         {erroGeral ? <Aviso mensagem={erroGeral} /> : null}
         <Botao titulo="Publicar carona" carregando={publicando} onPress={aoPublicar} />
@@ -268,13 +287,14 @@ export default function TelaPublicarCarona() {
   );
 }
 
+// Espaço entre os blocos de origem e destino; o traço da rota atravessa esse espaço
+const ESPACO_ENTRE_PONTOS = tema.espaco.x6;
+
 const estilos = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: '#fff' },
-  conteudo: { padding: 24, gap: 20 },
-  centro: { flex: 1, justifyContent: 'center', padding: 24, gap: 16, backgroundColor: '#fff' },
-  titulo: { fontSize: 18, fontWeight: '600', color: '#1f2933', textAlign: 'center' },
-  rotulo: { fontSize: 14, fontWeight: '600', color: '#1f2933' },
-  ajuda: { fontSize: 13, color: '#52606d' },
-  linhaSwitch: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  textoSwitch: { flex: 1, gap: 2 },
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  conteudo: { padding: tema.espaco.x5, gap: tema.espaco.x5 },
+  centro: { flexGrow: 1, justifyContent: 'center' },
+  trajeto: { gap: ESPACO_ENTRE_PONTOS },
+  ponto: { flexDirection: 'row', gap: tema.espaco.x3 },
+  campoPonto: { flex: 1 },
 });

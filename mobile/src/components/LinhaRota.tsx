@@ -65,11 +65,47 @@ export function LinhaRota({ origem, destino, variante = 'compacta', apagada = fa
 }
 
 const TAMANHO_PONTO = 12;
+const TRACO_ATE_PONTO = 3;
+// Meia altura do rótulo (tipografia.rotulo, linha de 20) menos meio ponto: centra o marcador nele
+const ALTURA_ATE_ROTULO = (tema.tipografia.rotulo.lineHeight - TAMANHO_PONTO) / 2;
+
+interface PropsMarcador {
+  tipo: 'origem' | 'destino';
+  // Origem: o traço desce até o ponto de destino, atravessando o espaço entre os dois blocos
+  distanciaAteDestino?: number;
+}
+
+// O mesmo desenho ao lado de blocos de formulário (Oferecer carona): anel ao lado de "Origem",
+// ponto coral ao lado de "Destino" e o traço ligando os dois. Decorativo.
+export function MarcadorRota({ tipo, distanciaAteDestino = 0 }: PropsMarcador) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={estilos.marcador}
+    >
+      {tipo === 'origem' ? (
+        <>
+          <View style={estilos.anel} />
+          <View
+            style={[
+              estilos.traco,
+              // Termina a 3 pt do ponto, como no trilho do card
+              { marginBottom: -(distanciaAteDestino + ALTURA_ATE_ROTULO - TRACO_ATE_PONTO) },
+            ]}
+          />
+        </>
+      ) : (
+        <View style={estilos.ponto} />
+      )}
+    </View>
+  );
+}
 
 const estilos = StyleSheet.create({
   linha: { flexDirection: 'row', gap: tema.espaco.x3 },
   // O anel e o ponto ficam na altura do meio da primeira e da última linha de texto
-  trilho: { width: TAMANHO_PONTO, alignItems: 'center', gap: 3, paddingVertical: 5 },
+  trilho: { width: TAMANHO_PONTO, alignItems: 'center', gap: TRACO_ATE_PONTO, paddingVertical: 5 },
   trilhoCompleto: { paddingTop: 24, paddingBottom: 6 },
   anel: {
     width: TAMANHO_PONTO,
@@ -87,6 +123,12 @@ const estilos = StyleSheet.create({
     backgroundColor: cores.secundaria,
   },
   textos: { flex: 1 },
+  marcador: {
+    width: TAMANHO_PONTO,
+    alignItems: 'center',
+    gap: TRACO_ATE_PONTO,
+    paddingTop: ALTURA_ATE_ROTULO,
+  },
   corpo: { ...tema.tipografia.corpo },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
   subtitulo: { ...tema.tipografia.subtitulo, color: cores.texto },

@@ -1,20 +1,18 @@
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { Avatar } from '@/components/Avatar';
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
 import { CampoTexto } from '@/components/CampoTexto';
-import { LinhaAtalho } from '@/components/LinhaAtalho';
+import { CarregandoTela } from '@/components/CarregandoTela';
+import { Cartao } from '@/components/Cartao';
+import { Divisoria } from '@/components/Divisoria';
+import { ErroCarregamento } from '@/components/ErroCarregamento';
+import { LinhaAtalho, RECUO_DIVISORIA_ATALHO } from '@/components/LinhaAtalho';
 import { SeletorGenero } from '@/components/SeletorGenero';
+import { SeloEmailConfirmado } from '@/components/SeloEmailConfirmado';
 import { StatusServidor } from '@/components/StatusServidor';
 import { sair } from '@/services/auth';
 import { normalizarErro } from '@/services/erros';
@@ -27,15 +25,6 @@ import { temErros, validarPerfil, type CamposPerfil, type ErrosDeCampo } from '@
 type Carregamento =
   { tipo: 'carregando' } | { tipo: 'erro'; mensagem: string } | { tipo: 'pronto' };
 type Retorno = { tipo: 'sucesso' | 'erro'; mensagem: string } | null;
-
-function CampoSomenteLeitura({ rotulo, valor }: { rotulo: string; valor: string }) {
-  return (
-    <View style={estilos.leitura}>
-      <Text style={estilos.rotulo}>{rotulo}</Text>
-      <Text style={estilos.valorLeitura}>{valor}</Text>
-    </View>
-  );
-}
 
 export default function TelaPerfil() {
   const [carregamento, setCarregamento] = useState<Carregamento>({ tipo: 'carregando' });
@@ -114,24 +103,24 @@ export default function TelaPerfil() {
   // Atalhos que vieram da tela inicial (T32): nenhum caminho some, mesmo com o perfil fora do ar
   const atalhos = (
     <>
-      <View style={estilos.cartaoAtalhos}>
+      <Cartao espacado={false}>
         <LinhaAtalho
           icone="car-outline"
           titulo="Meus veículos"
           onPress={() => router.push('/veiculos')}
         />
-        <View style={estilos.divisoria} />
+        <Divisoria recuo={RECUO_DIVISORIA_ATALHO} />
         <LinhaAtalho
           icone="receipt-outline"
           titulo="Minhas reservas"
           onPress={() => router.push('/reservas')}
         />
-      </View>
+      </Cartao>
       {erroSair ? <Aviso mensagem={erroSair} /> : null}
       <Botao
         titulo="Sair"
         icone="log-out-outline"
-        variante="texto"
+        variante="textoPerigo"
         carregando={saindo}
         onPress={() => void aoSair()}
       />
@@ -140,21 +129,16 @@ export default function TelaPerfil() {
   );
 
   if (carregamento.tipo === 'carregando') {
-    return (
-      <View style={estilos.centro}>
-        <ActivityIndicator size="large" color={tema.cores.primaria} />
-      </View>
-    );
+    return <CarregandoTela />;
   }
 
   if (carregamento.tipo === 'erro' || !perfil) {
     const mensagem = carregamento.tipo === 'erro' ? carregamento.mensagem : '';
     return (
       <ScrollView contentContainerStyle={estilos.conteudo}>
-        <Aviso mensagem={mensagem} />
-        <Botao
-          titulo="Tentar de novo"
-          onPress={() => {
+        <ErroCarregamento
+          mensagem={mensagem}
+          aoTentarDeNovo={() => {
             setCarregamento({ tipo: 'carregando' });
             setTentativa((anterior) => anterior + 1);
           }}
@@ -170,35 +154,55 @@ export default function TelaPerfil() {
       style={estilos.tela}
     >
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
-        <CampoSomenteLeitura rotulo="E-mail institucional" valor={perfil.email_institucional} />
-        <CampoSomenteLeitura rotulo="Instituição" valor={perfil.instituicao} />
-        <Text style={estilos.ajuda}>
-          E-mail e instituição vêm do cadastro e não podem ser alterados.
-        </Text>
+        <View style={estilos.topo}>
+          <Avatar nome={perfil.nome_completo} tamanho={72} />
+          <Text style={estilos.nome}>{perfil.nome_completo}</Text>
+          <SeloEmailConfirmado />
+        </View>
 
-        <CampoTexto
-          rotulo="Nome completo"
-          value={nome}
-          onChangeText={setNome}
-          erro={errosCampo.nome_completo}
-          autoCapitalize="words"
-          autoComplete="name"
-          textContentType="name"
-        />
-        <CampoTexto
-          rotulo="Telefone (opcional)"
-          value={telefone}
-          onChangeText={setTelefone}
-          erro={errosCampo.telefone}
-          autoComplete="tel"
-          keyboardType="phone-pad"
-          textContentType="telephoneNumber"
-          placeholder="(51) 99999-9999"
-        />
-        <SeletorGenero valor={genero} aoMudar={setGenero} />
+        <Cartao titulo="Seus dados">
+          <CampoTexto
+            rotulo="E-mail institucional"
+            icone="mail-outline"
+            value={perfil.email_institucional}
+            editable={false}
+          />
+          <CampoTexto
+            rotulo="Instituição"
+            icone="school-outline"
+            value={perfil.instituicao}
+            editable={false}
+          />
+          <Text style={estilos.ajuda}>
+            E-mail e instituição vêm do cadastro e não podem ser alterados.
+          </Text>
 
-        {retorno ? <Aviso mensagem={retorno.mensagem} tipo={retorno.tipo} /> : null}
-        <Botao titulo="Salvar" carregando={salvando} onPress={aoSalvar} />
+          <CampoTexto
+            rotulo="Nome completo"
+            icone="person-outline"
+            value={nome}
+            onChangeText={setNome}
+            erro={errosCampo.nome_completo}
+            autoCapitalize="words"
+            autoComplete="name"
+            textContentType="name"
+          />
+          <CampoTexto
+            rotulo="Telefone (opcional)"
+            icone="call-outline"
+            value={telefone}
+            onChangeText={setTelefone}
+            erro={errosCampo.telefone}
+            autoComplete="tel"
+            keyboardType="phone-pad"
+            textContentType="telephoneNumber"
+            placeholder="(51) 99999-9999"
+          />
+          <SeletorGenero valor={genero} aoMudar={setGenero} />
+
+          {retorno ? <Aviso mensagem={retorno.mensagem} tipo={retorno.tipo} /> : null}
+          <Botao titulo="Salvar" carregando={salvando} onPress={aoSalvar} />
+        </Cartao>
 
         {atalhos}
       </ScrollView>
@@ -209,33 +213,12 @@ export default function TelaPerfil() {
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: tema.cores.fundo },
   conteudo: { padding: tema.espaco.x5, gap: tema.espaco.x4 },
-  centro: {
-    flex: 1,
-    justifyContent: 'center',
-    padding: tema.espaco.x5,
-    gap: tema.espaco.x4,
-    backgroundColor: tema.cores.fundo,
-  },
-  leitura: { gap: tema.espaco.x1 },
-  rotulo: { ...tema.tipografia.rotulo, color: tema.cores.texto },
-  valorLeitura: {
-    ...tema.tipografia.corpo,
+  topo: { alignItems: 'center', gap: tema.espaco.x2 },
+  nome: { ...tema.tipografia.subtitulo, color: tema.cores.texto, textAlign: 'center' },
+  // Fica colada nos dois campos de cima, a que ela se refere
+  ajuda: {
+    ...tema.tipografia.legenda,
     color: tema.cores.textoSecundario,
-    backgroundColor: tema.cores.neutroClaro,
-    borderWidth: 1,
-    borderColor: tema.cores.borda,
-    borderRadius: tema.raio.medio,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    marginTop: -tema.espaco.x2,
   },
-  ajuda: { ...tema.tipografia.legenda, color: tema.cores.textoSecundario, marginTop: -8 },
-  cartaoAtalhos: {
-    marginTop: tema.espaco.x2,
-    backgroundColor: tema.cores.superficie,
-    borderRadius: tema.raio.grande,
-    borderWidth: 1,
-    borderColor: tema.cores.borda,
-    overflow: 'hidden',
-  },
-  divisoria: { height: 1, backgroundColor: tema.cores.borda, marginLeft: 50 },
 });

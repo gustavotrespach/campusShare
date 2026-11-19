@@ -15,6 +15,8 @@ const OPCOES: Opcao<string>[] = [
 
 interface Props {
   rotulo: string;
+  // Rótulo do campo de texto ("Descrição da origem", "Descrição do destino"): o artigo muda
+  rotuloDescricao: string;
   idInicial: string;
   valor: Local | null;
   aoMudar: (local: Local) => void;
@@ -23,7 +25,7 @@ interface Props {
 
 // Origem ou destino sem mapa (T27): um ponto fixo ou a localização atual, mais a descrição que o
 // passageiro vai ler (editável; na localização atual começa vazia para o motorista descrever).
-export function SeletorLocal({ rotulo, idInicial, valor, aoMudar, erro }: Props) {
+export function SeletorLocal({ rotulo, rotuloDescricao, idInicial, valor, aoMudar, erro }: Props) {
   const [selecionado, setSelecionado] = useState(idInicial);
   const [localizando, setLocalizando] = useState(false);
   const [avisoLocalizacao, setAvisoLocalizacao] = useState<string | null>(null);
@@ -66,7 +68,7 @@ export function SeletorLocal({ rotulo, idInicial, valor, aoMudar, erro }: Props)
       {localizando ? <Text style={estilos.ajuda}>Obtendo sua localização…</Text> : null}
       {avisoLocalizacao ? <Text style={estilos.aviso}>{avisoLocalizacao}</Text> : null}
       <CampoTexto
-        rotulo={`Descrição da ${rotulo.toLowerCase()}`}
+        rotulo={rotuloDescricao}
         value={valor?.descricao ?? ''}
         onChangeText={(descricao) => {
           if (valor) {
@@ -83,7 +85,7 @@ export function SeletorLocal({ rotulo, idInicial, valor, aoMudar, erro }: Props)
 }
 
 const estilos = StyleSheet.create({
-  container: { gap: 8 },
-  ajuda: { fontSize: 13, color: tema.cores.textoSecundario },
-  aviso: { fontSize: 13, color: tema.cores.erro },
+  container: { gap: tema.espaco.x2 },
+  ajuda: { ...tema.tipografia.legenda, color: tema.cores.textoSecundario },
+  aviso: { ...tema.tipografia.legenda, color: tema.cores.erro },
 });

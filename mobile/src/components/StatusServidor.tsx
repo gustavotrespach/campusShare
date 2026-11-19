@@ -43,12 +43,12 @@ export function StatusServidor() {
 
   return (
     <View style={estilos.container}>
-      {saude.tipo === 'carregando' && <ActivityIndicator />}
+      {saude.tipo === 'carregando' && <ActivityIndicator color={tema.cores.primaria} />}
       {saude.tipo === 'ok' && <Text style={estilos.ok}>Servidor: {saude.status}</Text>}
       {saude.tipo === 'erro' && (
         <>
           <Text style={estilos.erro}>{saude.mensagem}</Text>
-          <Pressable accessibilityRole="button" onPress={tentarDeNovo}>
+          <Pressable accessibilityRole="button" onPress={tentarDeNovo} style={estilos.botao}>
             <Text style={estilos.link}>Tentar de novo</Text>
           </Pressable>
         </>
@@ -58,8 +58,14 @@ export function StatusServidor() {
 }
 
 const estilos = StyleSheet.create({
-  container: { alignItems: 'center', gap: 6 },
-  ok: { fontSize: 13, color: tema.cores.sucesso },
-  erro: { fontSize: 13, color: tema.cores.erro, textAlign: 'center' },
-  link: { fontSize: 13, color: tema.cores.primaria, fontWeight: '600' },
+  container: { alignItems: 'center', gap: tema.espaco.x1 },
+  ok: { ...tema.tipografia.legenda, color: tema.cores.sucesso },
+  erro: { ...tema.tipografia.legenda, color: tema.cores.erro, textAlign: 'center' },
+  // Alvo de toque de 44 pt, mesmo com o texto pequeno
+  botao: {
+    minHeight: tema.toque.minimo,
+    justifyContent: 'center',
+    paddingHorizontal: tema.espaco.x3,
+  },
+  link: { ...tema.tipografia.legenda, fontWeight: '600', color: tema.cores.primaria },
 });

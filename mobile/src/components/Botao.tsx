@@ -12,7 +12,8 @@ import { tema } from '@/tema';
 
 import type { NomeIcone } from './icones';
 
-type Variante = 'primario' | 'secundario' | 'perigo' | 'texto';
+// textoPerigo: botão de texto em vermelho para ação que encerra algo ("Sair" no Perfil)
+type Variante = 'primario' | 'secundario' | 'perigo' | 'texto' | 'textoPerigo';
 
 interface Props {
   titulo: string;
@@ -33,6 +34,7 @@ const COR_TEXTO: Record<Variante, string> = {
   secundario: cores.primaria,
   perigo: cores.textoSobrePrimaria,
   texto: cores.primaria,
+  textoPerigo: cores.erro,
 };
 
 const FUNDO: Record<Variante, ViewStyle> = {
@@ -40,6 +42,7 @@ const FUNDO: Record<Variante, ViewStyle> = {
   secundario: { backgroundColor: cores.superficie, borderWidth: 1.5, borderColor: cores.primaria },
   perigo: { backgroundColor: cores.erro },
   texto: { backgroundColor: 'transparent', minHeight: tema.toque.minimo },
+  textoPerigo: { backgroundColor: 'transparent', minHeight: tema.toque.minimo },
 };
 
 const FUNDO_PRESSIONADO: Record<Variante, ViewStyle> = {
@@ -48,6 +51,7 @@ const FUNDO_PRESSIONADO: Record<Variante, ViewStyle> = {
   // O tema não tem um tom escuro de erro: o pressionado escurece pela opacidade
   perigo: { opacity: 0.85 },
   texto: { backgroundColor: cores.primariaClara },
+  textoPerigo: { backgroundColor: cores.erroClaro },
 };
 
 export function Botao({

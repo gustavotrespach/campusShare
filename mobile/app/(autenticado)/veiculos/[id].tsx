@@ -1,17 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { CarregandoTela } from '@/components/CarregandoTela';
+import { Divisoria } from '@/components/Divisoria';
+import { ErroCarregamento } from '@/components/ErroCarregamento';
 import { FormularioVeiculo } from '@/components/FormularioVeiculo';
 import { normalizarErro } from '@/services/erros';
 import {
@@ -21,6 +16,7 @@ import {
   type DadosVeiculo,
   type Veiculo,
 } from '@/services/veiculos';
+import { tema } from '@/tema';
 
 type Carregamento =
   | { tipo: 'carregando' }
@@ -81,26 +77,21 @@ export default function TelaEditarVeiculo() {
   };
 
   if (carregamento.tipo === 'carregando') {
-    return (
-      <View style={estilos.centro}>
-        <ActivityIndicator size="large" />
-      </View>
-    );
+    return <CarregandoTela />;
   }
 
   if (carregamento.tipo === 'erro') {
     return (
-      <View style={estilos.centro}>
-        <Aviso mensagem={carregamento.mensagem} />
-        <Botao
-          titulo="Tentar de novo"
-          onPress={() => {
+      <ScrollView contentContainerStyle={estilos.centro}>
+        <ErroCarregamento
+          mensagem={carregamento.mensagem}
+          aoTentarDeNovo={() => {
             setCarregamento({ tipo: 'carregando' });
             setTentativa((anterior) => anterior + 1);
           }}
+          aoVoltar={() => router.back()}
         />
-        <Botao titulo="Voltar" variante="secundario" onPress={() => router.back()} />
-      </View>
+      </ScrollView>
     );
   }
 
@@ -113,11 +104,13 @@ export default function TelaEditarVeiculo() {
     >
       <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
         <FormularioVeiculo inicial={veiculo} tituloBotao="Salvar" aoSalvar={aoSalvar} />
+        <Divisoria />
         <View style={estilos.exclusao}>
           {erroExclusao ? <Aviso mensagem={erroExclusao} /> : null}
           <Botao
             titulo="Excluir veículo"
-            variante="secundario"
+            icone="trash-outline"
+            variante="perigo"
             carregando={excluindo}
             onPress={() => confirmarExclusao(veiculo)}
           />
@@ -128,8 +121,9 @@ export default function TelaEditarVeiculo() {
 }
 
 const estilos = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: '#fff' },
-  conteudo: { padding: 24, gap: 24 },
-  centro: { flex: 1, justifyContent: 'center', padding: 24, gap: 16, backgroundColor: '#fff' },
-  exclusao: { gap: 12, borderTopWidth: 1, borderTopColor: '#e4e7eb', paddingTop: 24 },
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  // 24 acima e abaixo da divisória que separa a exclusão do formulário
+  conteudo: { padding: tema.espaco.x5, gap: tema.espaco.x6 },
+  centro: { flexGrow: 1, justifyContent: 'center' },
+  exclusao: { gap: tema.espaco.x3 },
 });
