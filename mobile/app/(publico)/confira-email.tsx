@@ -1,11 +1,14 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { IconeEmCirculo } from '@/components/IconeEmCirculo';
 import { reenviarConfirmacao } from '@/services/auth';
 import { normalizarErro } from '@/services/erros';
+import { tema } from '@/tema';
 
 // O Auth só aceita um novo envio por minuto (max_frequency = 1m no config.toml).
 const SEGUNDOS_ENTRE_REENVIOS = 60;
@@ -13,6 +16,7 @@ const SEGUNDOS_ENTRE_REENVIOS = 60;
 type Retorno = { tipo: 'sucesso' | 'erro'; mensagem: string } | null;
 
 export default function TelaConfiraEmail() {
+  const insets = useSafeAreaInsets();
   const { email } = useLocalSearchParams<{ email?: string }>();
   const [espera, setEspera] = useState(SEGUNDOS_ENTRE_REENVIOS);
   const [enviando, setEnviando] = useState(false);
@@ -47,13 +51,27 @@ export default function TelaConfiraEmail() {
   };
 
   return (
-    <View style={estilos.container}>
-      <Text style={estilos.titulo}>Confira seu e-mail</Text>
-      <Text style={estilos.texto}>
-        Enviamos um link de confirmação para{' '}
-        <Text style={estilos.destaque}>{email ?? 'o seu e-mail'}</Text>. Abra o link no celular para
-        ativar sua conta. Se não encontrar, olhe também a caixa de spam.
-      </Text>
+    <ScrollView
+      style={estilos.tela}
+      contentContainerStyle={[
+        estilos.conteudo,
+        {
+          paddingTop: insets.top + tema.espaco.x6,
+          paddingBottom: insets.bottom + tema.espaco.x6,
+        },
+      ]}
+    >
+      <View style={estilos.topo}>
+        <IconeEmCirculo icone="mail-unread-outline" />
+        <Text accessibilityRole="header" maxFontSizeMultiplier={1.4} style={estilos.titulo}>
+          Confira seu e-mail
+        </Text>
+        <Text style={estilos.texto}>
+          Enviamos um link de confirmação para{' '}
+          <Text style={estilos.destaque}>{email ?? 'o seu e-mail'}</Text>. Abra o link no celular
+          para ativar sua conta. Se não encontrar, olhe também a caixa de spam.
+        </Text>
+      </View>
 
       {retorno ? <Aviso mensagem={retorno.mensagem} tipo={retorno.tipo} /> : null}
 
@@ -63,18 +81,21 @@ export default function TelaConfiraEmail() {
         desabilitado={espera > 0 || !email}
         onPress={aoReenviar}
       />
-      <Botao
-        titulo="Voltar ao login"
-        variante="secundario"
-        onPress={() => router.replace('/entrar')}
-      />
-    </View>
+      <Botao titulo="Voltar ao login" variante="texto" onPress={() => router.replace('/entrar')} />
+    </ScrollView>
   );
 }
 
 const estilos = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 24, gap: 16, justifyContent: 'center' },
-  titulo: { fontSize: 26, fontWeight: 'bold', color: '#1f2933' },
-  texto: { fontSize: 16, lineHeight: 24, color: '#3e4c59' },
-  destaque: { fontWeight: '600', color: '#1f2933' },
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  conteudo: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: tema.espaco.x5,
+    gap: tema.espaco.x4,
+  },
+  topo: { alignItems: 'center', gap: tema.espaco.x3, marginBottom: tema.espaco.x2 },
+  titulo: { ...tema.tipografia.titulo, color: tema.cores.texto, textAlign: 'center' },
+  texto: { ...tema.tipografia.corpo, color: tema.cores.textoSecundario, textAlign: 'center' },
+  destaque: { ...tema.tipografia.corpoForte, color: tema.cores.texto },
 });

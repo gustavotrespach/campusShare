@@ -1,18 +1,23 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Linking from 'expo-linking';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
 import { CampoTexto } from '@/components/CampoTexto';
+import { CarregandoTela } from '@/components/CarregandoTela';
 import { confirmarPorLink, MENSAGEM_LINK_INVALIDO, reenviarConfirmacao } from '@/services/auth';
 import { normalizarErro } from '@/services/erros';
 import { useSessao } from '@/store/sessao';
+import { tema } from '@/tema';
 import { validarEmail } from '@/utils/validacao';
 
 // Rota aberta pelo link do e-mail (fora dos grupos protegidos: vale logado ou não).
 export default function TelaConfirmacao() {
+  const insets = useSafeAreaInsets();
   // A URL completa traz o fragmento (#access_token=...), que os parâmetros de rota não incluem.
   const url = Linking.useLinkingURL();
   const { sessao } = useSessao();
@@ -61,47 +66,63 @@ export default function TelaConfirmacao() {
   const erro = url === null ? MENSAGEM_LINK_INVALIDO : erroDoLink;
 
   if (!erro) {
-    return (
-      <View style={estilos.centro}>
-        <ActivityIndicator size="large" />
-        <Text style={estilos.texto}>Confirmando seu e-mail…</Text>
-      </View>
-    );
+    return <CarregandoTela mensagem="Confirmando seu e-mail…" />;
   }
 
   return (
-    <View style={estilos.container}>
-      <Text style={estilos.titulo}>Não foi possível confirmar</Text>
-      <Aviso mensagem={erro} />
-      <CampoTexto
-        rotulo="Seu e-mail institucional"
-        value={email}
-        onChangeText={setEmail}
-        erro={erroEmail}
-        autoCapitalize="none"
-        autoComplete="email"
-        keyboardType="email-address"
-      />
-      {reenvio ? <Aviso mensagem={reenvio} tipo="info" /> : null}
-      <Botao titulo="Reenviar link" carregando={enviando} onPress={aoReenviar} />
-      <Botao
-        titulo={sessao ? 'Ir para o início' : 'Voltar ao login'}
-        variante="secundario"
-        onPress={() => router.replace(sessao ? '/' : '/entrar')}
-      />
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      style={estilos.tela}
+    >
+      <ScrollView
+        contentContainerStyle={[
+          estilos.conteudo,
+          {
+            paddingTop: insets.top + tema.espaco.x6,
+            paddingBottom: insets.bottom + tema.espaco.x6,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={estilos.topo}>
+          <Ionicons name="alert-circle" size={48} color={tema.cores.erro} />
+          <Text accessibilityRole="header" maxFontSizeMultiplier={1.4} style={estilos.titulo}>
+            Não foi possível confirmar
+          </Text>
+        </View>
+        <Aviso mensagem={erro} />
+        <CampoTexto
+          rotulo="Seu e-mail institucional"
+          icone="mail-outline"
+          placeholder="nome@rede.ulbra.br"
+          value={email}
+          onChangeText={setEmail}
+          erro={erroEmail}
+          autoCapitalize="none"
+          autoComplete="email"
+          autoCorrect={false}
+          keyboardType="email-address"
+        />
+        {reenvio ? <Aviso mensagem={reenvio} tipo="info" /> : null}
+        <Botao titulo="Reenviar link" carregando={enviando} onPress={aoReenviar} />
+        <Botao
+          titulo={sessao ? 'Ir para o início' : 'Voltar ao login'}
+          variante="texto"
+          onPress={() => router.replace(sessao ? '/' : '/entrar')}
+        />
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const estilos = StyleSheet.create({
-  centro: {
-    flex: 1,
-    alignItems: 'center',
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  conteudo: {
+    flexGrow: 1,
     justifyContent: 'center',
-    gap: 12,
-    backgroundColor: '#fff',
+    paddingHorizontal: tema.espaco.x5,
+    gap: tema.espaco.x4,
   },
-  container: { flex: 1, backgroundColor: '#fff', padding: 24, gap: 16, justifyContent: 'center' },
-  titulo: { fontSize: 24, fontWeight: 'bold', color: '#1f2933' },
-  texto: { fontSize: 16, color: '#3e4c59' },
+  topo: { alignItems: 'center', gap: tema.espaco.x3 },
+  titulo: { ...tema.tipografia.titulo, color: tema.cores.texto, textAlign: 'center' },
 });

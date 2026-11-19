@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
@@ -8,6 +9,7 @@ import { CampoTexto } from '@/components/CampoTexto';
 import { SeletorGenero } from '@/components/SeletorGenero';
 import { cadastrar } from '@/services/auth';
 import { normalizarErro } from '@/services/erros';
+import { tema } from '@/tema';
 import { campoDoErroDeCadastro } from '@/utils/erros-cadastro';
 import type { Genero } from '@/utils/genero';
 import {
@@ -19,6 +21,7 @@ import {
 } from '@/utils/validacao';
 
 export default function TelaCadastro() {
+  const insets = useSafeAreaInsets();
   const [nomeCompleto, setNomeCompleto] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -56,14 +59,28 @@ export default function TelaCadastro() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={estilos.tela}
     >
-      <ScrollView contentContainerStyle={estilos.conteudo} keyboardShouldPersistTaps="handled">
-        <Text style={estilos.titulo}>Criar conta</Text>
-        <Text style={estilos.subtitulo}>Use o e-mail da sua instituição de ensino.</Text>
+      <ScrollView
+        contentContainerStyle={[
+          estilos.conteudo,
+          {
+            paddingTop: insets.top + tema.espaco.x6,
+            paddingBottom: insets.bottom + tema.espaco.x6,
+          },
+        ]}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={estilos.cabecalho}>
+          <Text accessibilityRole="header" maxFontSizeMultiplier={1.4} style={estilos.titulo}>
+            Criar conta
+          </Text>
+          <Text style={estilos.subtitulo}>Use o e-mail da sua instituição de ensino.</Text>
+        </View>
 
         {erroGeral ? <Aviso mensagem={erroGeral} /> : null}
 
         <CampoTexto
           rotulo="Nome completo"
+          icone="person-outline"
           value={nomeCompleto}
           onChangeText={setNomeCompleto}
           erro={errosCampo.nomeCompleto}
@@ -73,6 +90,9 @@ export default function TelaCadastro() {
         />
         <CampoTexto
           rotulo="E-mail institucional"
+          icone="mail-outline"
+          ajuda="Só e-mails @rede.ulbra.br podem criar conta."
+          placeholder="nome@rede.ulbra.br"
           value={email}
           onChangeText={setEmail}
           erro={errosCampo.email}
@@ -84,17 +104,18 @@ export default function TelaCadastro() {
         />
         <CampoTexto
           rotulo={`Senha (mínimo ${TAMANHO_MINIMO_SENHA} caracteres)`}
+          icone="lock-closed-outline"
+          senha
           value={senha}
           onChangeText={setSenha}
           erro={errosCampo.senha}
           autoCapitalize="none"
           autoComplete="new-password"
-          secureTextEntry
           textContentType="newPassword"
         />
-        <SeletorGenero valor={genero} aoMudar={setGenero} erro={errosCampo.genero} />
         <CampoTexto
           rotulo="Telefone (opcional)"
+          icone="call-outline"
           value={telefone}
           onChangeText={setTelefone}
           erro={errosCampo.telefone}
@@ -103,17 +124,19 @@ export default function TelaCadastro() {
           textContentType="telephoneNumber"
           placeholder="(51) 99999-9999"
         />
+        <SeletorGenero valor={genero} aoMudar={setGenero} erro={errosCampo.genero} />
 
         <Botao titulo="Criar conta" carregando={enviando} onPress={aoCadastrar} />
-        <Botao titulo="Já tenho conta" variante="secundario" onPress={() => router.back()} />
+        <Botao titulo="Já tenho conta" variante="texto" onPress={() => router.back()} />
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const estilos = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: '#fff' },
-  conteudo: { flexGrow: 1, padding: 24, paddingTop: 64, gap: 16 },
-  titulo: { fontSize: 26, fontWeight: 'bold', color: '#1f2933' },
-  subtitulo: { fontSize: 15, color: '#52606d', marginTop: -8 },
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  conteudo: { flexGrow: 1, paddingHorizontal: tema.espaco.x5, gap: tema.espaco.x4 },
+  cabecalho: { gap: tema.espaco.x1 },
+  titulo: { ...tema.tipografia.titulo, color: tema.cores.texto },
+  subtitulo: { ...tema.tipografia.corpo, color: tema.cores.textoSecundario },
 });
