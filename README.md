@@ -33,9 +33,9 @@ Sem conta Apple Developer não há build instalável de iOS: o app abre dentro d
 1. Instale o **Expo Go** pela App Store (versão do **SDK 58**; o app foi migrado do SDK 57 na T34, versão 1.1.0).
 2. Abra o update publicado no canal `preview`:
    - pela página do update no expo.dev → botão **Preview** → leia o QR com a câmera:
-     [update de 18/11 (SDK 58, versão 1.1.0, backend novo da T36)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/9a0e79e7-753c-4bba-93db-7df6bdeba244);
-   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/9a0e79e7-753c-4bba-93db-7df6bdeba244`
-     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=9a0e79e7-753c-4bba-93db-7df6bdeba244)).
+     [update de 19/11 (SDK 58, versão 1.1.0, T39 e T40)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/21b7442c-8b4d-486e-9c33-fa9442a3d38f);
+   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/21b7442c-8b4d-486e-9c33-fa9442a3d38f`
+     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=21b7442c-8b4d-486e-9c33-fa9442a3d38f)).
 3. Depois da primeira vez, o app aparece na lista de recentes do Expo Go.
 
 Cada `eas update` gera um grupo novo: depois de publicar de novo, use o link do update mais recente em [Updates](https://expo.dev/accounts/trespaco/projects/campusshare/updates).
