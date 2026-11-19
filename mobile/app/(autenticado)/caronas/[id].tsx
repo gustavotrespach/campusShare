@@ -11,6 +11,7 @@ import { EstadoVazio } from '@/components/EstadoVazio';
 import type { NomeIcone } from '@/components/icones';
 import { LinhaRota } from '@/components/LinhaRota';
 import { Placa } from '@/components/Placa';
+import { SeloEmailConfirmado } from '@/components/SeloEmailConfirmado';
 import { SeloStatus } from '@/components/SeloStatus';
 import { detalharCarona, type CaronaDetalhe } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
@@ -213,11 +214,7 @@ export default function TelaDetalheCarona() {
             <View style={estilos.textosMotorista}>
               <Text style={estilos.legenda}>Motorista</Text>
               <Text style={estilos.corpoForte}>{carona.nome_motorista}</Text>
-              {/* Todo usuário com acesso confirmou o e-mail institucional (RN01) */}
-              <View style={estilos.confirmado}>
-                <Ionicons name="shield-checkmark" size={14} color={cores.sucesso} />
-                <Text style={estilos.textoConfirmado}>E-mail institucional confirmado</Text>
-              </View>
+              <SeloEmailConfirmado />
             </View>
           </View>
           <View style={estilos.divisoria} />
@@ -299,8 +296,6 @@ const estilos = StyleSheet.create({
   somenteMulheres: { gap: tema.espaco.x1, marginTop: -tema.espaco.x1 },
   motorista: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x3 },
   textosMotorista: { flex: 1, gap: 2 },
-  confirmado: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x1 },
-  textoConfirmado: { ...tema.tipografia.legenda, fontWeight: '600', color: cores.sucesso },
   veiculo: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x3 },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
   corpo: { ...tema.tipografia.corpo, color: cores.texto },

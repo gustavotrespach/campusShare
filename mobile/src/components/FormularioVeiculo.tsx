@@ -8,6 +8,7 @@ import { SeletorOpcoes, type Opcao } from '@/components/SeletorOpcoes';
 import { normalizarErro } from '@/services/erros';
 import { CODIGO_PLACA_DUPLICADA, type DadosVeiculo, type Veiculo } from '@/services/veiculos';
 import { consumoSugerido, ehMotorizacao, formatarConsumo, MOTORIZACOES } from '@/utils/consumo';
+import { tema } from '@/tema';
 import { temErros, validarVeiculo, type CamposVeiculo, type ErrosDeCampo } from '@/utils/validacao';
 
 const LUGARES_PADRAO = 5;
@@ -94,6 +95,7 @@ export function FormularioVeiculo({ inicial, tituloBotao, aoSalvar }: Props) {
       />
       <CampoTexto
         rotulo="Placa"
+        icone="card-outline"
         value={placa}
         onChangeText={setPlaca}
         erro={errosCampo.placa}
@@ -101,6 +103,7 @@ export function FormularioVeiculo({ inicial, tituloBotao, aoSalvar }: Props) {
         autoCorrect={false}
         maxLength={8}
         placeholder="ABC1D23"
+        style={estilos.placa}
       />
       <CampoTexto
         rotulo="Cor"
@@ -140,5 +143,7 @@ export function FormularioVeiculo({ inicial, tituloBotao, aoSalvar }: Props) {
 }
 
 const estilos = StyleSheet.create({
-  container: { gap: 16 },
+  container: { gap: tema.espaco.x4 },
+  // Espaçada como a placa desenhada (Placa.tsx), para conferir letra por letra
+  placa: { letterSpacing: 1.5 },
 });
