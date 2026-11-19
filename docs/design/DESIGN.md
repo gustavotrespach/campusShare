@@ -12,7 +12,7 @@
 |---|---|
 | `mockups/00-marca.png` | Ícone em vários tamanhos, Android adaptativo, monocromático, splash e assinatura |
 | `mockups/01-componentes.png` | Botão, campo, aviso, selo, chip e esqueleto de carregamento com os estados |
-| `mockups/05-caronas-proximas.png` | Tela 5 |
+| `mockups/05-caronas-proximas.png` | Tela 5 — **desatualizado desde a T40**: mostra os chips "Perto de", que viraram a barra de busca de local (ver Tela 5) |
 | `mockups/06-detalhe-carona.png` | Tela 6 |
 | `mockups/08-pagamento.png` | Tela 8: aguardando e confirmado |
 | `mockups/09-minhas-reservas.png` | Tela 9: lista e vazia |
@@ -493,6 +493,9 @@ Centralizada na vertical, padding 20.
 
 ### Tela 5 — Caronas próximas (Início) ★ — `mockups/05-caronas-proximas.png`
 
+> O mockup 05 é anterior à T40: no lugar dos chips "Perto de" (item 2) vale a barra de busca de
+> local descrita abaixo.
+
 `FlatList` com `ListHeaderComponent`; `headerShown: false`.
 
 1. **Cabeçalho** (linha, `space-between`):
@@ -502,11 +505,28 @@ Centralizada na vertical, padding 20.
    - Direita (`gap` 8): botão-ícone 44 (círculo `superficie`, borda 1 `borda`, `receipt-outline`
      22 `primaria`, `accessibilityLabel` "Minhas reservas") e Avatar 44 do usuário
      (`accessibilityLabel` "Meu perfil").
-2. 20 → rótulo "Perto de" (`rotulo`) → 8 → chips em `ScrollView` horizontal
-   (`showsHorizontalScrollIndicator={false}`, o último chip sai pela borda para indicar rolagem):
-   Centro de Torres, ULBRA Torres, Rodoviária de Torres, Passo de Torres, Arroio do Sal,
-   Três Cachoeiras, Minha localização. Abaixo, se estiver localizando: "Obtendo sua localização…"
-   (`legenda`).
+2. 20 → **barra de busca de local** (T40) ✚, no lugar dos chips "Perto de":
+   - Caixa igual à do campo de texto (3.2: altura 52, raio 12, fundo `superficie`, borda 1.5
+     `bordaForte`, 2 `primaria` no foco), sem rótulo visível (`accessibilityLabel` "Buscar local").
+   - Esquerda: `search-outline` 20 (`textoSecundario`; `primaria` no foco). Texto `corpo`,
+     placeholder "Buscar perto de… (bairro, rua ou cidade)", tecla do teclado "Buscar"
+     (`returnKeyType="search"`).
+   - Direita: com texto, botão-ícone `close-circle` 20 `textoSutil` ("Limpar busca"); sempre, botão-ícone
+     `locate-outline` 22 `primaria` ("Minha localização"; vira `ActivityIndicator` enquanto localiza).
+     Os dois com área 44 × 44.
+   - **Sugestões** (só com foco, sem rede): card (3.3, sem padding) logo abaixo da barra, 8 de
+     espaço, linhas de no mínimo 52 com ícone 20 `primaria` + título `corpo` + descrição `legenda`
+     `textoSecundario`, divisória começando no texto. Ordem: "Buscar “{texto}”" (`search-outline`,
+     "Bairro, rua ou cidade"; só com texto) → "Minha localização" (`locate-outline`, "Usa o GPS do
+     celular") → pontos fixos filtrados pelo texto, sem diferenciar maiúsculas nem acentos
+     (`location-outline`, descrição do ponto). Tocar numa linha escolhe e fecha o teclado.
+   - **Legenda** abaixo da barra (`legenda` `textoSecundario`): "Caronas perto de: {local}"; enquanto
+     procura, "Buscando “{texto}”…" ou "Obtendo sua localização…". No início vale o ponto padrão
+     (Centro de Torres).
+   - Texto livre é procurado pelo geocodificador do aparelho (sem chave de API). Erros em Aviso
+     `erro` abaixo do filtro: "Não encontramos esse lugar. Tente o bairro e a cidade." ou a mensagem
+     de busca indisponível; a lista e o local anteriores continuam na tela, e o texto fica na barra
+     para corrigir.
 3. 12 → **filtro** (só para quem tem gênero Feminino, como hoje): linha com Switch, ícone
    `female-outline` `secundariaTexto`, título "Somente mulheres", ajuda "Mostrar só caronas para
    passageiras" ✚. `accessibilityLabel` do Switch: o atual.

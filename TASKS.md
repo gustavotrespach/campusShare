@@ -263,3 +263,8 @@ Aceite: APK que abre direto no backend novo; sessões feitas; ajustes publicados
 Status: em andamento · Responsável: Gustavo Trespach · Depende de: T32
 Descrição: A T32 aplicou o `docs/design/DESIGN.md` só nas telas da demo (1, 5, 6, 8 e 9). As telas 2 (Cadastro), 3 (Confira seu e-mail), 4 (Confirmação), 7 (Oferecer carona), 10 (Meu perfil), 11 (Meus veículos), 12 (Novo veículo) e 13 (Editar veículo) ainda usam cores fixas e o visual antigo. Só apresentação: nenhuma regra de negócio, chamada de backend ou navegação muda. Feita antes da validação com usuários reais (T38), que foi adiada pelo professor.
 Aceite: telas 2, 3, 4, 7, 10, 11, 12 e 13 seguem as seções correspondentes do §4 do DESIGN.md e os "Estados comuns (tela 14)"; nenhuma cor, tamanho ou sombra escrita à mão nessas telas (só `tema.*`); nenhuma tela perde funcionalidade; lint, typecheck, testes e `expo-doctor` verdes.
+
+### T40 — Barra de busca de local na tela inicial
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T39
+Descrição: Na tela 5 (Caronas próximas), a fileira de chips "Perto de" dá lugar a uma barra de busca: o usuário digita um bairro, rua ou cidade, ou escolhe uma sugestão sem rede ("Minha localização" e os pontos fixos filtrados pelo texto). O texto livre é geocodificado pelo próprio aparelho (`Location.geocodeAsync` do expo-location, sem Google Places nem chave de API). O backend não muda: a busca continua sendo a `buscar_caronas(p_lat, p_lng, ...)` com o raio padrão de 10 km.
+Aceite: o usuário digita um bairro de Torres ou uma cidade vizinha e vê as caronas próximas; os pontos fixos e "Minha localização" continuam a um toque; nenhuma chamada nova ao backend; lint, typecheck, testes e `expo-doctor` verdes.
