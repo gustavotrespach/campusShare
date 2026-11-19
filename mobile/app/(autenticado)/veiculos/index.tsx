@@ -1,11 +1,17 @@
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { ErroCarregamento } from '@/components/ErroCarregamento';
+import { EsqueletoLista } from '@/components/EsqueletoLista';
+import { EstadoVazio } from '@/components/EstadoVazio';
+import { IconeEmCirculo } from '@/components/IconeEmCirculo';
+import { Placa } from '@/components/Placa';
 import { normalizarErro } from '@/services/erros';
 import { listarMeusVeiculos, type Veiculo } from '@/services/veiculos';
+import { tema } from '@/tema';
 
 type Carregamento =
   | { tipo: 'carregando' }
@@ -13,19 +19,24 @@ type Carregamento =
   | { tipo: 'pronto'; veiculos: Veiculo[] };
 
 function ItemVeiculo({ veiculo }: { veiculo: Veiculo }) {
+  const detalhe = `${veiculo.cor.toLowerCase()} · ${veiculo.qtd_lugares} lugares`;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={`${veiculo.modelo}, ${detalhe}, placa ${veiculo.placa}`}
       accessibilityHint="Abre o veículo para editar ou excluir"
       onPress={() =>
         router.push({ pathname: '/veiculos/[id]', params: { id: veiculo.id_veiculo } })
       }
-      style={({ pressed }) => [estilos.item, pressed && estilos.itemPressionado]}
+      style={({ pressed }) => [estilos.card, pressed && estilos.cardPressionado]}
     >
-      <Text style={estilos.modelo}>{veiculo.modelo}</Text>
-      <Text style={estilos.detalhe}>
-        {veiculo.placa} · {veiculo.cor} · {veiculo.qtd_lugares} lugares
-      </Text>
+      <IconeEmCirculo icone="car-outline" tamanho="medio" />
+      <View style={estilos.textos}>
+        <Text style={estilos.modelo}>{veiculo.modelo}</Text>
+        <Text style={estilos.detalhe}>{detalhe}</Text>
+      </View>
+      <Placa placa={veiculo.placa} />
+      <Ionicons name="chevron-forward" size={20} color={tema.cores.textoSutil} />
     </Pressable>
   );
 }
@@ -66,18 +77,20 @@ export default function TelaVeiculos() {
 
   if (carregamento.tipo === 'carregando') {
     return (
-      <View style={estilos.centro}>
-        <ActivityIndicator size="large" />
+      <View style={estilos.lista}>
+        <EsqueletoLista />
       </View>
     );
   }
 
   if (carregamento.tipo === 'erro') {
     return (
-      <View style={estilos.centro}>
-        <Aviso mensagem={carregamento.mensagem} />
-        <Botao titulo="Tentar de novo" onPress={() => void tentarDeNovo()} />
-      </View>
+      <ScrollView contentContainerStyle={estilos.centro}>
+        <ErroCarregamento
+          mensagem={carregamento.mensagem}
+          aoTentarDeNovo={() => void tentarDeNovo()}
+        />
+      </ScrollView>
     );
   }
 
@@ -85,13 +98,14 @@ export default function TelaVeiculos() {
 
   if (carregamento.veiculos.length === 0) {
     return (
-      <View style={estilos.centro}>
-        <Text style={estilos.vazio}>Você ainda não cadastrou nenhum veículo.</Text>
-        <Text style={estilos.vazioAjuda}>
-          Para oferecer caronas, cadastre o carro que vai usar.
-        </Text>
-        <Botao titulo="Cadastrar veículo" onPress={cadastrar} />
-      </View>
+      <ScrollView contentContainerStyle={estilos.centro}>
+        <EstadoVazio
+          icone="car-sport-outline"
+          titulo="Você ainda não cadastrou nenhum veículo."
+          mensagem="Para oferecer caronas, cadastre o carro que vai usar."
+          acao={{ titulo: 'Cadastrar veículo', onPress: cadastrar }}
+        />
+      </ScrollView>
     );
   }
 
@@ -102,26 +116,30 @@ export default function TelaVeiculos() {
       data={carregamento.veiculos}
       keyExtractor={(veiculo) => veiculo.id_veiculo}
       renderItem={({ item }) => <ItemVeiculo veiculo={item} />}
-      ListFooterComponent={<Botao titulo="Cadastrar veículo" onPress={cadastrar} />}
+      ListFooterComponent={
+        <Botao titulo="Cadastrar veículo" icone="add" variante="secundario" onPress={cadastrar} />
+      }
     />
   );
 }
 
 const estilos = StyleSheet.create({
-  tela: { flex: 1, backgroundColor: '#fff' },
-  lista: { padding: 24, gap: 12 },
-  centro: { flex: 1, justifyContent: 'center', padding: 24, gap: 16, backgroundColor: '#fff' },
-  item: {
+  tela: { flex: 1, backgroundColor: tema.cores.fundo },
+  lista: { padding: tema.espaco.x5, gap: tema.espaco.x3 },
+  centro: { flexGrow: 1, justifyContent: 'center' },
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: tema.espaco.x3,
+    padding: tema.espaco.x4,
+    backgroundColor: tema.cores.superficie,
+    borderRadius: tema.raio.grande,
     borderWidth: 1,
-    borderColor: '#cbd2d9',
-    borderRadius: 8,
-    padding: 16,
-    gap: 4,
-    backgroundColor: '#fff',
+    borderColor: tema.cores.borda,
+    ...tema.sombra.cartao,
   },
-  itemPressionado: { backgroundColor: '#f5f7fa' },
-  modelo: { fontSize: 16, fontWeight: '600', color: '#1f2933' },
-  detalhe: { fontSize: 14, color: '#52606d' },
-  vazio: { fontSize: 16, fontWeight: '600', color: '#1f2933', textAlign: 'center' },
-  vazioAjuda: { fontSize: 14, color: '#52606d', textAlign: 'center' },
+  cardPressionado: { backgroundColor: tema.cores.superficieAlternativa },
+  textos: { flex: 1 },
+  modelo: { ...tema.tipografia.corpoForte, color: tema.cores.texto },
+  detalhe: { ...tema.tipografia.legenda, color: tema.cores.textoSecundario },
 });
