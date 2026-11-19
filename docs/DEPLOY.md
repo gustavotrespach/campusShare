@@ -1,6 +1,6 @@
 # Deploy público — CampusShare (T33)
 
-> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11), com a navegação após "Sair" (T37, 17/11) e com a migração do backend para o projeto Supabase novo (T36, 18/11).
+> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11), com a navegação após "Sair" (T37, 17/11) com a migração do backend para o projeto Supabase novo (T36, 18/11) e com a identidade visual das telas restantes e a busca de local (T39 e T40, 19/11).
 
 ## Links
 
@@ -10,7 +10,7 @@
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
 | APK v1.0.0, SDK 57 — versão entregue na TD de deploy (aponta para o backend antigo, inativo desde a T36) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/9a0e79e7-753c-4bba-93db-7df6bdeba244` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=9a0e79e7-753c-4bba-93db-7df6bdeba244) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/9a0e79e7-753c-4bba-93db-7df6bdeba244) |
+| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/21b7442c-8b4d-486e-9c33-fa9442a3d38f` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=21b7442c-8b4d-486e-9c33-fa9442a3d38f) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/21b7442c-8b4d-486e-9c33-fa9442a3d38f) |
 | Backend (Supabase, projeto `cofhvybajjzczrbojttv`, região São Paulo, desde a T36) | <https://cofhvybajjzczrbojttv.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
 | Webhook do Mercado Pago (aba Teste da aplicação CampusShare e aplicação do vendedor de teste; ver Observações) | `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
@@ -76,6 +76,12 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] Testado pelo Gustavo no iPhone pelo link público: login com a segunda conta, cadastro de veículo, publicação de carona, "Sair", login com a conta dele, reserva, Pix e confirmação automática pelo webhook em menos de 2 minutos
 - [x] APK 1.1.0 (versionCode 3) gerado com o backend novo, substituído na release v1.1.0 com o mesmo link (T38, 19/11)
 - [ ] Teste do APK 1.1.0 (versionCode 3) num Android real: login e "Caronas próximas" na primeira abertura
+
+## Identidade visual e busca de local (T39 e T40, 19/11/2026)
+
+- [x] T39 (identidade visual nas telas 2, 3, 4, 7, 10, 11, 12 e 13) e T40 (barra de busca de local na tela inicial) conferidas pelo Gustavo no iPhone pelo `npx expo start`
+- [x] Release `develop` → `main` (#61) com o workflow **Deploy** verde: nenhuma migration nova ("Remote database is up to date"), Edge Functions sem mudança, `health` 200
+- [x] EAS Update da `main` (`2184a13`) com runtime 1.1.0, grupo `21b7442c-8b4d-486e-9c33-fa9442a3d38f`; bundles de iOS e Android com a URL do projeto `cofhvybajjzczrbojttv` e sem a do antigo (conferidos pelo hash do manifesto publicado); runtime 1.0.0 conferido com o update de 18/10
 
 ## Observações
 
