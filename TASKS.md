@@ -258,3 +258,8 @@ Nota (17/11, Parte B): EAS Update publicado da `main` (`7c4f59a`, Deploy verde) 
 Status: em andamento · Responsável: Gustavo Trespach · Depende de: T36
 Descrição: Teste do app com 5 usuários de fora do squad (iPhone pelo Expo Go e Android pelo APK), para a TDE "Validação com usuários reais" (entrega em 19/11). Inclui hipótese e métricas, tabela de feedback, matriz Impacto × Esforço e pelo menos 2 ajustes; os ajustes viram tarefas próprias depois das sessões. Antes das sessões, o APK 1.1.0 é gerado de novo com o backend novo (`versionCode` 3, mesma `version`, para o runtime continuar 1.1.0): o APK anterior tem a URL do backend antigo embutida, e na primeira abertura o login falhava até o EAS Update entrar.
 Aceite: APK que abre direto no backend novo; sessões feitas; ajustes publicados; PDF `Validacao_CampusShare.pdf` entregue.
+
+### T39 — Identidade visual nas telas restantes
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T32
+Descrição: A T32 aplicou o `docs/design/DESIGN.md` só nas telas da demo (1, 5, 6, 8 e 9). As telas 2 (Cadastro), 3 (Confira seu e-mail), 4 (Confirmação), 7 (Oferecer carona), 10 (Meu perfil), 11 (Meus veículos), 12 (Novo veículo) e 13 (Editar veículo) ainda usam cores fixas e o visual antigo. Só apresentação: nenhuma regra de negócio, chamada de backend ou navegação muda. Feita antes da validação com usuários reais (T38), que foi adiada pelo professor.
+Aceite: telas 2, 3, 4, 7, 10, 11, 12 e 13 seguem as seções correspondentes do §4 do DESIGN.md e os "Estados comuns (tela 14)"; nenhuma cor, tamanho ou sombra escrita à mão nessas telas (só `tema.*`); nenhuma tela perde funcionalidade; lint, typecheck, testes e `expo-doctor` verdes.
