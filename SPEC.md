@@ -62,7 +62,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 **Reserva e pagamento**
 - RN14 — Motorista não reserva a própria carona; passageiro não reserva duas vezes a mesma carona.
 - RN15 — Reserva nasce `PENDENTE` e ocupa a vaga temporariamente; passa a `CONFIRMADA` **somente** quando o webhook do Pix confirma o pagamento.
-- RN16 — Reserva `PENDENTE` sem pagamento dentro do prazo de expiração vira `EXPIRADA` e a vaga é devolvida.
+- RN16 — Reserva `PENDENTE` sem pagamento confirmado em **15 minutos** (contados de `reserva.criado_em`) vira `EXPIRADA`, o pagamento pendente é recusado e a vaga é devolvida. A verificação roda a cada minuto (job `expirar-reservas`, T24); um Pix pago depois disso fica para reembolso.
 - RN17 — Reserva, cancelamento e expiração alteram `vagas_disponiveis` dentro de uma única função SQL (transação com `SELECT ... FOR UPDATE`), para impedir que duas reservas simultâneas ocupem a mesma vaga.
 - RN18 — Carona `somente_mulheres` só aceita reserva de usuárias com `genero` feminino.
 

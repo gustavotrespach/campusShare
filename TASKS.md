@@ -168,8 +168,8 @@ Nota (17/10, T22): no sandbox, a order com pagador `APRO` termina em `processed/
 Nota (17/10, T23): feita (migration `confirmar_pagamento`, pgTAP `12_confirmar_pagamento`, `deno test`); verificada no local com notificações assinadas de verdade. O teste com o Mercado Pago chamando o webhook depende da release (secrets e URL no painel).
 
 ### T24 — Expiração de reservas pendentes
-Status: adiada (pós-AP2) · Depende de: T21
-Descrição: Função `expirar_reservas()` agendada no pg_cron a cada minuto: marca `EXPIRADA` a reserva `PENDENTE` vencida e devolve a vaga (RN16).
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T21
+Descrição: Função `expirar_reservas()` agendada no pg_cron a cada minuto: marca `EXPIRADA` a reserva `PENDENTE` vencida (15 minutos desde `reserva.criado_em`, decisão do Gustavo em 21/11) e devolve a vaga (RN16).
 Aceite: reserva não paga após o prazo libera a vaga automaticamente (pgTAP chamando a função com reserva antiga).
 
 ### T25 — Telas de reserva e pagamento

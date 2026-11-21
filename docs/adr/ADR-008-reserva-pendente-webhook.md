@@ -20,4 +20,4 @@ A reserva é criada com status **PENDENTE**, ocupando a vaga dentro de uma trans
 ## Consequências
 - Positivo: nenhuma vaga fica bloqueada indefinidamente; sem overbooking.
 - Negativo: exige rotina de expiração e webhook idempotente.
-- Pendente: prazo de expiração (proposta: 15 minutos) — ver MEMORY.md.
+- Prazo de expiração: **15 minutos** a partir de `reserva.criado_em` (decidido pelo Gustavo em 21/11/2026). Implementado na T24: função `expirar_reservas()` chamada a cada minuto pelo job `expirar-reservas` do pg_cron, com a mesma ordem de locks do webhook (carona → reserva → pagamento). Um Pix pago depois da expiração vira `REEMBOLSO_PENDENTE` na `confirmar_pagamento`.
