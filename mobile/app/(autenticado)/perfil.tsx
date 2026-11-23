@@ -111,6 +111,12 @@ export default function TelaPerfil() {
         />
         <Divisoria recuo={RECUO_DIVISORIA_ATALHO} />
         <LinhaAtalho
+          icone="map-outline"
+          titulo="Minhas caronas"
+          onPress={() => router.push('/caronas/minhas')}
+        />
+        <Divisoria recuo={RECUO_DIVISORIA_ATALHO} />
+        <LinhaAtalho
           icone="receipt-outline"
           titulo="Minhas reservas"
           onPress={() => router.push('/reservas')}
