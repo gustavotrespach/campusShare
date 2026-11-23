@@ -145,3 +145,22 @@ export async function consultarStatusReserva(idReserva: string): Promise<Situaca
     throw normalizarErro(falha);
   }
 }
+
+// RN20: quem decide se ainda dá para cancelar (status, partida, prazo de 2 h da reserva paga) é a
+// cancelar_reserva; o erro chega com a frase do hint (ex.: PRAZO_CANCELAMENTO_ENCERRADO)
+export async function cancelarReserva(idReserva: string): Promise<StatusReserva> {
+  try {
+    const { data, error } = await obterSupabase().rpc('cancelar_reserva', {
+      p_id_reserva: idReserva,
+    });
+    if (error) {
+      throw error;
+    }
+    if (data !== 'CANCELADA') {
+      throw RESPOSTA_INESPERADA;
+    }
+    return data;
+  } catch (falha) {
+    throw normalizarErro(falha);
+  }
+}

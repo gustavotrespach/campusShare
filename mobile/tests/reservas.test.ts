@@ -288,3 +288,36 @@ describe('consultarStatusReserva', () => {
     });
   });
 });
+
+describe('cancelarReserva (T28)', () => {
+  const ID_RESERVA = 'a3000000-0000-0000-0000-000000000001';
+
+  it('chama a RPC só com o id da reserva e devolve CANCELADA', async () => {
+    const reservas = await logado();
+    mockFetch.mockResolvedValue(resposta(200, 'CANCELADA'));
+
+    await expect(reservas.cancelarReserva(ID_RESERVA)).resolves.toBe('CANCELADA');
+
+    expect(chamada().url).toContain('/rest/v1/rpc/cancelar_reserva');
+    expect(chamada().metodo).toBe('POST');
+    expect(chamada().corpo).toEqual({ p_id_reserva: ID_RESERVA });
+  });
+
+  it('prazo da RN20 encerrado chega com a frase do hint do backend', async () => {
+    const reservas = await logado();
+    mockFetch.mockResolvedValue(
+      resposta(409, {
+        code: 'PT409',
+        details: null,
+        hint: 'Reservas pagas só podem ser canceladas até 2 horas antes da partida.',
+        message: 'PRAZO_CANCELAMENTO_ENCERRADO',
+      }),
+    );
+
+    await expect(reservas.cancelarReserva(ID_RESERVA)).rejects.toMatchObject({
+      status: 409,
+      code: 'PRAZO_CANCELAMENTO_ENCERRADO',
+      message: 'Reservas pagas só podem ser canceladas até 2 horas antes da partida.',
+    });
+  });
+});

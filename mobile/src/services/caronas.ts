@@ -1,5 +1,6 @@
 import type { Database } from '@/types/database';
 import { centavosParaReais, reaisParaCentavos } from '@/utils/dinheiro';
+import { ordenarMinhasCaronas } from '@/utils/cancelamento';
 import { paraIsoUtc } from '@/utils/data-hora';
 import { arredondarCoordenada, type Local } from '@/utils/pontos';
 
@@ -9,6 +10,7 @@ import { obterSupabase } from './supabase';
 type Funcoes = Database['public']['Functions'];
 type LinhaBusca = Funcoes['buscar_caronas']['Returns'][number];
 type LinhaDetalhe = Funcoes['detalhar_carona']['Returns'][number];
+type LinhaCarona = Database['public']['Tables']['carona']['Row'];
 
 // Dinheiro no app em centavos: a conversão de/para reais (decimal do banco) fica só aqui.
 export type CaronaResumo = Omit<LinhaBusca, 'valor_por_passageiro'> & {
@@ -22,6 +24,18 @@ export type CaronaDetalhe = Omit<LinhaDetalhe, 'valor_por_passageiro' | 'custo_t
 
 // O que a tela de publicar entrega. Não existe id_motorista: o motorista é o auth.uid() da
 // sessão, decidido pela publicar_carona (docs/API.md → "caronas").
+// "Minhas caronas" (T28): só as colunas que a tela usa
+export type MinhaCarona = Pick<
+  LinhaCarona,
+  | 'id_carona'
+  | 'origem'
+  | 'destino'
+  | 'data_hora_partida'
+  | 'vagas_disponiveis'
+  | 'vagas_ofertadas'
+  | 'status'
+>;
+
 export interface NovaCarona {
   idVeiculo: string;
   origem: Local;
@@ -111,6 +125,39 @@ export async function detalharCarona(idCarona: string): Promise<CaronaDetalhe> {
       valorPorPassageiroCentavos: reaisParaCentavos(valor_por_passageiro),
       custoTotalCentavos: reaisParaCentavos(custo_total),
     };
+  } catch (erro) {
+    throw normalizarErro(erro);
+  }
+}
+
+// A RLS da tabela carona já limita às caronas do motorista logado (a busca esconde as próprias, RN14)
+export async function listarMinhasCaronas(): Promise<MinhaCarona[]> {
+  try {
+    const { data, error } = await obterSupabase()
+      .from('carona')
+      .select(
+        'id_carona, origem, destino, data_hora_partida, vagas_disponiveis, vagas_ofertadas, status',
+      )
+      .order('data_hora_partida', { ascending: true });
+    if (error) {
+      throw error;
+    }
+    return ordenarMinhasCaronas(data);
+  } catch (erro) {
+    throw normalizarErro(erro);
+  }
+}
+
+// RN07: o motorista cancela a própria carona antes da partida; devolve quantas reservas caíram
+export async function cancelarCarona(idCarona: string): Promise<number> {
+  try {
+    const { data, error } = await obterSupabase().rpc('cancelar_carona', {
+      p_id_carona: idCarona,
+    });
+    if (error) {
+      throw error;
+    }
+    return data;
   } catch (erro) {
     throw normalizarErro(erro);
   }
