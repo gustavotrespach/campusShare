@@ -194,7 +194,9 @@ Status: adiada (pós-AP2) · Depende de: T26
 Aceite: motorista escolhe origem/destino no mapa; detalhe mostra a rota.
 
 ### T28 — Cancelar carona e reserva (US06)
-Status: adiada (pós-AP2) · Depende de: T23
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T23
+Partes: **backend** (funções `cancelar_reserva` e `cancelar_carona`, Fase 29, branch `feature/T28-cancelamentos-backend`) e **app** (botões de cancelar e a tela "Minhas caronas", Fase 30, em outra branch).
+Regra (Gustavo, 23/11): o passageiro cancela reserva `CONFIRMADA` até 2 horas antes da partida e reserva `PENDENTE` até a partida (RN20); o motorista cancela a carona até a partida, sem o limite de 2 h (RN07).
 Descrição: Funções RPC `cancelar_carona` e `cancelar_reserva`, devolvendo vagas na mesma transação; pagamentos aprovados passam a `REEMBOLSO_PENDENTE`.
 Aceite: cancelamento da carona cancela todas as reservas ativas; só o dono cancela.
 

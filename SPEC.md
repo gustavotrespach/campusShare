@@ -65,6 +65,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 - RN16 — Reserva `PENDENTE` sem pagamento confirmado em **15 minutos** (contados de `reserva.criado_em`) vira `EXPIRADA`, o pagamento pendente é recusado e a vaga é devolvida. A verificação roda a cada minuto (job `expirar-reservas`, T24); um Pix pago depois disso fica para reembolso.
 - RN17 — Reserva, cancelamento e expiração alteram `vagas_disponiveis` dentro de uma única função SQL (transação com `SELECT ... FOR UPDATE`), para impedir que duas reservas simultâneas ocupem a mesma vaga.
 - RN18 — Carona `somente_mulheres` só aceita reserva de usuárias com `genero` feminino.
+- RN20 — O passageiro cancela reserva `CONFIRMADA` até 2 horas antes da partida; reserva `PENDENTE`, até a partida. O pagamento aprovado de reserva cancelada vira `REEMBOLSO_PENDENTE`. (O motorista cancela a carona até a partida, sem o limite de 2 horas: RN07.)
 
 **Avaliação**
 - RN19 — Avaliação só depois da carona `CONCLUIDA`, só entre participantes da mesma reserva, nota de 1 a 5, uma por avaliador por reserva.

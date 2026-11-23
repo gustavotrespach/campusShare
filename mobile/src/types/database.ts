@@ -167,6 +167,12 @@ isOneToOne: false
               "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"vagas_disponiveis": number,"valor_por_passageiro": number
             }[]
                            },
+"cancelar_carona":
+{ Args: { "p_id_carona": string }; Returns: number
+                           },
+"cancelar_reserva":
+{ Args: { "p_id_reserva": string }; Returns: string
+                           },
 "confirmar_pagamento":
 { Args: { "p_id_externo": string,"p_id_pagamento": string,"p_valor": number }; Returns: string
                            },
@@ -185,6 +191,9 @@ isOneToOne: false
 { Args: Record<PropertyKey, never>; Returns: {
               "data_hora_partida": string,"destino": string,"id_carona": string,"id_reserva": string,"nome_motorista": string,"origem": string,"reservado_em": string,"status_carona": Database["public"]['Enums']["status_carona"],"status_pagamento": Database["public"]['Enums']["status_pagamento"],"status_reserva": Database["public"]['Enums']["status_reserva"],"valor": number
             }[]
+                           },
+"prazo_cancelamento_confirmada":
+{ Args: Record<PropertyKey, never>; Returns: string
                            },
 "prazo_reserva_pendente":
 { Args: Record<PropertyKey, never>; Returns: string
