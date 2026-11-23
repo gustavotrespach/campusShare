@@ -199,6 +199,8 @@ Partes: **backend** (funções `cancelar_reserva` e `cancelar_carona`, Fase 29, 
 Regra (Gustavo, 23/11): o passageiro cancela reserva `CONFIRMADA` até 2 horas antes da partida e reserva `PENDENTE` até a partida (RN20); o motorista cancela a carona até a partida, sem o limite de 2 h (RN07).
 Descrição: Funções RPC `cancelar_carona` e `cancelar_reserva`, devolvendo vagas na mesma transação; pagamentos aprovados passam a `REEMBOLSO_PENDENTE`.
 Aceite: cancelamento da carona cancela todas as reservas ativas; só o dono cancela.
+Nota (23/11, parte backend): PR #66. `cancelar_reserva` (RN20) e `cancelar_carona` (RN07), `SECURITY DEFINER` só para `authenticated`, locks carona → reservas → pagamentos; pgTAP `15_cancelamentos` (55 testes).
+Nota (23/11, parte app): services `cancelarReserva`, `cancelarCarona` e `listarMinhasCaronas`; botão "Cancelar reserva" no detalhe da reserva e "Cancelar carona" no detalhe da carona (motorista), com confirmação, resultado anunciado ao leitor de tela e o `hint` do backend no erro; tela nova "Minhas caronas" com atalho no Perfil; selos dos status de carona. O app não calcula o prazo de 2 h. 33 testes novos (367 no total). Falta conferir no aparelho, merge, release e EAS Update.
 
 ### T29 — Notificações (US06)
 Status: adiada (pós-AP2) · Depende de: T28

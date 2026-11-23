@@ -237,3 +237,89 @@ describe('detalharCarona', () => {
     });
   });
 });
+
+describe('cancelarCarona (T28)', () => {
+  it('chama a RPC só com o id da carona e devolve quantas reservas cancelou', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(resposta(200, 2));
+
+    await expect(caronas.cancelarCarona(ID_CARONA)).resolves.toBe(2);
+
+    expect(chamada().url).toContain('/rest/v1/rpc/cancelar_carona');
+    expect(chamada().corpo).toEqual({ p_id_carona: ID_CARONA });
+  });
+
+  it('carona encerrada chega com a frase do hint', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(
+      resposta(409, {
+        code: 'PT409',
+        details: null,
+        hint: 'Esta carona já partiu ou foi encerrada; não dá mais para cancelar.',
+        message: 'CANCELAMENTO_ENCERRADO',
+      }),
+    );
+
+    await expect(caronas.cancelarCarona(ID_CARONA)).rejects.toMatchObject({
+      status: 409,
+      code: 'CANCELAMENTO_ENCERRADO',
+      message: 'Esta carona já partiu ou foi encerrada; não dá mais para cancelar.',
+    });
+  });
+});
+
+describe('listarMinhasCaronas (T28)', () => {
+  const futura = (horas: number) => new Date(Date.now() + horas * 3_600_000).toISOString();
+  const linha = (id: string, partida: string, status: string) => ({
+    id_carona: id,
+    origem: 'Centro, Torres - RS',
+    destino: 'ULBRA Torres - RS',
+    data_hora_partida: partida,
+    vagas_disponiveis: 2,
+    vagas_ofertadas: 3,
+    status,
+  });
+
+  it('lê a tabela carona só com as colunas da tela e põe as em andamento primeiro', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(
+      resposta(200, [
+        linha('passada', futura(-48), 'CONCLUIDA'),
+        linha('cancelada', futura(-1), 'CANCELADA'),
+        linha('amanha', futura(24), 'ABERTA'),
+        linha('cancelada-futura', futura(30), 'CANCELADA'),
+        linha('hoje', futura(3), 'LOTADA'),
+      ]),
+    );
+
+    const lista = await caronas.listarMinhasCaronas();
+
+    const { url, metodo } = chamada();
+    expect(metodo).toBe('GET');
+    expect(url).toContain('/rest/v1/carona?');
+    expect(url).toContain(
+      'select=id_carona,origem,destino,data_hora_partida,vagas_disponiveis,vagas_ofertadas,status',
+    );
+    // Sem filtro de motorista no app: a RLS limita às caronas do usuário
+    expect(url).not.toContain('id_motorista');
+    expect(lista.map((carona) => carona.id_carona)).toEqual([
+      'hoje',
+      'amanha',
+      'cancelada-futura',
+      'cancelada',
+      'passada',
+    ]);
+  });
+
+  it('erro do banco chega como AppError', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(
+      resposta(403, { code: '42501', details: null, hint: null, message: 'permission denied' }),
+    );
+
+    await expect(caronas.listarMinhasCaronas()).rejects.toMatchObject({
+      status: 403,
+      code: 'PERMISSAO_NEGADA',
+    });
+  });
+});
