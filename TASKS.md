@@ -168,9 +168,11 @@ Nota (17/10, T22): no sandbox, a order com pagador `APRO` termina em `processed/
 Nota (17/10, T23): feita (migration `confirmar_pagamento`, pgTAP `12_confirmar_pagamento`, `deno test`); verificada no local com notificações assinadas de verdade. O teste com o Mercado Pago chamando o webhook depende da release (secrets e URL no painel).
 
 ### T24 — Expiração de reservas pendentes
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T21
+Status: feito · Responsável: Gustavo Trespach · Depende de: T21
 Descrição: Função `expirar_reservas()` agendada no pg_cron a cada minuto: marca `EXPIRADA` a reserva `PENDENTE` vencida (15 minutos desde `reserva.criado_em`, decisão do Gustavo em 21/11) e devolve a vaga (RN16).
 Aceite: reserva não paga após o prazo libera a vaga automaticamente (pgTAP chamando a função com reserva antiga).
+Nota (21/11, Parte A): PR #63. Migration `20261121154122_expirar_reservas`: `pg_cron` em `pg_catalog`, `prazo_reserva_pendente()` (15 min), `expirar_reservas()` (`SECURITY DEFINER`, só job e `service_role`; trava carona → reserva → pagamento e confere de novo), índice parcial das `PENDENTE` e job `expirar-reservas` (`* * * * *`, upsert pelo nome). pgTAP `14_expirar_reservas` (31 testes, 413 no total). A `confirmar_pagamento` já trata Pix pago depois da expiração (`REEMBOLSO_PENDENTE`, sem mexer na vaga). O prazo do QR no Mercado Pago ficou pendente (documentação não fecha os limites para Pix).
+Nota (23/11, Parte B): release #64; o workflow Deploy aplicou a `20261121154122` no remoto (`db push` sem erro no pg_cron) e a `health` respondeu 200; o `migration list` do Manter ativo mostra local = remoto até a `20261121154122`. Edge Functions sem mudança de código (o CLI reimplantou a `reservar-vaga` com o mesmo código-fonte; `health` 200, `reservar-vaga` e `webhook-mercado-pago` 401 sem credenciais, como antes).
 
 ### T25 — Telas de reserva e pagamento
 Status: feito · Responsável: Gustavo Trespach · Depende de: T22, T23
