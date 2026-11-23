@@ -305,7 +305,8 @@ Torres, R$ 6,00 por pessoa, 2 vagas, motorista Ana Souza".
 
 ### 3.4 Selo de status (`SeloStatus.tsx`, novo)
 
-Props: `tipo: 'PENDENTE' | 'CONFIRMADA' | 'CANCELADA' | 'EXPIRADA' | 'SOMENTE_MULHERES'`.
+Props: `tipo: 'PENDENTE' | 'CONFIRMADA' | 'CANCELADA' | 'EXPIRADA' | 'SOMENTE_MULHERES'`, mais os
+status de carona `'ABERTA' | 'LOTADA' | 'CONCLUIDA'` (T28, tela 16; `CANCELADA` é o mesmo selo).
 O texto vem de `rotuloStatusReserva` (já existe), para não duplicar rótulos.
 
 | Medida | Valor |
@@ -320,6 +321,9 @@ O texto vem de `rotuloStatusReserva` (já existe), para não duplicar rótulos.
 | CANCELADA | `erroClaro` | `erro` | `close-circle` | Cancelada |
 | EXPIRADA | `neutroClaro` | `neutro` | `hourglass-outline` | Expirada |
 | SOMENTE_MULHERES | `secundariaClara` | `secundariaTexto` | `female-outline` | Somente mulheres |
+| ABERTA (carona) ✚ | `primariaClara` | `primaria` | `lock-open-outline` | Aberta |
+| LOTADA (carona) ✚ | `alertaClaro` | `alerta` | `people` | Lotada |
+| CONCLUIDA (carona) ✚ | `neutroClaro` | `neutro` | `flag-outline` | Concluída |
 
 A cor nunca é a única pista: todo selo tem ícone e texto.
 
@@ -580,6 +584,15 @@ Hierarquia: título → chips → cards; em cada card, hora e preço são o que 
 
 Erro de carregamento: estado comum, com ação "Voltar".
 
+**Cancelar carona** (T28) ✚ — só para o motorista (`sou_motorista`), com a carona `ABERTA`/`LOTADA` e
+partida futura: no fim da rolagem, divisória → Aviso `erro` (se o cancelamento falhar, com o `hint`
+do backend) → botão **perigo** `close-circle-outline` "Cancelar carona". Confirmação por `Alert`
+nativo: título "Cancelar carona", mensagem "Todas as reservas desta carona serão canceladas. Quem já
+pagou fica com o reembolso registrado.", botões "Voltar" (`cancel`) e "Cancelar carona"
+(`destructive`). Sucesso: Aviso `sucesso` no topo, "Carona cancelada. 2 reservas canceladas."
+("1 reserva cancelada."; sem reservas, "Ela não tinha reservas."), anunciado ao leitor de tela, e a
+tela recarrega mostrando "Situação: Cancelada.".
+
 ### Tela 7 — Oferecer carona (`caronas/publicar.tsx`)
 
 Título do header: "Oferecer carona". Formulário rolável, `gap` 20, agrupado em cards com título
@@ -644,6 +657,18 @@ Leitor de tela: ao mudar para CONFIRMADA, anunciar "Pagamento confirmado! Sua va
 garantida." (`AccessibilityInfo.announceForAccessibility`). Vibração curta opcional
 (`Vibration.vibrate(50)`, nativo, sem biblioteca).
 
+**Cancelar reserva** (T28) ✚ — em 8a e 8b, quando a reserva está `PENDENTE` ou `CONFIRMADA` e a carona
+está `ABERTA`/`LOTADA` com partida futura (partida e status vêm da `minhas_reservas`): no fim,
+divisória → Aviso `erro` (falha, com o `hint` do backend, ex.: "Reservas pagas só podem ser
+canceladas até 2 horas antes da partida.") → botão **perigo** `close-circle-outline` "Cancelar
+reserva". O app não calcula o prazo de 2 h (RN20): mostra o botão e o backend recusa. Confirmação por
+`Alert` ("Voltar" / "Cancelar reserva" `destructive`): `PENDENTE` → "Sua vaga será liberada. Se você
+já pagou o Pix, o valor fica registrado para reembolso."; `CONFIRMADA` → "O valor pago fica
+registrado para reembolso. Reservas pagas só podem ser canceladas até 2 horas antes da partida.".
+Sucesso: a tela passa ao estado Cancelada abaixo, com Aviso `sucesso` ("Reserva cancelada. Sua vaga
+foi liberada." / "… O valor pago fica registrado para reembolso.") no lugar do Aviso `erro`,
+anunciado ao leitor de tela; o polling para e o Pix em memória é apagado.
+
 **Expirada / Cancelada:** bloco do topo com o SeloStatus correspondente e o valor; abaixo Aviso
 `erro`: "Esta reserva expirou porque o pagamento não foi feito a tempo." / "Esta reserva foi
 cancelada."; botão secundário "Buscar outra carona" ✚ (vai para o Início).
@@ -681,6 +706,7 @@ Header "Meu perfil". Rolável, `gap` 16.
 3. **Atalhos** ✚ — card com linhas de 56 de altura separadas por divisória, cada uma: ícone 22
    `primaria` + texto `corpo` + `chevron-forward`:
    - `car-outline` "Meus veículos"
+   - `map-outline` "Minhas caronas" ✚ (T28, tela 16)
    - `receipt-outline` "Minhas reservas"
 4. Botão `texto` com `log-out-outline` "Sair" em cor `erro` (`carregando` enquanto sai).
 5. `StatusServidor` no rodapé, em `legenda`, centralizado (ferramenta de desenvolvimento).
@@ -712,6 +738,28 @@ Mesmo `FormularioVeiculo`, rolável, `gap` 16:
 Só em Editar: divisória 1 `borda` com 24 acima e abaixo → Aviso de erro da exclusão → botão
 **perigo** `trash-outline` "Excluir veículo" (hoje é secundário) → `Alert` atual: "Excluir
 veículo", "Excluir Onix (IYK4B21)?", botões "Cancelar" e "Excluir" (`destructive`).
+
+### Tela 16 — Minhas caronas (`caronas/minhas.tsx`) ✚ (T28)
+
+Header "Minhas caronas". Acesso pelo atalho do Perfil (tela 10). `FlatList`, `gap` 12, puxar para
+atualizar; recarrega ao voltar do detalhe (a carona pode ter sido cancelada). Mesmo padrão da tela 9.
+
+**Card de carona do motorista:** container do card (3.3) com padding 12/16, `gap` 8.
+
+1. SeloStatus da carona (Aberta, Lotada, Cancelada, Concluída).
+2. "dom 18/10 · 12:30" (`corpoForte`, numérico).
+3. LinhaRota em linha: "Centro de Torres → ULBRA Torres".
+4. Linha: "2 de 3 vagas livres" (`legenda`) + `chevron-forward` 18 `textoSutil` à direita.
+
+Ordem: em andamento (`ABERTA`/`LOTADA` com partida futura) primeiro, a mais próxima antes; depois as
+passadas, canceladas e concluídas, a mais recente antes. Estas ficam com data e trajeto em
+`textoSecundario` (o selo continua colorido). Tocar abre o Detalhe da carona (tela 6), onde o
+motorista pode cancelar. `accessibilityLabel` do card: "Aberta, dom 18/10 · 12:30, de Centro de
+Torres para ULBRA Torres, 2 de 3 vagas livres".
+
+**Carregando:** 3 esqueletos. **Erro:** estado comum. **Vazio:** `EstadoVazio` `car-outline`, título
+"Você ainda não ofereceu caronas", mensagem "As caronas que você oferecer aparecem aqui, com as vagas
+e o status de cada uma.", botão primário `add` "Oferecer carona" (vai para a tela 7).
 
 ### Tela 15 — Ícone e splash
 
