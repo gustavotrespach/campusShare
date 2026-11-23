@@ -217,7 +217,7 @@ A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge 
 `reservar_vaga(p_id_carona uuid, p_id_passageiro uuid) returns table (id_reserva, id_pagamento, valor_individual, taxa_plataforma, valor_repassado, status)` (T21):
 - `p_id_passageiro` é o usuário do JWT validado pela Edge Function, nunca um campo do corpo enviado pelo app.
 - Numa transação, com a carona travada (`FOR UPDATE`): valida, grava a reserva `PENDENTE` com `valor_individual = valor_por_passageiro(custo_total, vagas_ofertadas)` (RN11, o mesmo valor da busca), grava o pagamento `PENDENTE` (`PIX`, `id_externo` nulo) com `taxa_plataforma = round(valor × percentual_taxa, 2)` e `valor_repassado = valor − taxa` (RN13, taxa do `parametro_custo` mais recente) e baixa uma vaga; com 0 vagas a carona vira `LOTADA`.
-- A reserva `PENDENTE` ocupa a vaga até ser paga ou expirar (expiração automática: T24, pós-AP2).
+- A reserva `PENDENTE` ocupa a vaga até ser paga ou expirar: sem pagamento confirmado em **15 minutos** (desde `reserva.criado_em`), o job `expirar-reservas` (pg_cron, a cada minuto) a marca `EXPIRADA`, recusa o pagamento e devolve a vaga (RN16, T24). Um Pix pago depois disso vira `REEMBOLSO_PENDENTE`.
 - Exemplo: R$ 24,00 com 3 vagas → R$ 6,00, taxa R$ 0,60, repasse R$ 5,40. R$ 25,00 com 2 vagas → R$ 8,33, R$ 0,83, R$ 7,50.
 
 Erros (validados nesta ordem; a Edge Function repassa ao app):

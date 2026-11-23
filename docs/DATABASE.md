@@ -92,6 +92,8 @@ Exclusão: o trigger `impedir_exclusao_veiculo_em_uso` (BEFORE DELETE) recusa ve
 
 Índice único parcial `reserva_id_carona_id_passageiro_ativa_key`: (`id_carona`, `id_passageiro`) onde status em (`PENDENTE`, `CONFIRMADA`) — impede reserva dupla (RN14) e permite reservar de novo depois de `CANCELADA`/`EXPIRADA`. Índices em `id_carona` e `id_passageiro` (RLS e consultas por carona).
 
+Índice parcial `reserva_pendente_criado_em_idx`: (`criado_em`) onde status = `PENDENTE` — varredura do job de expiração (T24).
+
 ### PAGAMENTO (1:1 com RESERVA)
 | Coluna | Tipo | Regras |
 |---|---|---|
@@ -187,13 +189,15 @@ Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `deta
 | `cancelar_carona`, `concluir_carona` | Funções RPC | Módulo caronas |
 | `reservar_vaga` | Função `SECURITY DEFINER`, `EXECUTE` só para `service_role` (Edge Function `reservar-vaga`) | Transação única com `SELECT carona FOR UPDATE`: valida RN08, RN14 e RN18, grava reserva `PENDENTE` (rateio por `valor_por_passageiro`, RN11) e pagamento `PENDENTE` com taxa e repasse (RN13), baixa a vaga e marca `LOTADA` com 0 vagas (RN07, RN17) |
 | `minhas_reservas()` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T25) | Reservas do `auth.uid()`, mais recentes primeiro, com o status e o valor do pagamento e as colunas públicas da carona (origem, destino, partida, status) e o primeiro nome do motorista. Existe porque o passageiro não lê a tabela `carona` (mesmo padrão da `detalhar_carona`) |
-| `cancelar_reserva`, `expirar_reservas` | Funções | Módulo reservas (cancelamento T28, expiração T24 — pós-AP2) |
+| `cancelar_reserva` | Função | Módulo reservas (cancelamento, T28) |
+| `prazo_reserva_pendente()` | Função SQL `IMMUTABLE`, só `service_role` (T24) | Único lugar do prazo da RN16: `interval '15 minutes'` |
+| `expirar_reservas()` | Função `SECURITY DEFINER`, sem `EXECUTE` para `public`/`anon`/`authenticated`; executam o dono (job do pg_cron) e a `service_role` (T24) | RN16, RN17: para cada reserva `PENDENTE` com `criado_em` mais antigo que o prazo, trava a carona, depois a reserva e o pagamento (mesma ordem de locks da `reservar_vaga`, da `desfazer_reserva_sem_cobranca` e da `confirmar_pagamento`), confere de novo (ainda `PENDENTE` e vencida; se o webhook confirmou no meio-tempo, pula), marca a reserva `EXPIRADA` e o pagamento `PENDENTE` como `RECUSADO`, devolve a vaga e volta a carona `LOTADA` para `ABERTA` (`CANCELADA` e `CONCLUIDA` não mudam). Devolve quantas expirou. Um Pix pago depois disso vira `REEMBOLSO_PENDENTE` na `confirmar_pagamento`, sem mexer na vaga |
 | `registrar_cobranca(p_id_pagamento, p_id_externo)` | Função `SECURITY DEFINER`, só `service_role` (T22) | Grava o id da order do Mercado Pago no pagamento `PENDENTE` criado por `reservar_vaga`; idempotente com o mesmo id; recusa id diferente (`COBRANCA_DIVERGENTE`), order de outro pagamento (`COBRANCA_DUPLICADA`) e pagamento que não está mais pendente (`PAGAMENTO_ENCERRADO`) |
 | `desfazer_reserva_sem_cobranca(p_id_reserva)` | Função `SECURITY DEFINER`, só `service_role` (T22) | Cobrança Pix falhou: com a carona travada (`FOR UPDATE`, mesma ordem de locks da `reservar_vaga`), reserva `CANCELADA`, pagamento `RECUSADO`, vaga devolvida e `LOTADA` volta a `ABERTA`. Só age em reserva `PENDENTE` com pagamento sem `id_externo`; devolve `true` se agiu |
 | `confirmar_pagamento(p_id_externo, p_id_pagamento, p_valor)` | Função `SECURITY DEFINER`, só `service_role` (webhook, T23) | Order paga consultada na API: confere order e valor; com a carona, a reserva e o pagamento travados (mesma ordem de locks da `reservar_vaga`), pagamento `APROVADO` (`pago_em`) e reserva `CONFIRMADA` → `CONFIRMADO`; repetição → `JA_CONFIRMADO` (idempotente); reserva `CANCELADA`/`EXPIRADA` → pagamento `REEMBOLSO_PENDENTE` sem confirmar e sem mexer na vaga; `id_externo` nulo é aceito pelo `external_reference` e gravado. Não altera vagas |
 | `avaliar_participante` | Função RPC | RN19 |
 | Triggers de notificação | Triggers em `reserva`/`carona` | Gravam NOTIFICACAO |
-| `expirar-reservas` | Job pg_cron (a cada minuto) | RN16 |
+| `expirar-reservas` | Job pg_cron (`* * * * *`, T24) | RN16: `select public.expirar_reservas()`. Extensão `pg_cron` em `pg_catalog` (jeito indicado pelo Supabase Cron); `cron.schedule` com o mesmo nome substitui o job (upsert), então reagendar não duplica. O job roda como `postgres`, dono da função |
 | Webhook `notificacao` INSERT | Database Webhook | Chama a Edge Function `enviar-push` |
 
 ## Alterações propostas em relação ao DER da Aula 08
