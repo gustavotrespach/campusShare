@@ -124,7 +124,7 @@ await supabase.from('veiculo').insert({
 | RPC | `publicar_carona(...)` → `uuid` | Sprint 2: publica com `custo_total` digitado (RN04–RN06); único caminho de criação (o app não tem INSERT em `carona`) |
 | Edge Function | `sugestao-preco` | Sprint 3: `distancia_km` e `custo_estimado` |
 | Edge Function | `publicar-carona` | Sprint 3: recalcula `custo_estimado` e aplica o teto (RN10); passa a ser o único caminho de publicação |
-| RPC | `cancelar_carona(p_id_carona)` | Só o motorista; cancela reservas ativas e notifica (US06) |
+| RPC | `cancelar_carona(p_id_carona)` → `integer` | Só o motorista, antes da partida; cancela as reservas ativas (T28). A notificação aos passageiros (US06) vem com o módulo de notificações |
 | RPC | `concluir_carona(p_id_carona)` | Só o motorista, após a partida |
 
 ```ts
@@ -193,6 +193,24 @@ const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona:
 | 400 | `DADOS_INVALIDOS` | Página inválida. | `p_pagina` < 1 |
 | 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada ou não está mais disponível. | Detalhe de carona inexistente ou fora da visibilidade (mesma resposta) |
 
+**Cancelar carona (T28).**
+
+```ts
+const { data: reservasCanceladas } = await supabase.rpc('cancelar_carona', { p_id_carona: 'uuid' });
+```
+
+`cancelar_carona(p_id_carona uuid) returns integer`:
+- O motorista é o usuário da sessão (`auth.uid()`). Sem o limite de 2 h da RN20: vale até a partida (RN07).
+- Numa transação, com a carona travada e depois as reservas ativas e os pagamentos delas: a carona vira `CANCELADA`; cada reserva `PENDENTE` ou `CONFIRMADA` vira `CANCELADA`, com o pagamento `PENDENTE` → `RECUSADO` e `APROVADO` → `REEMBOLSO_PENDENTE`. Reservas já `CANCELADA`/`EXPIRADA` não mudam.
+- `vagas_disponiveis` não muda: a carona cancelada some da `buscar_caronas` e não aceita reserva (`CARONA_INDISPONIVEL`).
+- Devolve quantas reservas cancelou (0 se não havia). Um Pix pago depois disso vira `REEMBOLSO_PENDENTE` no webhook.
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão |
+| 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada. | Carona inexistente ou de outro motorista (mesma resposta) |
+| 409 | `CANCELAMENTO_ENCERRADO` | Esta carona já partiu ou foi encerrada; não dá mais para cancelar. | Carona `CANCELADA`/`CONCLUIDA` ou partida já passada |
+
 ```json
 // POST /functions/v1/sugestao-preco
 { "origem_lat": -29.55, "origem_lng": -49.89, "destino_lat": -29.33, "destino_lng": -49.73,
@@ -208,9 +226,29 @@ const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona:
 | Edge Function | `reservar-vaga` | Reserva a vaga (função SQL `reservar_vaga`) e gera a cobrança Pix no Mercado Pago (API de Orders, sandbox) — T22 |
 | Tabela | `reserva` — `select` | Passageiro vê as próprias; motorista vê as das suas caronas (RLS) |
 | RPC | `minhas_reservas()` | Reservas do usuário logado para a tela "Minhas reservas" (T25) |
-| RPC | `cancelar_reserva(p_id_reserva)` | Passageiro cancela; devolve a vaga |
+| RPC | `cancelar_reserva(p_id_reserva)` → `text` | Passageiro cancela a própria reserva e a vaga volta (RN20, T28) |
 
 `minhas_reservas() returns table (id_reserva, status_reserva, reservado_em, status_pagamento, valor, id_carona, origem, destino, data_hora_partida, status_carona, nome_motorista)` (T25): só as reservas do `auth.uid()`, mais recentes primeiro (`reservado_em` desc), em qualquer status. `valor` é o do pagamento (decimal em reais; o app converte para centavos no service) e `nome_motorista` é só o primeiro nome. Sem sessão → 401 `NAO_AUTENTICADO`; `anon` não executa. Existe porque o passageiro não lê a tabela `carona` (só o motorista lê as próprias).
+
+**Cancelar reserva (T28).**
+
+```ts
+const { data: status } = await supabase.rpc('cancelar_reserva', { p_id_reserva: 'uuid' }); // 'CANCELADA'
+```
+
+`cancelar_reserva(p_id_reserva uuid) returns text`:
+- O passageiro é o usuário da sessão (`auth.uid()`); só a própria reserva.
+- RN20: reserva `PENDENTE` pode ser cancelada até a partida (pagamento `PENDENTE` → `RECUSADO`); reserva `CONFIRMADA` (paga), até **2 horas** antes da partida (pagamento `APROVADO` → `REEMBOLSO_PENDENTE`; o reembolso em si ainda é manual).
+- Numa transação, com a carona travada, depois a reserva (status conferido de novo) e o pagamento: reserva `CANCELADA`, uma vaga devolvida e carona `LOTADA` → `ABERTA` (RN17).
+- Devolve o status final, `CANCELADA`. Chamar de novo dá `RESERVA_JA_ENCERRADA` e não devolve a vaga outra vez. Um Pix pago depois do cancelamento vira `REEMBOLSO_PENDENTE` no webhook, sem mexer na vaga.
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão |
+| 404 | `RESERVA_NAO_ENCONTRADA` | Reserva não encontrada. | Reserva inexistente ou de outro usuário (mesma resposta) |
+| 409 | `RESERVA_JA_ENCERRADA` | Esta reserva já foi cancelada ou expirou. | Reserva `CANCELADA` ou `EXPIRADA` |
+| 409 | `CANCELAMENTO_ENCERRADO` | Esta carona já partiu ou foi encerrada; não dá mais para cancelar. | Partida já passou, ou carona `CANCELADA`/`CONCLUIDA` |
+| 409 | `PRAZO_CANCELAMENTO_ENCERRADO` | Reservas pagas só podem ser canceladas até 2 horas antes da partida. | Reserva `CONFIRMADA` a menos de 2 h da partida (RN20) |
 
 A função SQL `reservar_vaga` só pode ser executada pela `service_role` (Edge Function), para que nenhuma reserva nasça sem cobrança. O app chama a Edge Function, nunca a função.
 
