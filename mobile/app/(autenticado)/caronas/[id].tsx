@@ -1,23 +1,37 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { Divisoria } from '@/components/Divisoria';
 import { EstadoVazio } from '@/components/EstadoVazio';
 import type { NomeIcone } from '@/components/icones';
 import { LinhaRota } from '@/components/LinhaRota';
 import { Placa } from '@/components/Placa';
 import { SeloEmailConfirmado } from '@/components/SeloEmailConfirmado';
 import { SeloStatus } from '@/components/SeloStatus';
-import { detalharCarona, type CaronaDetalhe } from '@/services/caronas';
+import { cancelarCarona, detalharCarona, type CaronaDetalhe } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { reservarVaga } from '@/services/reservas';
 import { guardarPix } from '@/store/pix';
 import { tema } from '@/tema';
+import {
+  CONFIRMACAO_CANCELAR_CARONA,
+  mensagemCaronaCancelada,
+  podeCancelarCarona,
+} from '@/utils/cancelamento';
 import { formatarDataLonga, formatarHora } from '@/utils/data-hora';
 import { formatarReais } from '@/utils/dinheiro';
 import { descreverVeiculo } from '@/utils/exibicao-carona';
@@ -72,6 +86,11 @@ export default function TelaDetalheCarona() {
   const [erroReserva, setErroReserva] = useState<ErroReserva | null>(null);
   // Trava síncrona contra duplo toque: o estado do React só muda no próximo render
   const reservaEmAndamento = useRef(false);
+  // Recarregar depois de cancelar mantém a tela atual até o detalhe novo chegar
+  const [versao, setVersao] = useState(0);
+  const [cancelandoCarona, setCancelandoCarona] = useState(false);
+  const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
+  const [caronaCancelada, setCaronaCancelada] = useState<string | null>(null);
 
   useEffect(() => {
     // Ignora a resposta se a tela foi desmontada antes de ela chegar
@@ -92,7 +111,7 @@ export default function TelaDetalheCarona() {
     return () => {
       ativo = false;
     };
-  }, [id]);
+  }, [id, versao]);
 
   if (carregamento.tipo === 'carregando') {
     return (
@@ -139,6 +158,34 @@ export default function TelaDetalheCarona() {
     }
   };
 
+  const exibirCancelarCarona = podeCancelarCarona(carona);
+
+  // RN07: quem decide se ainda dá para cancelar é a cancelar_carona; o erro chega com o hint
+  const cancelar = async () => {
+    setCancelandoCarona(true);
+    setErroCancelamento(null);
+    try {
+      const reservasCanceladas = await cancelarCarona(carona.id_carona);
+      const mensagem = mensagemCaronaCancelada(reservasCanceladas);
+      setCaronaCancelada(mensagem);
+      AccessibilityInfo.announceForAccessibility(mensagem);
+      setVersao((anterior) => anterior + 1);
+    } catch (falha) {
+      const mensagem = normalizarErro(falha).message;
+      setErroCancelamento(mensagem);
+      AccessibilityInfo.announceForAccessibility(mensagem);
+    } finally {
+      setCancelandoCarona(false);
+    }
+  };
+
+  const confirmarCancelamento = () => {
+    Alert.alert('Cancelar carona', CONFIRMACAO_CANCELAR_CARONA, [
+      { text: 'Voltar', style: 'cancel' },
+      { text: 'Cancelar carona', style: 'destructive', onPress: () => void cancelar() },
+    ]);
+  };
+
   // O valor mostrado é o que o backend calculou (valor_por_passageiro); a reservar_vaga cobra o
   // mesmo cálculo
   const confirmarReserva = () => {
@@ -160,6 +207,7 @@ export default function TelaDetalheCarona() {
           },
         ]}
       >
+        {caronaCancelada ? <Aviso tipo="sucesso" mensagem={caronaCancelada} /> : null}
         {carona.sou_motorista ? <Aviso tipo="info" mensagem="Esta é a sua carona." /> : null}
         {carona.status !== 'ABERTA' ? (
           <Aviso tipo="info" mensagem={`Situação: ${ROTULO_STATUS[carona.status]}.`} />
@@ -226,6 +274,20 @@ export default function TelaDetalheCarona() {
             <Placa placa={carona.placa} />
           </View>
         </View>
+
+        {exibirCancelarCarona ? (
+          <View style={estilos.cancelamento}>
+            <Divisoria />
+            {erroCancelamento ? <Aviso mensagem={erroCancelamento} /> : null}
+            <Botao
+              titulo="Cancelar carona"
+              icone="close-circle-outline"
+              variante="perigo"
+              carregando={cancelandoCarona}
+              onPress={confirmarCancelamento}
+            />
+          </View>
+        ) : null}
       </ScrollView>
 
       {exibirBarra ? (
@@ -314,6 +376,7 @@ const estilos = StyleSheet.create({
     ...tema.sombra.flutuante,
   },
   linhaBarra: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x4 },
+  cancelamento: { gap: tema.espaco.x4, marginTop: tema.espaco.x2 },
   valorBarra: {
     fontSize: 20,
     lineHeight: 26,
