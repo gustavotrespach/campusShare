@@ -50,6 +50,7 @@ function detalhe(alteracoes: Partial<CaronaDetalhe> = {}): CaronaDetalhe {
     // Reputação do motorista (T30); a tela ainda não mostra (Fase 34)
     media_motorista: 4.3,
     total_avaliacoes_motorista: 3,
+    foto_motorista: null,
     valorPorPassageiroCentavos: 600,
     custoTotalCentavos: 2400,
     ...alteracoes,

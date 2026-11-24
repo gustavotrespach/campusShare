@@ -151,13 +151,13 @@ isOneToOne: false
                   ]
                 },"usuario": {
                   Row: {
-                    "criado_em": string,"email_institucional": string,"expo_push_token": string | null,"genero": Database["public"]['Enums']["genero_usuario"],"id_instituicao": number,"id_usuario": string,"nome_completo": string,"telefone": string | null
+                    "criado_em": string,"email_institucional": string,"expo_push_token": string | null,"foto_atualizada_em": string | null,"genero": Database["public"]['Enums']["genero_usuario"],"id_instituicao": number,"id_usuario": string,"nome_completo": string,"telefone": string | null
                   }
                   Insert: {
-                    "criado_em"?: string,"email_institucional": string,"expo_push_token"?: string | null,"genero"?: Database["public"]['Enums']["genero_usuario"],"id_instituicao": number,"id_usuario": string,"nome_completo": string,"telefone"?: string | null
+                    "criado_em"?: string,"email_institucional": string,"expo_push_token"?: string | null,"foto_atualizada_em"?: string | null,"genero"?: Database["public"]['Enums']["genero_usuario"],"id_instituicao": number,"id_usuario": string,"nome_completo": string,"telefone"?: string | null
                   }
                   Update: {
-                    "criado_em"?: string,"email_institucional"?: string,"expo_push_token"?: string | null,"genero"?: Database["public"]['Enums']["genero_usuario"],"id_instituicao"?: number,"id_usuario"?: string,"nome_completo"?: string,"telefone"?: string | null
+                    "criado_em"?: string,"email_institucional"?: string,"expo_push_token"?: string | null,"foto_atualizada_em"?: string | null,"genero"?: Database["public"]['Enums']["genero_usuario"],"id_instituicao"?: number,"id_usuario"?: string,"nome_completo"?: string,"telefone"?: string | null
                   }
                   Relationships: [
                     {
@@ -203,8 +203,11 @@ isOneToOne: false
                            },
 "buscar_caronas":
 { Args: { "p_data"?: string,"p_lat": number,"p_lng": number,"p_pagina"?: number,"p_raio_km"?: number,"p_somente_mulheres"?: boolean }; Returns: {
-              "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"media_motorista": number,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"total_avaliacoes_motorista": number,"vagas_disponiveis": number,"valor_por_passageiro": number
+              "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"foto_motorista": string,"id_carona": string,"media_motorista": number,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"total_avaliacoes_motorista": number,"vagas_disponiveis": number,"valor_por_passageiro": number
             }[]
+                           },
+"caminho_foto_perfil":
+{ Args: { "p_foto_atualizada_em": string,"p_id_usuario": string }; Returns: string
                            },
 "cancelar_carona":
 { Args: { "p_id_carona": string }; Returns: number
@@ -221,12 +224,15 @@ isOneToOne: false
 "confirmar_pagamento":
 { Args: { "p_id_externo": string,"p_id_pagamento": string,"p_valor": number }; Returns: string
                            },
+"definir_foto_perfil":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "desfazer_reserva_sem_cobranca":
 { Args: { "p_id_reserva": string }; Returns: boolean
                            },
 "detalhar_carona":
 { Args: { "p_id_carona": string }; Returns: {
-              "cor": string,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"id_carona": string,"media_motorista": number,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"placa": string,"somente_mulheres": boolean,"sou_motorista": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"total_avaliacoes_motorista": number,"vagas_disponiveis": number,"vagas_ofertadas": number,"valor_por_passageiro": number
+              "cor": string,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"foto_motorista": string,"id_carona": string,"media_motorista": number,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"placa": string,"somente_mulheres": boolean,"sou_motorista": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"total_avaliacoes_motorista": number,"vagas_disponiveis": number,"vagas_ofertadas": number,"valor_por_passageiro": number
             }[]
                            },
 "expirar_reservas":
@@ -239,7 +245,7 @@ isOneToOne: false
                            },
 "perfil_publico":
 { Args: { "p_id_usuario": string }; Returns: {
-              "id_usuario": string,"media_avaliacoes": number,"nome": string,"total_avaliacoes": number
+              "foto_caminho": string,"id_usuario": string,"media_avaliacoes": number,"nome": string,"total_avaliacoes": number
             }[]
                            },
 "prazo_avaliacao":
@@ -259,6 +265,9 @@ isOneToOne: false
                            },
 "registrar_cobranca":
 { Args: { "p_id_externo": string,"p_id_pagamento": string }; Returns: undefined
+                           },
+"remover_foto_perfil":
+{ Args: Record<PropertyKey, never>; Returns: undefined
                            },
 "reservar_vaga":
 { Args: { "p_id_carona": string,"p_id_passageiro": string }; Returns: {

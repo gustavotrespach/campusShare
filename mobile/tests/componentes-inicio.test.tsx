@@ -119,6 +119,7 @@ describe('ItemCarona (card da tela inicial)', () => {
     valorPorPassageiroCentavos: 600,
     media_motorista: 4.3,
     total_avaliacoes_motorista: 3,
+    foto_motorista: null,
   };
 
   beforeAll(() => {
