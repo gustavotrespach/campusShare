@@ -209,9 +209,12 @@ Descrição: Tabela NOTIFICACAO com RLS; coluna `expo_push_token` em USUARIO; tr
 Aceite: passageiros recebem push no cancelamento; motorista recebe push em nova reserva.
 
 ### T30 — Concluir carona e avaliações
-Status: adiada (pós-AP2) · Depende de: T23
-Descrição: Função `concluir_carona`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); view `perfil_publico` (nome + média, sem e-mail, telefone ou gênero — movida da T13 em 16/10).
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T23
+Partes: **backend** (Fase 33, branch `feature/T30-concluir-avaliar-backend`) e **app** (Fase 34, em outra branch).
+Regras (Gustavo, 24/11): o motorista conclui a carona da partida até 1 dia depois; sem conclusão nesse prazo, o sistema conclui sozinho (job de hora em hora); avaliação até 7 dias depois da partida, entre o motorista e cada passageiro com reserva `CONFIRMADA`.
+Descrição: Função `concluir_carona`; job `concluir-caronas`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); `avaliacoes_pendentes`; perfil público (nome + média, sem e-mail, telefone ou gênero — movido da T13 em 16/10) como função `perfil_publico`; reputação do motorista no `detalhar_carona`.
 Aceite: só participantes avaliam, uma vez cada, após a conclusão.
+Nota (24/11, parte backend): migration `20261124011419_concluir_avaliar` com `prazo_conclusao_carona()` (1 dia), `prazo_avaliacao()` (7 dias), `concluir_carona`, `concluir_caronas_vencidas` + job `concluir-caronas` (`0 * * * *`), tabela `avaliacao` (RLS: o avaliador lê as próprias; escrita só pela função), `avaliar_participante`, `avaliacoes_pendentes`, `perfil_publico` e `detalhar_carona` com `media_motorista`/`total_avaliacoes_motorista`. pgTAP `16_concluir_avaliar` (69 testes, 537 no total). Falta a parte app (Fase 34), merge e release.
 
 ### T32 — Identidade visual (tema, componentes, telas da demo, ícone e splash)
 Status: feito · Responsável: Gustavo Trespach · Depende de: T25

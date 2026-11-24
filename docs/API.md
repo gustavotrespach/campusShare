@@ -86,7 +86,7 @@ Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `c
 |---|---|---|
 | Tabela | `usuario` — `select` | Só a própria linha (RLS) |
 | Tabela | `usuario` — `update` | Só a própria linha; colunas `nome_completo`, `telefone`, `genero`, `expo_push_token` |
-| View | `perfil_publico` — `select` | Nome e média de avaliações de qualquer usuário (sem e-mail, telefone ou gênero). **Ainda não existe:** criada na T30, junto com AVALIACAO |
+| RPC | `perfil_publico(p_id_usuario)` | Nome, média e total de avaliações de qualquer usuário (sem e-mail, telefone ou gênero). Função, não view (T30; contrato em "avaliacoes") |
 
 ## veiculos
 
@@ -125,7 +125,7 @@ await supabase.from('veiculo').insert({
 | Edge Function | `sugestao-preco` | Sprint 3: `distancia_km` e `custo_estimado` |
 | Edge Function | `publicar-carona` | Sprint 3: recalcula `custo_estimado` e aplica o teto (RN10); passa a ser o único caminho de publicação |
 | RPC | `cancelar_carona(p_id_carona)` → `integer` | Só o motorista, antes da partida; cancela as reservas ativas (T28). A notificação aos passageiros (US06) vem com o módulo de notificações |
-| RPC | `concluir_carona(p_id_carona)` | Só o motorista, após a partida |
+| RPC | `concluir_carona(p_id_carona)` → `integer` | Só o motorista, entre a partida e 1 dia depois (T30; contrato em "avaliacoes") |
 
 ```ts
 // publicar (Sprint 2: rpc; Sprint 3: functions.invoke('publicar-carona', { body }))
@@ -358,7 +358,56 @@ Resposta 200: `{ "recebido": true, "resultado": "CONFIRMADO" }`. Resultados: `CO
 
 ## avaliacoes
 
+Conclusão da carona e avaliações (T30, RN07 e RN19). Prazos no banco: 1 dia depois da partida para o motorista concluir (`prazo_conclusao_carona()`) e 7 dias depois da partida para avaliar (`prazo_avaliacao()`). Depois de 1 dia, o job `concluir-caronas` (de hora em hora) conclui sozinho.
+
 | Tipo | Nome | Descrição |
 |---|---|---|
-| RPC | `avaliar_participante(p_id_reserva, p_id_avaliado, p_nota, p_comentario)` | RN19 |
-| Tabela | `avaliacao` — `select` | Avaliações recebidas por um usuário; média em `perfil_publico` |
+| RPC | `concluir_carona(p_id_carona)` → `integer` | O motorista conclui a própria carona |
+| RPC | `avaliar_participante(p_id_reserva, p_nota, p_comentario = null)` → `uuid` | Avalia o outro lado da reserva (RN19) |
+| RPC | `avaliacoes_pendentes()` | O que o usuário ainda pode avaliar |
+| RPC | `perfil_publico(p_id_usuario)` | Nome, média e total de avaliações recebidas |
+| Tabela | `avaliacao` — `select` | Só as avaliações que o usuário fez (RLS); escrita só pela `avaliar_participante` |
+
+```ts
+const { data: reservasConfirmadas } = await supabase.rpc('concluir_carona', { p_id_carona: 'uuid' });
+const { data: idAvaliacao } = await supabase.rpc('avaliar_participante', {
+  p_id_reserva: 'uuid', p_nota: 5, p_comentario: 'Pontual e simpático.', // comentário opcional
+});
+const { data: pendentes } = await supabase.rpc('avaliacoes_pendentes');
+const { data: [perfil] } = await supabase.rpc('perfil_publico', { p_id_usuario: 'uuid' });
+```
+
+`concluir_carona(p_id_carona uuid) returns integer`:
+- Só o motorista da carona (`auth.uid()`), com a carona `ABERTA`/`LOTADA`, de `data_hora_partida` até `data_hora_partida + 1 dia`.
+- Só muda o status para `CONCLUIDA`; reservas e pagamentos ficam como estão. Devolve quantas reservas `CONFIRMADA` a carona tinha (quem poderá avaliar).
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão |
+| 404 | `CARONA_NAO_ENCONTRADA` | Carona não encontrada. | Inexistente ou de outro motorista (mesma resposta) |
+| 409 | `CARONA_JA_ENCERRADA` | Esta carona já foi concluída ou cancelada. | Status `CONCLUIDA` ou `CANCELADA` |
+| 409 | `CARONA_NAO_PARTIU` | A carona só pode ser concluída depois do horário de partida. | Antes da partida |
+| 409 | `CONCLUSAO_ENCERRADA` | O prazo para concluir esta carona era de 1 dia depois da partida. Ela é concluída automaticamente. | Mais de 1 dia depois da partida |
+
+`avaliar_participante(p_id_reserva uuid, p_nota int, p_comentario text default null) returns uuid`:
+- O avaliado é deduzido: o passageiro da reserva avalia o motorista; o motorista da carona avalia o passageiro. Ninguém mais avalia aquela reserva.
+- Só com a reserva `CONFIRMADA` e a carona `CONCLUIDA`, até 7 dias depois da partida, uma vez por avaliador e reserva.
+- `p_nota` inteira de 1 a 5 (fracionária é recusada pelo PostgREST antes, com `22P02`). `p_comentario` é aparado; vazio vira nulo; até 500 caracteres.
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão |
+| 422 | `NOTA_INVALIDA` | Escolha uma nota de 1 a 5. | Nota ausente ou fora de 1 a 5 |
+| 400 | `DADOS_INVALIDOS` | O comentário pode ter até 500 caracteres. | Comentário com mais de 500 caracteres (depois de aparado) |
+| 404 | `RESERVA_NAO_ENCONTRADA` | Reserva não encontrada. | Inexistente, ou o usuário não é o passageiro nem o motorista (mesma resposta) |
+| 409 | `AVALIACAO_INDISPONIVEL` | A avaliação fica disponível depois que a carona é concluída, para reservas pagas. | Reserva não `CONFIRMADA` ou carona não `CONCLUIDA` |
+| 409 | `PRAZO_AVALIACAO_ENCERRADO` | O prazo para avaliar esta carona era de 7 dias depois da partida. | Mais de 7 dias depois da partida |
+| 409 | `AVALIACAO_DUPLICADA` | Você já avaliou esta carona. | Segunda avaliação da mesma reserva pelo mesmo avaliador |
+
+`avaliacoes_pendentes() returns table (id_reserva, papel, nome_avaliado, origem, destino, data_hora_partida, avaliar_ate)`: as reservas que o usuário ainda pode avaliar (mesmas condições da `avaliar_participante`, sem avaliação dele), da partida mais recente para a mais antiga. `papel` é o de quem avalia (`PASSAGEIRO` avalia o motorista; `MOTORISTA` avalia o passageiro); `nome_avaliado` é só o primeiro nome; `avaliar_ate` = partida + 7 dias. Sem sessão → 401 `NAO_AUTENTICADO`.
+
+`perfil_publico(p_id_usuario uuid) returns table (id_usuario, nome, media_avaliacoes, total_avaliacoes)`: perfil de qualquer usuário para quem está logado; `media_avaliacoes` com 1 casa (nula sem avaliações) e `total_avaliacoes` das avaliações **recebidas**. Sem e-mail, telefone nem gênero. Usuário inexistente → 404 `USUARIO_NAO_ENCONTRADO` ("Usuário não encontrado."); sem sessão → 401.
+
+O `detalhar_carona` traz a mesma reputação do motorista em `media_motorista` e `total_avaliacoes_motorista`. Atenção: o `supabase gen types` tipa `media_motorista` e `media_avaliacoes` como `number`, mas elas vêm `null` para quem ainda não foi avaliado.
+
+`anon` não executa nenhuma dessas funções nem lê `avaliacao`.
