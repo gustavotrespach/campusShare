@@ -17,9 +17,14 @@ export type CaronaResumo = Omit<LinhaBusca, 'valor_por_passageiro'> & {
   valorPorPassageiroCentavos: number;
 };
 
-export type CaronaDetalhe = Omit<LinhaDetalhe, 'valor_por_passageiro' | 'custo_total'> & {
+// media_motorista: os tipos gerados dizem number, mas vem null para motorista sem avaliações (T30)
+export type CaronaDetalhe = Omit<
+  LinhaDetalhe,
+  'valor_por_passageiro' | 'custo_total' | 'media_motorista'
+> & {
   valorPorPassageiroCentavos: number;
   custoTotalCentavos: number;
+  media_motorista: number | null;
 };
 
 // O que a tela de publicar entrega. Não existe id_motorista: o motorista é o auth.uid() da
@@ -119,9 +124,11 @@ export async function detalharCarona(idCarona: string): Promise<CaronaDetalhe> {
     if (!linha) {
       throw CARONA_NAO_ENCONTRADA;
     }
-    const { valor_por_passageiro, custo_total, ...resto } = linha;
+    const { valor_por_passageiro, custo_total, media_motorista, ...resto } = linha;
+    const media: number | null = media_motorista ?? null;
     return {
       ...resto,
+      media_motorista: media,
       valorPorPassageiroCentavos: reaisParaCentavos(valor_por_passageiro),
       custoTotalCentavos: reaisParaCentavos(custo_total),
     };
@@ -152,6 +159,22 @@ export async function listarMinhasCaronas(): Promise<MinhaCarona[]> {
 export async function cancelarCarona(idCarona: string): Promise<number> {
   try {
     const { data, error } = await obterSupabase().rpc('cancelar_carona', {
+      p_id_carona: idCarona,
+    });
+    if (error) {
+      throw error;
+    }
+    return data;
+  } catch (erro) {
+    throw normalizarErro(erro);
+  }
+}
+
+// RN07: quem decide se ainda dá para concluir (partida, prazo de 1 dia) é a concluir_carona; o erro
+// chega com o hint. Devolve quantas reservas confirmadas a carona tinha.
+export async function concluirCarona(idCarona: string): Promise<number> {
+  try {
+    const { data, error } = await obterSupabase().rpc('concluir_carona', {
       p_id_carona: idCarona,
     });
     if (error) {
