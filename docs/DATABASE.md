@@ -116,8 +116,9 @@ Exclusão: o trigger `impedir_exclusao_veiculo_em_uso` (BEFORE DELETE) recusa ve
 | id_avaliado | UUID | FK → USUARIO |
 | nota | SMALLINT | CHECK 1 a 5 |
 | comentario | VARCHAR(500) | opcional |
+| criado_em | TIMESTAMPTZ | default `now()` |
 
-UNIQUE (`id_reserva`, `id_avaliador`).
+UNIQUE (`id_reserva`, `id_avaliador`) (RN19); CHECK `id_avaliador <> id_avaliado`. FKs em cascata (a exclusão da conta leva as reservas e as avaliações junto). Índices em `id_avaliador` (RLS) e `id_avaliado` (média do perfil público). Criada na T30 (migration `concluir_avaliar`).
 
 ### NOTIFICACAO
 | Coluna | Tipo | Regras |
@@ -167,7 +168,7 @@ RLS habilitada em **todas** as tabelas. Escrita em tabelas com regra de negócio
 | carona | motorista vê as próprias; busca/detalhe via funções | — (funções `publicar_carona`, `cancelar_carona`, `concluir_carona`) |
 | reserva | passageiro vê as próprias; motorista vê as das suas caronas | — (Edge Function `reservar-vaga`, função `cancelar_reserva`) |
 | pagamento | passageiro da reserva (o motorista não vê) | — (Edge Functions) |
-| avaliacao | avaliador e avaliado | — (função `avaliar_participante`) |
+| avaliacao | só o avaliador lê as próprias (o que recebeu aparece só agregado no `perfil_publico`) | — (função `avaliar_participante`) |
 | notificacao | só as próprias | UPDATE da coluna `lida` nas próprias |
 | parametro_custo | — | — |
 
@@ -187,7 +188,9 @@ Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `deta
 | `detalhar_carona` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` | Uma carona com veículo e placa, visível ao motorista, a quem tem reserva e, se `ABERTA` e futura, aos demais; senão `CARONA_NAO_ENCONTRADA` |
 | `valor_por_passageiro` | Função SQL `IMMUTABLE`, sem `EXECUTE` para o app | Fórmula única do rateio (RN11): `round(custo_total ÷ (vagas_ofertadas + 1), 2)`; usada na busca, no detalhe e na reserva (T21) |
 | `cancelar_carona(p_id_carona)` → `integer` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T28) | RN07: o motorista do `auth.uid()` cancela a própria carona `ABERTA`/`LOTADA` antes da partida. Com a carona travada e depois as reservas ativas e os pagamentos delas (ordem de locks das outras funções), carona `CANCELADA`, cada reserva `PENDENTE`/`CONFIRMADA` → `CANCELADA`, pagamento `PENDENTE` → `RECUSADO` e `APROVADO` → `REEMBOLSO_PENDENTE`. Não mexe em `vagas_disponiveis`. Devolve quantas reservas cancelou. Erros: `CARONA_NAO_ENCONTRADA` (PT404, inexistente ou de outro motorista), `CANCELAMENTO_ENCERRADO` (PT409) |
-| `concluir_carona` | Função RPC | Módulo caronas |
+| `prazo_conclusao_carona()`, `prazo_avaliacao()` | Funções SQL `IMMUTABLE`, só `service_role` (T30) | Únicos lugares dos prazos: `interval '1 day'` (RN07) e `interval '7 days'` (RN19) |
+| `concluir_carona(p_id_carona)` → `integer` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T30) | RN07: o motorista do `auth.uid()` conclui a própria carona `ABERTA`/`LOTADA` entre a partida e `partida + prazo_conclusao_carona()`, com a carona travada (`FOR UPDATE`). Só muda o status (reservas e pagamentos ficam como estão). Devolve quantas reservas `CONFIRMADA` a carona tinha. Erros: `CARONA_NAO_ENCONTRADA` (PT404), `CARONA_JA_ENCERRADA`, `CARONA_NAO_PARTIU`, `CONCLUSAO_ENCERRADA` (PT409) |
+| `concluir_caronas_vencidas()` → `integer` | Função `SECURITY DEFINER`, sem `EXECUTE` para `public`/`anon`/`authenticated`; executam o job e a `service_role` (T30) | RN07: um `UPDATE` só, que trava cada carona `ABERTA`/`LOTADA` com `partida + prazo_conclusao_carona() < now()` e a marca `CONCLUIDA` (a condição é reavaliada depois do lock). Devolve quantas concluiu |
 | `reservar_vaga` | Função `SECURITY DEFINER`, `EXECUTE` só para `service_role` (Edge Function `reservar-vaga`) | Transação única com `SELECT carona FOR UPDATE`: valida RN08, RN14 e RN18, grava reserva `PENDENTE` (rateio por `valor_por_passageiro`, RN11) e pagamento `PENDENTE` com taxa e repasse (RN13), baixa a vaga e marca `LOTADA` com 0 vagas (RN07, RN17) |
 | `minhas_reservas()` | Função RPC, `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T25) | Reservas do `auth.uid()`, mais recentes primeiro, com o status e o valor do pagamento e as colunas públicas da carona (origem, destino, partida, status) e o primeiro nome do motorista. Existe porque o passageiro não lê a tabela `carona` (mesmo padrão da `detalhar_carona`) |
 | `prazo_cancelamento_confirmada()` | Função SQL `IMMUTABLE`, só `service_role` (T28) | Único lugar do prazo da RN20: `interval '2 hours'` |
@@ -197,9 +200,14 @@ Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `deta
 | `registrar_cobranca(p_id_pagamento, p_id_externo)` | Função `SECURITY DEFINER`, só `service_role` (T22) | Grava o id da order do Mercado Pago no pagamento `PENDENTE` criado por `reservar_vaga`; idempotente com o mesmo id; recusa id diferente (`COBRANCA_DIVERGENTE`), order de outro pagamento (`COBRANCA_DUPLICADA`) e pagamento que não está mais pendente (`PAGAMENTO_ENCERRADO`) |
 | `desfazer_reserva_sem_cobranca(p_id_reserva)` | Função `SECURITY DEFINER`, só `service_role` (T22) | Cobrança Pix falhou: com a carona travada (`FOR UPDATE`, mesma ordem de locks da `reservar_vaga`), reserva `CANCELADA`, pagamento `RECUSADO`, vaga devolvida e `LOTADA` volta a `ABERTA`. Só age em reserva `PENDENTE` com pagamento sem `id_externo`; devolve `true` se agiu |
 | `confirmar_pagamento(p_id_externo, p_id_pagamento, p_valor)` | Função `SECURITY DEFINER`, só `service_role` (webhook, T23) | Order paga consultada na API: confere order e valor; com a carona, a reserva e o pagamento travados (mesma ordem de locks da `reservar_vaga`), pagamento `APROVADO` (`pago_em`) e reserva `CONFIRMADA` → `CONFIRMADO`; repetição → `JA_CONFIRMADO` (idempotente); reserva `CANCELADA`/`EXPIRADA` → pagamento `REEMBOLSO_PENDENTE` sem confirmar e sem mexer na vaga; `id_externo` nulo é aceito pelo `external_reference` e gravado. Não altera vagas |
-| `avaliar_participante` | Função RPC | RN19 |
+| `resumo_avaliacoes(p_id_usuario)` | Função SQL `STABLE`, interna (sem `EXECUTE` para o app) (T30) | Média com 1 casa (`round(avg(nota), 1)`, nula sem avaliações) e total das avaliações recebidas; usada pelo `perfil_publico` e pelo `detalhar_carona` |
+| `avaliar_participante(p_id_reserva, p_nota, p_comentario = null)` → `uuid` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T30) | RN19: o avaliado é deduzido (passageiro → motorista; motorista → passageiro). Reserva `CONFIRMADA`, carona `CONCLUIDA`, até `partida + prazo_avaliacao()`; nota 1 a 5; comentário aparado, vazio vira nulo, até 500. Locks: carona e reserva `FOR SHARE`. Erros: `NOTA_INVALIDA` (PT422), `DADOS_INVALIDOS` (PT400), `RESERVA_NAO_ENCONTRADA` (PT404, inexistente ou de quem não participa), `AVALIACAO_INDISPONIVEL`, `PRAZO_AVALIACAO_ENCERRADO`, `AVALIACAO_DUPLICADA` (PT409) |
+| `avaliacoes_pendentes()` | Função RPC `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T30) | As reservas que o `auth.uid()` ainda pode avaliar: `id_reserva`, `papel` (`PASSAGEIRO`/`MOTORISTA`, de quem avalia), `nome_avaliado` (primeiro nome), `origem`, `destino`, `data_hora_partida`, `avaliar_ate` |
+| `perfil_publico(p_id_usuario)` | Função RPC `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T30) | `id_usuario`, `nome`, `media_avaliacoes` (1 casa), `total_avaliacoes`; sem e-mail, telefone nem gênero. Função e não view `security definer` (o linter do Supabase marca essas views). Inexistente → `USUARIO_NAO_ENCONTRADO` (PT404) |
+| `detalhar_carona` (versão T30) | Mesma função, nova versão na migration `concluir_avaliar` | Passa a devolver `media_motorista` e `total_avaliacoes_motorista` (de `resumo_avaliacoes`) |
 | Triggers de notificação | Triggers em `reserva`/`carona` | Gravam NOTIFICACAO |
 | `expirar-reservas` | Job pg_cron (`* * * * *`, T24) | RN16: `select public.expirar_reservas()`. Extensão `pg_cron` em `pg_catalog` (jeito indicado pelo Supabase Cron); `cron.schedule` com o mesmo nome substitui o job (upsert), então reagendar não duplica. O job roda como `postgres`, dono da função |
+| `concluir-caronas` | Job pg_cron (`0 * * * *`, T30) | RN07: `select public.concluir_caronas_vencidas()`, agendado com `cron.schedule` pelo nome (reagendar não duplica) |
 | Webhook `notificacao` INSERT | Database Webhook | Chama a Edge Function `enviar-push` |
 
 ## Alterações propostas em relação ao DER da Aula 08
