@@ -1,6 +1,7 @@
 // Cancelamentos no app (T28): quando mostrar os botões, os textos de confirmação e de resultado e a
 // ordem de "Minhas caronas". Nenhuma regra de negócio: quem decide se o cancelamento vale (inclusive
 // o prazo de 2 h da RN20 para reserva paga) é o backend, e a tela só mostra o hint do erro.
+import { caronaEhProxima, separarPorPartida } from './listas';
 import type { StatusCarona, StatusReserva } from './reserva';
 
 const CARONA_ATIVA: readonly StatusCarona[] = ['ABERTA', 'LOTADA'];
@@ -59,12 +60,12 @@ export function mensagemCaronaCancelada(reservasCanceladas: number): string {
     : `Carona cancelada. ${reservasCanceladas} reservas canceladas.`;
 }
 
-// Ativa e futura: ainda pode receber passageiros ou ser cancelada
+// Ativa e futura: ainda pode receber passageiros ou ser cancelada (mesma regra das listas, T41)
 export function caronaEmAndamento(
   carona: { status: StatusCarona; data_hora_partida: string },
   agora: Date = new Date(),
 ): boolean {
-  return CARONA_ATIVA.includes(carona.status) && partidaFutura(carona.data_hora_partida, agora);
+  return caronaEhProxima(carona, agora);
 }
 
 // "Minhas caronas": primeiro as em andamento (a mais próxima antes), depois as passadas ou
@@ -73,12 +74,8 @@ export function ordenarMinhasCaronas<T extends { status: StatusCarona; data_hora
   caronas: readonly T[],
   agora: Date = new Date(),
 ): T[] {
-  const instante = (carona: T) => new Date(carona.data_hora_partida).getTime();
-  const futuras = caronas
-    .filter((carona) => caronaEmAndamento(carona, agora))
-    .sort((a, b) => instante(a) - instante(b));
-  const encerradas = caronas
-    .filter((carona) => !caronaEmAndamento(carona, agora))
-    .sort((a, b) => instante(b) - instante(a));
-  return [...futuras, ...encerradas];
+  const { proximas, anteriores } = separarPorPartida(caronas, (carona) =>
+    caronaEhProxima(carona, agora),
+  );
+  return [...proximas, ...anteriores];
 }
