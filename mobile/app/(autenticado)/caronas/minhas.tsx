@@ -1,18 +1,23 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ErroCarregamento } from '@/components/ErroCarregamento';
 import { EsqueletoLista } from '@/components/EsqueletoLista';
 import { EstadoVazio } from '@/components/EstadoVazio';
-import { LinhaRota } from '@/components/LinhaRota';
+import { ListaPorPartida } from '@/components/ListaPorPartida';
 import { SeloStatus } from '@/components/SeloStatus';
 import { listarMinhasCaronas, type MinhaCarona } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { tema } from '@/tema';
-import { caronaEmAndamento } from '@/utils/cancelamento';
 import { formatarDataHoraCurta } from '@/utils/data-hora';
+import {
+  caronaEhProxima,
+  nomeCurtoLocal,
+  separarPorPartida,
+  situacaoExibidaCarona,
+} from '@/utils/listas';
 import { aparenciaSelo } from '@/utils/selo-status';
 
 type Lista =
@@ -36,26 +41,30 @@ function textoVagasLivres(carona: MinhaCarona): string {
 
 function ItemMinhaCarona({ carona }: { carona: MinhaCarona }) {
   // Passada, cancelada ou concluída fica apagada; o selo continua colorido
-  const encerrada = !caronaEmAndamento(carona);
-  const corTexto = encerrada ? cores.textoSecundario : cores.texto;
+  const anterior = !caronaEhProxima(carona);
+  const corTexto = anterior ? cores.textoSecundario : cores.texto;
+  const destino = nomeCurtoLocal(carona.destino);
+  const origem = nomeCurtoLocal(carona.origem);
   const quando = formatarDataHoraCurta(carona.data_hora_partida);
-  const status = aparenciaSelo(carona.status).rotulo;
+  const situacao = situacaoExibidaCarona(carona);
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${status}, ${quando}, de ${carona.origem} para ${carona.destino}, ${textoVagasLivres(carona)}`}
+      accessibilityLabel={`Para ${destino}, saindo de ${origem}, ${quando}, ${aparenciaSelo(situacao).rotulo}, ${textoVagasLivres(carona)}`}
       accessibilityHint="Abre os detalhes da carona"
       onPress={() => router.push({ pathname: '/caronas/[id]', params: { id: carona.id_carona } })}
       style={({ pressed }) => [estilos.card, pressed && estilos.pressionado]}
     >
-      <SeloStatus tipo={carona.status} />
+      <View style={estilos.topo}>
+        <Text style={[estilos.titulo, { color: corTexto }]} numberOfLines={2}>
+          Para {destino}
+        </Text>
+        <SeloStatus tipo={situacao} />
+      </View>
+      <Text style={estilos.saindo} numberOfLines={1}>
+        Saindo de {origem}
+      </Text>
       <Text style={[estilos.quando, { color: corTexto }]}>{quando}</Text>
-      <LinhaRota
-        origem={carona.origem}
-        destino={carona.destino}
-        variante="emLinha"
-        apagada={encerrada}
-      />
       <View style={estilos.linha}>
         <Text style={estilos.legenda}>{textoVagasLivres(carona)}</Text>
         <Ionicons name="chevron-forward" size={18} color={cores.textoSutil} />
@@ -91,40 +100,47 @@ export default function TelaMinhasCaronas() {
     setAtualizando(false);
   };
 
+  if (lista.tipo === 'carregando') {
+    return (
+      <View style={[estilos.tela, estilos.espaco]}>
+        <EsqueletoLista />
+      </View>
+    );
+  }
+
+  if (lista.tipo === 'erro') {
+    return (
+      <View style={[estilos.tela, estilos.centro]}>
+        <ErroCarregamento mensagem={lista.mensagem} aoTentarDeNovo={() => void atualizar()} />
+      </View>
+    );
+  }
+
+  const { proximas, anteriores } = separarPorPartida(lista.caronas, (carona) =>
+    caronaEhProxima(carona),
+  );
+
   return (
-    <FlatList
-      style={estilos.tela}
-      contentContainerStyle={estilos.lista}
-      data={lista.tipo === 'pronto' ? lista.caronas : []}
-      keyExtractor={(carona) => carona.id_carona}
-      renderItem={({ item }) => <ItemMinhaCarona carona={item} />}
-      ListHeaderComponent={lista.tipo === 'carregando' ? <EsqueletoLista /> : undefined}
-      ListEmptyComponent={
-        lista.tipo === 'carregando' ? undefined : (
-          <View style={estilos.vazio}>
-            {lista.tipo === 'erro' ? (
-              <ErroCarregamento mensagem={lista.mensagem} aoTentarDeNovo={() => void atualizar()} />
-            ) : (
-              <EstadoVazio
-                icone="car-outline"
-                titulo="Você ainda não ofereceu caronas"
-                mensagem="As caronas que você oferecer aparecem aqui, com as vagas e o status de cada uma."
-                acao={{
-                  titulo: 'Oferecer carona',
-                  icone: 'add',
-                  onPress: () => router.push('/caronas/publicar'),
-                }}
-              />
-            )}
-          </View>
-        )
-      }
-      refreshControl={
-        <RefreshControl
-          refreshing={atualizando}
-          onRefresh={() => void atualizar()}
-          tintColor={cores.primaria}
-          colors={[cores.primaria]}
+    <ListaPorPartida
+      proximas={proximas}
+      anteriores={anteriores}
+      chave={(carona) => carona.id_carona}
+      renderizar={(carona) => <ItemMinhaCarona carona={carona} />}
+      nomeDoItem={{ singular: 'carona', plural: 'caronas' }}
+      atualizando={atualizando}
+      aoAtualizar={() => void atualizar()}
+      vazio={
+        <EstadoVazio
+          icone="car-outline"
+          titulo={
+            anteriores.length > 0 ? 'Nenhuma carona próxima' : 'Você ainda não ofereceu caronas'
+          }
+          mensagem="As caronas que você oferecer aparecem aqui, com as vagas e o status de cada uma."
+          acao={{
+            titulo: 'Oferecer carona',
+            icone: 'add',
+            onPress: () => router.push('/caronas/publicar'),
+          }}
         />
       }
     />
@@ -133,7 +149,8 @@ export default function TelaMinhasCaronas() {
 
 const estilos = StyleSheet.create({
   tela: { flex: 1, backgroundColor: cores.fundo },
-  lista: { padding: tema.espaco.x5, gap: tema.espaco.x3, flexGrow: 1 },
+  espaco: { padding: tema.espaco.x5 },
+  centro: { justifyContent: 'center' },
   // Mesmo card de "Minhas reservas" (tela 9)
   card: {
     backgroundColor: cores.superficie,
@@ -142,12 +159,19 @@ const estilos = StyleSheet.create({
     borderColor: cores.borda,
     paddingVertical: tema.espaco.x3,
     paddingHorizontal: tema.espaco.x4,
-    gap: tema.espaco.x2,
+    gap: tema.espaco.x1,
     ...tema.sombra.cartao,
   },
   pressionado: { backgroundColor: cores.superficieAlternativa },
-  vazio: { flex: 1, justifyContent: 'center' },
+  topo: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: tema.espaco.x3,
+  },
+  titulo: { ...tema.tipografia.subtitulo, flex: 1 },
+  saindo: { ...tema.tipografia.apoio, color: cores.textoSecundario },
+  quando: { ...tema.tipografia.corpoForte, ...tema.numerico, marginTop: tema.espaco.x1 },
   linha: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  quando: { ...tema.tipografia.corpoForte, ...tema.numerico },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario, flex: 1 },
 });

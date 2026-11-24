@@ -116,4 +116,29 @@ describe('Cancelar carona (detalhe da carona)', () => {
     expect(await screen.findByText('Valor por passageiro')).toBeOnTheScreen();
     expect(screen.queryByRole('button', { name: /Cancelar carona/ })).toBeNull();
   });
+
+  it.each([
+    ['ABERTA', 'ABERTA' as const],
+    ['LOTADA', 'LOTADA' as const],
+  ])(
+    'carona %s com a partida no passado aparece como "Já partiu" (só exibição)',
+    async (_s, status) => {
+      jest
+        .mocked(detalharCarona)
+        .mockResolvedValue(detalhe({ status, sou_motorista: false, data_hora_partida: daqui(-2) }));
+      await render(<TelaDetalheCarona />);
+
+      expect(await screen.findByText('Situação: Já partiu.')).toBeOnTheScreen();
+      expect(screen.queryByText(/Situação: (Aberta|Lotada)/)).toBeNull();
+      expect(cancelarCarona).not.toHaveBeenCalled();
+    },
+  );
+
+  it('carona ABERTA e futura não mostra situação', async () => {
+    jest.mocked(detalharCarona).mockResolvedValue(detalhe({ sou_motorista: false }));
+    await render(<TelaDetalheCarona />);
+
+    expect(await screen.findByText('Valor por passageiro')).toBeOnTheScreen();
+    expect(screen.queryByText(/^Situação:/)).toBeNull();
+  });
 });

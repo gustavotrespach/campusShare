@@ -1,4 +1,5 @@
-// "Minhas caronas" (T28): lista na ordem do service, estados vazio e de erro, e o toque no card.
+// "Minhas caronas" (T28, T41): seções Próximas e Anteriores (recolhida), card "Para X / Saindo de
+// Y", selo "Já partiu", estados vazio e de erro, e o toque no card.
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { router } from 'expo-router';
 
@@ -11,63 +12,114 @@ jest.mock('@/services/caronas', () => ({ listarMinhasCaronas: jest.fn() }));
 
 const daqui = (horas: number) => new Date(Date.now() + horas * 3_600_000).toISOString();
 
-function carona(id: string, status: MinhaCarona['status'], horas: number, livres = 2): MinhaCarona {
+function carona(
+  id: string,
+  status: MinhaCarona['status'],
+  horas: number,
+  destino = 'ULBRA Torres - RS',
+): MinhaCarona {
   return {
     id_carona: id,
-    origem: `Origem ${id}`,
-    destino: 'ULBRA Torres - RS',
+    origem: `Bairro ${id}, Torres - RS`,
+    destino,
     data_hora_partida: daqui(horas),
-    vagas_disponiveis: livres,
+    vagas_disponiveis: 2,
     vagas_ofertadas: 3,
     status,
   };
 }
+
+const cards = () => screen.queryAllByRole('button', { name: /^Para / });
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
 describe('Minhas caronas', () => {
-  it('mostra os cards na ordem do service, com status, rota e vagas livres', async () => {
+  it('mostra as próximas (mais perto antes) e recolhe as anteriores', async () => {
     jest
       .mocked(listarMinhasCaronas)
       .mockResolvedValue([
-        carona('hoje', 'LOTADA', 3, 0),
+        carona('ontem', 'ABERTA', -20),
         carona('amanha', 'ABERTA', 24),
-        carona('antiga', 'CANCELADA', -48),
+        carona('hoje', 'LOTADA', 3, 'Rodoviária de Torres - RS'),
+        carona('cancelada', 'CANCELADA', -48),
       ]);
     await render(<TelaMinhasCaronas />);
 
-    const cards = await screen.findAllByRole('button', { name: /vagas livres$/ });
-    expect(cards.map((card) => card.props.accessibilityLabel as string)).toEqual([
+    expect(await screen.findByRole('header', { name: 'Próximas' })).toBeOnTheScreen();
+    expect(cards().map((card) => card.props.accessibilityLabel as string)).toEqual([
       expect.stringMatching(
-        /^Lotada, .*, de Origem hoje para ULBRA Torres - RS, 0 de 3 vagas livres$/,
+        /^Para Rodoviária de Torres, saindo de Bairro hoje, Torres, .+ · \d{2}:\d{2}, Lotada, 2 de 3 vagas livres$/,
       ),
-      expect.stringMatching(
-        /^Aberta, .*, de Origem amanha para ULBRA Torres - RS, 2 de 3 vagas livres$/,
-      ),
-      expect.stringMatching(/^Cancelada, .*, de Origem antiga/),
+      expect.stringMatching(/^Para ULBRA Torres, saindo de Bairro amanha, Torres, .+, Aberta, /),
     ]);
-    expect(screen.getByText('Lotada')).toBeOnTheScreen();
-    expect(screen.getByText('0 de 3 vagas livres')).toBeOnTheScreen();
+    expect(screen.getByText('Para Rodoviária de Torres')).toBeOnTheScreen();
+    expect(screen.getByText('Saindo de Bairro hoje, Torres')).toBeOnTheScreen();
+    // Anteriores recolhidas por padrão
+    expect(screen.queryByText(/Bairro ontem/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ver 2 caronas anteriores' })).toBeOnTheScreen();
+    expect(screen.getByText('Ver anteriores (2)')).toBeOnTheScreen();
+  });
+
+  it('"Ver anteriores" mostra as passadas (mais recente antes), com "Já partiu"; "Ocultar" recolhe', async () => {
+    jest
+      .mocked(listarMinhasCaronas)
+      .mockResolvedValue([
+        carona('semana', 'CONCLUIDA', -170),
+        carona('ontem', 'ABERTA', -20),
+        carona('amanha', 'ABERTA', 24),
+      ]);
+    await render(<TelaMinhasCaronas />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: 'Ver 2 caronas anteriores' }));
+
+    expect(screen.getByRole('header', { name: 'Anteriores' })).toBeOnTheScreen();
+    expect(cards().map((card) => card.props.accessibilityLabel as string)).toEqual([
+      expect.stringMatching(/saindo de Bairro amanha, .*, Aberta,/),
+      expect.stringMatching(/saindo de Bairro ontem, .*, Já partiu,/),
+      expect.stringMatching(/saindo de Bairro semana, .*, Concluída,/),
+    ]);
+    expect(screen.getByText('Já partiu')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Ocultar caronas anteriores' }));
+    expect(screen.queryByText(/Bairro ontem/)).toBeNull();
+  });
+
+  it('sem anteriores, o botão não aparece', async () => {
+    jest.mocked(listarMinhasCaronas).mockResolvedValue([carona('amanha', 'ABERTA', 24)]);
+    await render(<TelaMinhasCaronas />);
+
+    expect(await screen.findByText('Para ULBRA Torres')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /anteriores/ })).toBeNull();
+  });
+
+  it('sem próximas: estado vazio com "Oferecer carona" e o botão das anteriores logo abaixo', async () => {
+    jest.mocked(listarMinhasCaronas).mockResolvedValue([carona('ontem', 'ABERTA', -20)]);
+    await render(<TelaMinhasCaronas />);
+
+    expect(await screen.findByText('Nenhuma carona próxima')).toBeOnTheScreen();
+    expect(screen.queryByRole('header', { name: 'Próximas' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ver 1 carona anterior' })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: /Oferecer carona/ }));
+    expect(router.push).toHaveBeenCalledWith('/caronas/publicar');
+  });
+
+  it('sem nenhuma carona: o estado vazio de sempre', async () => {
+    jest.mocked(listarMinhasCaronas).mockResolvedValue([]);
+    await render(<TelaMinhasCaronas />);
+
+    expect(await screen.findByText('Você ainda não ofereceu caronas')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /anteriores/ })).toBeNull();
   });
 
   it('tocar no card abre o detalhe da carona', async () => {
     jest.mocked(listarMinhasCaronas).mockResolvedValue([carona('c1', 'ABERTA', 24)]);
     await render(<TelaMinhasCaronas />);
 
-    await fireEvent.press(await screen.findByRole('button', { name: /^Aberta,/ }));
+    await fireEvent.press(await screen.findByRole('button', { name: /^Para ULBRA Torres/ }));
 
     expect(router.push).toHaveBeenCalledWith({ pathname: '/caronas/[id]', params: { id: 'c1' } });
-  });
-
-  it('sem caronas: estado vazio com "Oferecer carona"', async () => {
-    jest.mocked(listarMinhasCaronas).mockResolvedValue([]);
-    await render(<TelaMinhasCaronas />);
-
-    expect(await screen.findByText('Você ainda não ofereceu caronas')).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole('button', { name: /Oferecer carona/ }));
-    expect(router.push).toHaveBeenCalledWith('/caronas/publicar');
   });
 
   it('com erro, mostra a mensagem e tenta de novo', async () => {
@@ -81,6 +133,6 @@ describe('Minhas caronas', () => {
     expect(screen.getByText('Sem conexão com a internet.')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
-    expect(await screen.findByRole('button', { name: /^Aberta,/ })).toBeOnTheScreen();
+    expect(await screen.findByText('Para ULBRA Torres')).toBeOnTheScreen();
   });
 });
