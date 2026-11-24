@@ -1,7 +1,15 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useRef, useState, type ComponentRef } from 'react';
+import {
+  Pressable,
+  RefreshControl,
+  SectionList,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Avatar } from '@/components/Avatar';
@@ -12,17 +20,19 @@ import { EsqueletoLista } from '@/components/EsqueletoLista';
 import { EstadoVazio } from '@/components/EstadoVazio';
 import { ItemCarona } from '@/components/ItemCarona';
 import { OpcaoInterruptor } from '@/components/OpcaoInterruptor';
+import { ProximaViagem } from '@/components/ProximaViagem';
+import { listarAvaliacoesPendentes } from '@/services/avaliacoes';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
-import { listarAvaliacoesPendentes } from '@/services/avaliacoes';
 import { obterMeuPerfil } from '@/services/perfil';
+import { obterProximaViagem, type ViagemDoInicio } from '@/services/proxima-viagem';
 import { tema } from '@/tema';
-import { textoContagemCaronas } from '@/utils/exibicao-carona';
-import { mostrarFiltroSomenteMulheres } from '@/utils/genero';
-import { primeiroNome } from '@/utils/nome';
 import { textoAvaliacoesPendentes } from '@/utils/avaliacoes';
 import { pontoPorTexto } from '@/utils/busca-local';
+import { mostrarFiltroSomenteMulheres } from '@/utils/genero';
+import { agruparPorDia, tituloSemCaronas } from '@/utils/inicio';
+import { primeiroNome } from '@/utils/nome';
 import { ID_PONTO_PADRAO, pontoPorId, type PontoFixo } from '@/utils/pontos';
 
 type Lista =
@@ -40,6 +50,14 @@ interface CentroBusca {
 }
 
 type AvisoBusca = { mensagem: string; tentarDeNovo?: () => void } | null;
+
+// O que fica acima da lista e não é a busca: o card "Sua próxima viagem" e o banner de avaliações
+interface Topo {
+  viagem: ViagemDoInicio | null;
+  avaliacoesPendentes: number;
+}
+
+const TOPO_VAZIO: Topo = { viagem: null, avaliacoesPendentes: 0 };
 
 function centroDoPonto(ponto: PontoFixo): CentroBusca {
   return { rotulo: ponto.rotulo, latitude: ponto.latitude, longitude: ponto.longitude };
@@ -66,6 +84,24 @@ async function consultar(
   }
 }
 
+// Se a consulta falhar, o banner só não aparece (T30)
+async function contarAvaliacoesPendentes(): Promise<number> {
+  try {
+    return (await listarAvaliacoesPendentes()).length;
+  } catch {
+    return 0;
+  }
+}
+
+// Nenhuma das duas rejeita: falha vira "sem card" e "sem banner", sem erro na tela
+async function consultarTopo(): Promise<Topo> {
+  const [viagem, avaliacoesPendentes] = await Promise.all([
+    obterProximaViagem(),
+    contarAvaliacoesPendentes(),
+  ]);
+  return { viagem, avaliacoesPendentes };
+}
+
 export default function TelaCaronasProximas() {
   const insets = useSafeAreaInsets();
   const [centro, setCentro] = useState<CentroBusca | null>(CENTRO_INICIAL);
@@ -78,22 +114,18 @@ export default function TelaCaronasProximas() {
   const [atualizando, setAtualizando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
   const [aviso, setAviso] = useState<AvisoBusca>(null);
-  const [avaliacoesPendentes, setAvaliacoesPendentes] = useState(0);
+  const [topo, setTopo] = useState<Topo>(TOPO_VAZIO);
+  const entradaBusca = useRef<ComponentRef<typeof TextInput>>(null);
+  const listaRef = useRef<SectionList<CaronaResumo, { titulo: string }>>(null);
 
-  // Banner de avaliações pendentes (T30): recarrega ao voltar para a tela; se falhar, só não aparece
+  // "Sua próxima viagem" e o banner de avaliações (T30/T43): recarregam ao voltar para a tela
   useFocusEffect(
     useCallback(() => {
       let ativo = true;
       const carregar = async () => {
-        try {
-          const pendentes = await listarAvaliacoesPendentes();
-          if (ativo) {
-            setAvaliacoesPendentes(pendentes.length);
-          }
-        } catch {
-          if (ativo) {
-            setAvaliacoesPendentes(0);
-          }
+        const resultado = await consultarTopo();
+        if (ativo) {
+          setTopo(resultado);
         }
       };
       void carregar();
@@ -152,13 +184,32 @@ export default function TelaCaronasProximas() {
     }, [latitude, longitude, filtroAtivo]),
   );
 
+  // Puxar para atualizar recarrega a lista, o card e o banner
   const atualizar = async () => {
-    if (latitude === null || longitude === null) {
-      return;
-    }
     setAtualizando(true);
-    setLista(await consultar(latitude, longitude, filtroAtivo));
+    const [resultado, novoTopo] = await Promise.all([
+      latitude === null || longitude === null ? null : consultar(latitude, longitude, filtroAtivo),
+      consultarTopo(),
+    ]);
+    if (resultado) {
+      setLista(resultado);
+    }
+    setTopo(novoTopo);
     setAtualizando(false);
+  };
+
+  // Estado vazio → "Buscar em outro lugar": volta ao topo e abre o teclado na barra de busca
+  const buscarEmOutroLugar = () => {
+    listaRef.current?.getScrollResponder()?.scrollTo({ y: 0, animated: true });
+    entradaBusca.current?.focus();
+  };
+
+  const abrirProximaViagem = (viagem: ViagemDoInicio) => {
+    if (viagem.tipo === 'RESERVA') {
+      router.push({ pathname: '/reservas/[id]', params: { id: viagem.reserva.id_reserva } });
+    } else {
+      router.push({ pathname: '/caronas/[id]', params: { id: viagem.carona.id_carona } });
+    }
   };
 
   // Novo centro: a lista anterior dá lugar ao esqueleto até a busca responder (mesmo centro: nada
@@ -215,7 +266,15 @@ export default function TelaCaronasProximas() {
   };
 
   const saudacao = primeiroNome(nomeUsuario);
-  const contagem = lista.tipo === 'pronto' ? textoContagemCaronas(lista.caronas.length) : null;
+  const { viagem } = topo;
+  const grupos =
+    lista.tipo === 'pronto'
+      ? agruparPorDia(lista.caronas).map((grupo) => ({
+          key: grupo.chave,
+          titulo: grupo.titulo,
+          data: grupo.itens,
+        }))
+      : [];
 
   const cabecalho = (
     <View style={estilos.cabecalho}>
@@ -251,6 +310,7 @@ export default function TelaCaronasProximas() {
         aoEscolherPonto={(ponto) => usarCentro(centroDoPonto(ponto))}
         aoUsarMinhaLocalizacao={() => void aoUsarMinhaLocalizacao()}
         localizando={localizando}
+        refEntrada={entradaBusca}
       />
       <Text style={estilos.legenda} accessibilityLiveRegion="polite">
         {localizando
@@ -261,10 +321,11 @@ export default function TelaCaronasProximas() {
               ? `Caronas perto de: ${centro.rotulo}`
               : null}
       </Text>
-      {avaliacoesPendentes > 0 ? (
+      {viagem ? <ProximaViagem viagem={viagem} aoAbrir={() => abrirProximaViagem(viagem)} /> : null}
+      {topo.avaliacoesPendentes > 0 ? (
         <Aviso
           tipo="info"
-          mensagem={textoAvaliacoesPendentes(avaliacoesPendentes)}
+          mensagem={textoAvaliacoesPendentes(topo.avaliacoesPendentes)}
           acao={{ titulo: 'Avaliar', onPress: () => router.push('/avaliacoes') }}
         />
       ) : null}
@@ -298,14 +359,14 @@ export default function TelaCaronasProximas() {
           acao={{ titulo: 'Tentar de novo', onPress: () => void atualizar() }}
         />
       ) : null}
-      {contagem ? <Text style={[estilos.legenda, estilos.contagem]}>{contagem}</Text> : null}
       {lista.tipo === 'carregando' ? <EsqueletoLista /> : null}
     </View>
   );
 
   return (
     <View style={estilos.tela}>
-      <FlatList
+      <SectionList
+        ref={listaRef}
         contentContainerStyle={[
           estilos.lista,
           {
@@ -313,7 +374,8 @@ export default function TelaCaronasProximas() {
             paddingBottom: insets.bottom + ESPACO_BOTAO_FLUTUANTE,
           },
         ]}
-        data={lista.tipo === 'pronto' ? lista.caronas : []}
+        sections={grupos}
+        stickySectionHeadersEnabled={false}
         // Tocar numa sugestão com o teclado aberto já escolhe (sem um toque só para fechar o teclado)
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
@@ -326,13 +388,24 @@ export default function TelaCaronasProximas() {
             }
           />
         )}
+        renderSectionHeader={({ section }) => (
+          <Text style={estilos.tituloGrupo} accessibilityRole="header">
+            {section.titulo}
+          </Text>
+        )}
         ListHeaderComponent={cabecalho}
         ListEmptyComponent={
           lista.tipo === 'pronto' ? (
             <EstadoVazio
               icone="car-outline"
-              titulo="Nenhuma carona por aqui"
-              mensagem="Nenhuma carona disponível perto deste ponto. Tente outro ponto ou volte mais tarde."
+              titulo={tituloSemCaronas(centro?.rotulo ?? null)}
+              mensagem="Ofereça uma carona ou procure em outro lugar."
+              acao={{
+                titulo: 'Oferecer carona',
+                icone: 'add',
+                onPress: () => router.push('/caronas/publicar'),
+              }}
+              acaoSecundaria={{ titulo: 'Buscar em outro lugar', onPress: buscarEmOutroLugar }}
             />
           ) : undefined
         }
@@ -381,7 +454,12 @@ const estilos = StyleSheet.create({
   },
   botaoIconePressionado: { backgroundColor: cores.superficieAlternativa },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
-  contagem: { marginTop: tema.espaco.x2 },
+  // 12 do gap da lista + 12: separa um dia do anterior
+  tituloGrupo: {
+    ...tema.tipografia.subtitulo,
+    color: cores.texto,
+    marginTop: tema.espaco.x3,
+  },
   flutuante: {
     position: 'absolute',
     right: tema.espaco.x5,
