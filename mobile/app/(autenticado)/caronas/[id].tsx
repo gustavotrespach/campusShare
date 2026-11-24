@@ -35,7 +35,9 @@ import {
 import { formatarDataLonga, formatarHora } from '@/utils/data-hora';
 import { formatarReais } from '@/utils/dinheiro';
 import { descreverVeiculo } from '@/utils/exibicao-carona';
+import { situacaoExibidaCarona } from '@/utils/listas';
 import { atalhoDoErroDeReserva, podeReservar } from '@/utils/reserva';
+import { aparenciaSelo } from '@/utils/selo-status';
 
 interface ErroReserva {
   mensagem: string;
@@ -46,13 +48,6 @@ type Carregamento =
   | { tipo: 'carregando' }
   | { tipo: 'erro'; mensagem: string }
   | { tipo: 'pronto'; carona: CaronaDetalhe };
-
-const ROTULO_STATUS: Record<CaronaDetalhe['status'], string> = {
-  ABERTA: 'Aberta',
-  LOTADA: 'Lotada',
-  CANCELADA: 'Cancelada',
-  CONCLUIDA: 'Concluída',
-};
 
 const { cores } = tema;
 
@@ -159,6 +154,8 @@ export default function TelaDetalheCarona() {
   };
 
   const exibirCancelarCarona = podeCancelarCarona(carona);
+  // ABERTA/LOTADA com a partida no passado aparece como "Já partiu" (só exibição, T41)
+  const situacao = situacaoExibidaCarona(carona);
 
   // RN07: quem decide se ainda dá para cancelar é a cancelar_carona; o erro chega com o hint
   const cancelar = async () => {
@@ -209,8 +206,8 @@ export default function TelaDetalheCarona() {
       >
         {caronaCancelada ? <Aviso tipo="sucesso" mensagem={caronaCancelada} /> : null}
         {carona.sou_motorista ? <Aviso tipo="info" mensagem="Esta é a sua carona." /> : null}
-        {carona.status !== 'ABERTA' ? (
-          <Aviso tipo="info" mensagem={`Situação: ${ROTULO_STATUS[carona.status]}.`} />
+        {situacao !== 'ABERTA' ? (
+          <Aviso tipo="info" mensagem={`Situação: ${aparenciaSelo(situacao).rotulo}.`} />
         ) : null}
 
         <View style={estilos.cartao}>

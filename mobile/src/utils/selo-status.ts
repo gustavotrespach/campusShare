@@ -6,7 +6,8 @@ import { tema } from '@/tema';
 
 import { rotuloStatusReserva, type StatusCarona, type StatusReserva } from './reserva';
 
-export type TipoSelo = StatusReserva | StatusCarona | 'SOMENTE_MULHERES';
+// JA_PARTIU (T41): carona ABERTA/LOTADA com a partida no passado; só exibição
+export type TipoSelo = StatusReserva | StatusCarona | 'JA_PARTIU' | 'SOMENTE_MULHERES';
 
 export interface AparenciaSelo {
   rotulo: string;
@@ -25,6 +26,7 @@ const VISUAL: Record<TipoSelo, Omit<AparenciaSelo, 'rotulo'>> = {
   ABERTA: { icone: 'lock-open-outline', fundo: cores.primariaClara, cor: cores.primaria },
   LOTADA: { icone: 'people', fundo: cores.alertaClaro, cor: cores.alerta },
   CONCLUIDA: { icone: 'flag-outline', fundo: cores.neutroClaro, cor: cores.neutro },
+  JA_PARTIU: { icone: 'exit-outline', fundo: cores.neutroClaro, cor: cores.neutro },
   SOMENTE_MULHERES: {
     icone: 'female-outline',
     fundo: cores.secundariaClara,
@@ -36,6 +38,7 @@ const ROTULO_PROPRIO: Partial<Record<TipoSelo, string>> = {
   ABERTA: 'Aberta',
   LOTADA: 'Lotada',
   CONCLUIDA: 'Concluída',
+  JA_PARTIU: 'Já partiu',
   SOMENTE_MULHERES: 'Somente mulheres',
 };
 

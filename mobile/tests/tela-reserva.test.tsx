@@ -184,4 +184,23 @@ describe('Cancelar reserva (detalhe da reserva)', () => {
     await listaCarregada();
     expect(screen.queryByRole('button', { name: /Cancelar reserva/ })).toBeNull();
   });
+
+  it('reserva confirmada de carona que já partiu mostra o selo "Já partiu" (só exibição)', async () => {
+    jest.mocked(consultarStatusReserva).mockResolvedValue(situacao('CONFIRMADA'));
+    jest.mocked(listarMinhasReservas).mockResolvedValue([naLista(daqui(-3))]);
+    await render(<TelaPagamentoReserva />);
+
+    expect(await screen.findByText('Já partiu')).toBeOnTheScreen();
+    expect(screen.getByText('Confirmada')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Cancelar reserva/ })).toBeNull();
+  });
+
+  it('carona futura não mostra "Já partiu"', async () => {
+    jest.mocked(consultarStatusReserva).mockResolvedValue(situacao('PENDENTE'));
+    jest.mocked(listarMinhasReservas).mockResolvedValue([naLista(daqui(5))]);
+    await render(<TelaPagamentoReserva />);
+
+    expect(await screen.findByRole('button', { name: /Cancelar reserva/ })).toBeOnTheScreen();
+    expect(screen.queryByText('Já partiu')).toBeNull();
+  });
 });
