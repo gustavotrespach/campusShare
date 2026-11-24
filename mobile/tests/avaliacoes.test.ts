@@ -139,7 +139,7 @@ describe('listarAvaliacoesPendentes', () => {
 });
 
 describe('obterPerfilPublico', () => {
-  it('converte para o tipo do app, com a média', async () => {
+  it('converte para o tipo do app, com a média e a foto (T44)', async () => {
     const avaliacoes = await logado();
     mockFetch.mockResolvedValue(
       resposta(200, [
@@ -148,6 +148,7 @@ describe('obterPerfilPublico', () => {
           nome: 'Marcos Motorista',
           media_avaliacoes: 4.3,
           total_avaliacoes: 12,
+          foto_caminho: `${ID_USUARIO}/avatar.jpg?v=1795521600`,
         },
       ]),
     );
@@ -157,21 +158,29 @@ describe('obterPerfilPublico', () => {
       nome: 'Marcos Motorista',
       media: 4.3,
       total: 12,
+      fotoCaminho: `${ID_USUARIO}/avatar.jpg?v=1795521600`,
     });
     expect(chamada().corpo).toEqual({ p_id_usuario: ID_USUARIO });
   });
 
-  it('média null (ninguém avaliou ainda) continua null', async () => {
+  it('média null (ninguém avaliou ainda) e foto null (sem foto) continuam null', async () => {
     const avaliacoes = await logado();
     mockFetch.mockResolvedValue(
       resposta(200, [
-        { id_usuario: ID_USUARIO, nome: 'Marcos', media_avaliacoes: null, total_avaliacoes: 0 },
+        {
+          id_usuario: ID_USUARIO,
+          nome: 'Marcos',
+          media_avaliacoes: null,
+          total_avaliacoes: 0,
+          foto_caminho: null,
+        },
       ]),
     );
 
     await expect(avaliacoes.obterPerfilPublico(ID_USUARIO)).resolves.toMatchObject({
       media: null,
       total: 0,
+      fotoCaminho: null,
     });
   });
 

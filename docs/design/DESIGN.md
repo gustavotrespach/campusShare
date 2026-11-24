@@ -294,7 +294,7 @@ card só mostra a hora.
 | Linha 1 | esquerda (`flex: 1`, `gap` 4): "Para ULBRA Torres" (`subtitulo` `texto`, até 2 linhas) e embaixo "Saindo de Centro, Torres · a 0,4 km" (`apoio` `textoSecundario`, 1 linha). Nomes curtos, sem a UF (`nomeCurtoLocal`). Direita: valor (`subtitulo` em 700, `primaria`, numérico) e embaixo "por pessoa" (`legenda`), alinhados à direita |
 | Linha 2 — metadados | linha com `gap` 16, `flexWrap`: `time-outline` + "17:00" (`corpoForte` `texto`, numérico); `people-outline` + "2 vagas" / "1 vaga" (`legenda`); se `somente_mulheres`, SeloStatus "Somente mulheres" (3.4) na mesma linha. Ícones 16 `textoSecundario` |
 | Divisória | 1 pt `borda` |
-| Linha 3 — motorista | Avatar 40 (3.9) + coluna (linha com o nome `corpoForte` + a nota compacta 3.10, `gap` 8; "Onix prata" = modelo + cor em minúsculas na `legenda`) + `chevron-forward` 20 `textoSutil`. Sem avaliações, só o nome |
+| Linha 3 — motorista | Avatar 40 (3.9; com a foto do motorista desde a T44, `foto_motorista`) + coluna (linha com o nome `corpoForte` + a nota compacta 3.10, `gap` 8; "Onix prata" = modelo + cor em minúsculas na `legenda`) + `chevron-forward` 20 `textoSutil`. Sem avaliações, só o nome |
 
 Saíram do card na T43: o dia (vai para o cabeçalho do grupo), a LinhaRota (o "Para …/Saindo de …" diz o
 trajeto) e a tolerância (continua no detalhe, tela 6).
@@ -398,9 +398,14 @@ O desenho da marca no app: anel de origem, linha, ponto coral de destino.
 
 ### 3.9 Outros componentes
 
-- **Avatar** (`Avatar.tsx`, novo): círculo (40, 44 ou 48), fundo `primariaClara`, iniciais
+- **Avatar** (`Avatar.tsx`, novo): círculo (40, 44, 48 ou 72), fundo `primariaClara`, iniciais
   (2 letras: primeira e última palavra do nome) em 700 `primaria`, fonte 15/17. Função
   `iniciais(nome)` em `utils/` (só exibição).
+  **Com foto** ✚ (T44, prop `fotoCaminho`): a imagem ocupa o círculo inteiro, no mesmo tamanho
+  (recortada pelo `overflow: hidden`), vinda do endpoint autenticado do Storage com o token da sessão
+  (`urlFotoPerfil`). Sem foto, enquanto a URL não fica pronta, se a imagem falhar (rede, arquivo
+  apagado) ou sem sessão: as iniciais, como antes. O `accessibilityLabel` não muda (o avatar sem ação
+  continua decorativo para o leitor de tela).
 - **Chip** (`SeletorOpcoes.tsx`, já existe — restilizar): altura 40, `hitSlop` 4, padding
   horizontal 14, raio `pilula`, texto `rotulo`. Não selecionado: fundo `superficie`, borda 1
   `borda`, texto `texto`. Selecionado: fundo `primaria`, texto branco, ícone `location` 16.
@@ -553,7 +558,7 @@ avaliações). Ordem de cima para baixo:
      (`titulo`).
    - Direita (`gap` 8): botão-ícone 44 (círculo `superficie`, borda 1 `borda`, `receipt-outline`
      22 `primaria`, `accessibilityLabel` "Minhas reservas") e Avatar 44 do usuário
-     (`accessibilityLabel` "Meu perfil").
+     (`accessibilityLabel` "Meu perfil"), com a própria foto desde a T44 (pelo `perfil_publico`).
 2. 20 → **barra de busca de local** (T40) ✚, no lugar dos chips "Perto de":
    - Caixa igual à do campo de texto (3.2: altura 52, raio 12, fundo `superficie`, borda 1.5
      `bordaForte`, 2 `primaria` no foco), sem rótulo visível (`accessibilityLabel` "Buscar local").
@@ -629,7 +634,7 @@ o que o olho pega primeiro.
    `hourglass-outline` → "Tolerância de espera" → "10 min".
    Se `somente_mulheres`: abaixo, SeloStatus "Somente mulheres" com a legenda "Só passageiras
    podem reservar." ✚
-5. **Card do motorista:** Avatar 48 → coluna: "Motorista" (`legenda`), "Ana Souza"
+5. **Card do motorista:** Avatar 48 (com a foto do motorista, T44; sem foto, as iniciais) → coluna: "Motorista" (`legenda`), "Ana Souza"
    (`corpoForte`), `shield-checkmark` 14 + "E-mail institucional confirmado" ✚ (`legenda` em
    600, cor `sucesso`). Todo usuário com acesso confirmou o e-mail, então o selo é sempre
    verdadeiro. Abaixo, a reputação do motorista (3.10, T30): "★ 4,3 · 12 avaliações" ou "Sem
@@ -790,9 +795,22 @@ anteriores fica logo abaixo.
 
 Header "Meu perfil". Rolável, `gap` 16.
 
-1. **Topo** ✚: Avatar 72 centralizado, nome (`subtitulo`), e embaixo SeloStatus-like verde:
-   `shield-checkmark` + "E-mail institucional confirmado" (`legenda` 600 `sucesso`); abaixo, a
-   própria reputação (3.10, T30), como os outros a veem (some se a consulta falhar).
+1. **Topo** ✚: Avatar 72 centralizado (com a foto, T44), nome (`subtitulo`), e embaixo
+   SeloStatus-like verde: `shield-checkmark` + "E-mail institucional confirmado" (`legenda` 600
+   `sucesso`); abaixo, a própria reputação (3.10, T30), como os outros a veem (some se a consulta
+   falhar).
+   **Foto de perfil** ✚ (T44), logo abaixo da reputação, centralizado:
+   - linha (`gap` 8, quebra se faltar espaço) com o botão `texto` `image-outline` "Alterar foto"
+     (galeria do sistema com corte quadrado; sem câmera) e, só com foto, o botão `textoPerigo`
+     `trash-outline` "Remover foto". Os dois com altura mínima de 44 (variante `texto`).
+     "Remover foto" pede confirmação: alerta "Remover foto?" / "Sua foto sai do perfil e as iniciais
+     voltam a aparecer." com "Cancelar" e "Remover" (destrutivo).
+   - "Sua foto aparece só para quem está logado no CampusShare." (`legenda` `textoSecundario`,
+     centralizada).
+   - Enviando: um círculo `primariaClara` do tamanho do avatar o cobre, com o `ActivityIndicator`
+     `primaria` no meio (leitor de tela: "Enviando foto"); os dois botões ficam desabilitados.
+   - Retorno em Aviso: "Foto atualizada." / "Foto removida." (`sucesso`) ou a frase do erro
+     (galeria sem permissão, foto grande demais, sem internet, `FOTO_NAO_ENVIADA`).
 2. **Card "Seus dados"** ✚: campos somente leitura "E-mail institucional" e "Instituição" + nota
    "E-mail e instituição vêm do cadastro e não podem ser alterados." (`legenda`); campos
    editáveis "Nome completo", "Telefone (opcional)"; `SeletorGenero`; Aviso de retorno

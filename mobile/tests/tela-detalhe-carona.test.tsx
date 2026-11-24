@@ -12,6 +12,7 @@ import {
   type CaronaDetalhe,
 } from '@/services/caronas';
 import { AppError } from '@/services/erros';
+import { urlFotoPerfil } from '@/services/foto-perfil';
 
 jest.mock('expo-router', () => require('./apoio/expo-router-falso'));
 jest.mock(
@@ -24,6 +25,7 @@ jest.mock('@/services/caronas', () => ({
   detalharCarona: jest.fn(),
 }));
 jest.mock('@/services/reservas', () => ({ reservarVaga: jest.fn() }));
+jest.mock('@/services/foto-perfil', () => ({ urlFotoPerfil: jest.fn() }));
 
 const daqui = (horas: number) => new Date(Date.now() + horas * 3_600_000).toISOString();
 
@@ -232,5 +234,32 @@ describe('Cancelar carona (detalhe da carona)', () => {
     await render(<TelaDetalheCarona />);
 
     expect(await screen.findByText('Sem avaliações ainda')).toBeOnTheScreen();
+  });
+});
+
+describe('Foto do motorista (T44)', () => {
+  const OCULTOS = { includeHiddenElements: true };
+
+  it('com foto: a imagem no card do motorista', async () => {
+    jest.mocked(urlFotoPerfil).mockResolvedValue({
+      uri: 'http://127.0.0.1:54321/storage/v1/object/authenticated/fotos-perfil/m1/avatar.jpg?v=1',
+      headers: { Authorization: 'Bearer token', apikey: 'chave' },
+    });
+    jest
+      .mocked(detalharCarona)
+      .mockResolvedValue(detalhe({ sou_motorista: false, foto_motorista: 'm1/avatar.jpg?v=1' }));
+    await render(<TelaDetalheCarona />);
+
+    expect(await screen.findByTestId('avatar-foto', OCULTOS)).toBeOnTheScreen();
+    expect(urlFotoPerfil).toHaveBeenCalledWith('m1/avatar.jpg?v=1');
+  });
+
+  it('sem foto: as iniciais, sem pedir URL', async () => {
+    jest.mocked(detalharCarona).mockResolvedValue(detalhe({ sou_motorista: false }));
+    await render(<TelaDetalheCarona />);
+
+    expect(await screen.findByText('AS', OCULTOS)).toBeOnTheScreen();
+    expect(screen.queryByTestId('avatar-foto', OCULTOS)).toBeNull();
+    expect(urlFotoPerfil).not.toHaveBeenCalled();
   });
 });
