@@ -433,6 +433,9 @@ avaliações (média nula ou total 0): só o texto "Sem avaliações ainda" (`le
 sem estrela. Lida como um elemento: "Nota média 4,3 de 5, 12 avaliações". Usada no card do motorista
 (tela 6) e no topo do Perfil (tela 10).
 
+**Compacta** (T42, `compacta`): só `star` 14 + "4,0", sem total; sem avaliações não mostra nada. Lida
+como "nota média 4,0". Usada no card de "Minhas reservas" (tela 9).
+
 ### 3.11 Seletor de nota (`SeletorNota.tsx`, T30) ✚
 
 Rótulo "Nota" (`rotulo`) → linha de 5 estrelas, `gap` 4: cada uma é um alvo de 44 × 44 (raio `pilula`,
@@ -660,7 +663,10 @@ Header "Pagamento da reserva". `ScrollView`, `gap` 16.
 **8a · Aguardando pagamento (PENDENTE com Pix):**
 
 1. Bloco centralizado: SeloStatus PENDENTE → 6 → "R$ 6,00" (`display`, numérico) → "Valor da
-   sua vaga" ✚ (`legenda`).
+   sua vaga" ✚ (`legenda`) → 8 → **linha do motorista** (T42) ✚: "Motorista: Ana ·" (`legenda`
+   `textoSecundario`) + Reputação (3.10): "★ 4,0 · 1 avaliação" ou "Sem avaliações ainda". Vem da
+   reserva que a tela já busca na `minhas_reservas`; se essa busca falhar, a linha não aparece. Lida
+   como "Motorista Ana, Nota média 4,0 de 5, 1 avaliação".
 2. **Card do Pix** (padding 20, `gap` 16):
    - "Pague com o Pix pelo QR code ou pelo código copia e cola. A confirmação aparece aqui
      sozinha." (`corpo`);
@@ -684,7 +690,8 @@ reserva não está mais disponível."
 2. 24 → "Pagamento confirmado!" (`titulo`).
 3. "Sua vaga está garantida." (`corpo` `textoSecundario`). O Aviso atual "Pagamento confirmado!
    Sua vaga está garantida." vira este título + texto.
-4. Linha: SeloStatus CONFIRMADA + "R$ 6,00" (`corpoForte`).
+4. Linha: SeloStatus CONFIRMADA + "R$ 6,00" (`corpoForte`); abaixo, a mesma linha do motorista de 8a
+   (T42).
 5. 32 → botão primário `receipt-outline` "Minhas reservas" → botão `texto` "Voltar ao início" ✚.
 
 Leitor de tela: ao mudar para CONFIRMADA, anunciar "Pagamento confirmado! Sua vaga está
@@ -731,7 +738,10 @@ O mockup 09 é anterior à T41: o card e as seções abaixo valem no lugar dele.
 2. "Saindo de Centro, Torres" (`apoio` `textoSecundario`, 1 linha).
 3. Linha: "dom 18/10 · 12:30" (`corpoForte`, numérico) + valor "R$ 6,00" (`corpoForte`, numérico,
    direita).
-4. Linha: "Motorista: Ana" (`legenda`) + `chevron-forward` 18 `textoSutil` à direita.
+4. Linha: "Motorista: Ana" (`legenda`) + a nota curta do motorista (3.10 compacta, T42): `star` 14
+   `secundaria` + "4,0" (`legenda` 600, numérico), **nada** quando ele não tem avaliações; à direita,
+   `chevron-forward` 18 `textoSutil`. O `accessibilityLabel` do card termina em ", motorista Ana, nota
+   média 4,0".
 5. Só PENDENTE: divisória + linha "Pagar com Pix" (`corpoForte` `primaria`) + `chevron-forward`
    20 `primaria`. Substitui o chevron do item 4.
 

@@ -234,7 +234,7 @@ isOneToOne: false
                            },
 "minhas_reservas":
 { Args: Record<PropertyKey, never>; Returns: {
-              "data_hora_partida": string,"destino": string,"id_carona": string,"id_reserva": string,"nome_motorista": string,"origem": string,"reservado_em": string,"status_carona": Database["public"]['Enums']["status_carona"],"status_pagamento": Database["public"]['Enums']["status_pagamento"],"status_reserva": Database["public"]['Enums']["status_reserva"],"valor": number
+              "data_hora_partida": string,"destino": string,"id_carona": string,"id_reserva": string,"media_motorista": number,"nome_motorista": string,"origem": string,"reservado_em": string,"status_carona": Database["public"]['Enums']["status_carona"],"status_pagamento": Database["public"]['Enums']["status_pagamento"],"status_reserva": Database["public"]['Enums']["status_reserva"],"total_avaliacoes_motorista": number,"valor": number
             }[]
                            },
 "perfil_publico":

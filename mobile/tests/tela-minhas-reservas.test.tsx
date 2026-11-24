@@ -17,6 +17,8 @@ function reserva(
   status: MinhaReserva['status_reserva'],
   horas: number,
   statusCarona: MinhaReserva['status_carona'] = 'ABERTA',
+  media: number | null = null,
+  total = 0,
 ): MinhaReserva {
   return {
     id_reserva: id,
@@ -30,6 +32,8 @@ function reserva(
     data_hora_partida: daqui(horas),
     status_carona: statusCarona,
     nome_motorista: 'Bruno',
+    media_motorista: media,
+    total_avaliacoes_motorista: total,
   } as MinhaReserva;
 }
 
@@ -55,7 +59,7 @@ describe('Minhas reservas', () => {
     expect(await screen.findByRole('header', { name: 'Próximas' })).toBeOnTheScreen();
     expect(cards().map((card) => card.props.accessibilityLabel as string)).toEqual([
       expect.stringMatching(
-        /^Para ULBRA Torres, saindo de Bairro hoje, Torres, .+ · \d{2}:\d{2}, Aguardando pagamento, R\$\s6,00$/,
+        /^Para ULBRA Torres, saindo de Bairro hoje, Torres, .+ · \d{2}:\d{2}, Aguardando pagamento, R\$\s6,00, motorista Bruno$/,
       ),
       expect.stringMatching(/saindo de Bairro semana, .*, Confirmada, /),
     ]);
@@ -120,5 +124,29 @@ describe('Minhas reservas', () => {
     expect(await screen.findByText('Sem conexão com a internet.')).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole('button', { name: 'Tentar de novo' }));
     expect(await screen.findByText('Para ULBRA Torres')).toBeOnTheScreen();
+  });
+
+  it('card com nota: "★ 4,0" ao lado do motorista, lida como "nota média 4,0"', async () => {
+    jest
+      .mocked(listarMinhasReservas)
+      .mockResolvedValue([reserva('r1', 'CONFIRMADA', 24, 'ABERTA', 4, 1)]);
+    await render(<TelaMinhasReservas />);
+
+    expect(await screen.findByText('Motorista: Bruno')).toBeOnTheScreen();
+    expect(screen.getByText('4,0')).toBeOnTheScreen();
+    expect(
+      screen.getByRole('button', { name: /, motorista Bruno, nota média 4,0$/ }),
+    ).toBeOnTheScreen();
+  });
+
+  it('card sem nota (motorista sem avaliações): nada ao lado do nome', async () => {
+    jest.mocked(listarMinhasReservas).mockResolvedValue([reserva('r1', 'CONFIRMADA', 24)]);
+    await render(<TelaMinhasReservas />);
+
+    expect(await screen.findByText('Motorista: Bruno')).toBeOnTheScreen();
+    // Nenhuma nota com 1 casa ("4,0"); o valor "R$ 6,00" não conta
+    expect(screen.queryByText(/^\d,\d$/)).toBeNull();
+    expect(screen.queryByText('Sem avaliações ainda')).toBeNull();
+    expect(screen.getByRole('button', { name: /, motorista Bruno$/ })).toBeOnTheScreen();
   });
 });

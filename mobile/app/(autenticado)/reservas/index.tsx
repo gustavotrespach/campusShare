@@ -8,10 +8,12 @@ import { ErroCarregamento } from '@/components/ErroCarregamento';
 import { EsqueletoLista } from '@/components/EsqueletoLista';
 import { EstadoVazio } from '@/components/EstadoVazio';
 import { ListaPorPartida } from '@/components/ListaPorPartida';
+import { Reputacao } from '@/components/Reputacao';
 import { SeloStatus } from '@/components/SeloStatus';
 import { normalizarErro } from '@/services/erros';
 import { listarMinhasReservas, type MinhaReserva } from '@/services/reservas';
 import { tema } from '@/tema';
+import { rotuloNotaMedia } from '@/utils/avaliacoes';
 import { formatarDataHoraCurta } from '@/utils/data-hora';
 import { formatarReais } from '@/utils/dinheiro';
 import { nomeCurtoLocal, reservaEhProxima, separarPorPartida } from '@/utils/listas';
@@ -44,7 +46,13 @@ function ItemReserva({ reserva }: { reserva: MinhaReserva }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Para ${destino}, saindo de ${origem}, ${quando}, ${rotuloStatusReserva(reserva.status_reserva)}, ${valor}`}
+      accessibilityLabel={[
+        `Para ${destino}, saindo de ${origem}, ${quando}`,
+        rotuloStatusReserva(reserva.status_reserva),
+        valor,
+        `motorista ${reserva.nome_motorista}`,
+        ...(reserva.media_motorista !== null ? [rotuloNotaMedia(reserva.media_motorista)] : []),
+      ].join(', ')}
       accessibilityHint="Abre o pagamento e o status da reserva"
       onPress={() =>
         router.push({ pathname: '/reservas/[id]', params: { id: reserva.id_reserva } })
@@ -65,7 +73,14 @@ function ItemReserva({ reserva }: { reserva: MinhaReserva }) {
         <Text style={[estilos.valor, { color: corTexto }]}>{valor}</Text>
       </View>
       <View style={estilos.linha}>
-        <Text style={estilos.legenda}>Motorista: {reserva.nome_motorista}</Text>
+        <View style={estilos.motorista}>
+          <Text style={estilos.legendaMotorista}>Motorista: {reserva.nome_motorista}</Text>
+          <Reputacao
+            media={reserva.media_motorista}
+            total={reserva.total_avaliacoes_motorista}
+            compacta
+          />
+        </View>
         {pendente ? null : <Ionicons name="chevron-forward" size={18} color={cores.textoSutil} />}
       </View>
       {pendente ? (
@@ -185,5 +200,7 @@ const estilos = StyleSheet.create({
   quando: { ...tema.tipografia.corpoForte, ...tema.numerico },
   valor: { ...tema.tipografia.corpoForte, ...tema.numerico },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario, flex: 1 },
+  motorista: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x2 },
+  legendaMotorista: { ...tema.tipografia.legenda, color: cores.textoSecundario, flexShrink: 1 },
   pagar: { ...tema.tipografia.corpoForte, color: cores.primaria },
 });
