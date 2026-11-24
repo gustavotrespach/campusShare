@@ -34,6 +34,7 @@ import {
   podeCancelarReserva,
 } from '@/utils/cancelamento';
 import { formatarReais } from '@/utils/dinheiro';
+import { situacaoExibidaCarona } from '@/utils/listas';
 import { confirmouAgora, reservaEmAberto, type StatusReserva } from '@/utils/reserva';
 
 const { cores } = tema;
@@ -146,6 +147,14 @@ export default function TelaPagamentoReserva() {
   const valorCentavos = situacao?.valorCentavos ?? reservaCriada?.valorCentavos ?? null;
   const valor = valorCentavos !== null ? formatarReais(valorCentavos) : null;
 
+  // A carona continua ABERTA no banco depois da partida: aqui ela aparece como "Já partiu" (T41)
+  const caronaJaPartiu =
+    reservaDaLista !== null &&
+    situacaoExibidaCarona({
+      status: reservaDaLista.status_carona,
+      data_hora_partida: reservaDaLista.data_hora_partida,
+    }) === 'JA_PARTIU';
+
   const exibirCancelar =
     !cancelamentoFeito &&
     reservaDaLista !== null &&
@@ -214,6 +223,7 @@ export default function TelaPagamentoReserva() {
         <Text style={estilos.textoSecundario}>Sua vaga está garantida.</Text>
         <View style={estilos.linhaSelo}>
           <SeloStatus tipo="CONFIRMADA" />
+          {caronaJaPartiu ? <SeloStatus tipo="JA_PARTIU" /> : null}
           {valor ? <Text style={estilos.corpoForte}>{valor}</Text> : null}
         </View>
         <View style={estilos.acoesConfirmada}>
@@ -234,7 +244,10 @@ export default function TelaPagamentoReserva() {
   return (
     <ScrollView style={estilos.tela} contentContainerStyle={estilos.conteudo}>
       <View style={estilos.topo}>
-        <SeloStatus tipo={status} />
+        <View style={estilos.selos}>
+          <SeloStatus tipo={status} />
+          {caronaJaPartiu ? <SeloStatus tipo="JA_PARTIU" /> : null}
+        </View>
         {valor ? (
           <Text style={estilos.valor} maxFontSizeMultiplier={1.4}>
             {valor}
@@ -323,6 +336,7 @@ const estilos = StyleSheet.create({
     backgroundColor: cores.fundo,
   },
   topo: { alignItems: 'center', gap: 6 },
+  selos: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: tema.espaco.x2 },
   valor: { ...tema.tipografia.display, ...tema.numerico, color: cores.texto },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
   corpo: { ...tema.tipografia.corpo, color: cores.texto },
