@@ -2,6 +2,7 @@ import {
   descreverAvaliado,
   formatarNota,
   podeConcluirCarona,
+  rotuloNotaMedia,
   rotuloReputacao,
   textoAvaliacoesPendentes,
   textoReputacao,
@@ -37,6 +38,7 @@ describe('textos de reputação', () => {
     expect(textoReputacao(4.3, 12)).toBe('4,3 · 12 avaliações');
     expect(textoReputacao(5, 1)).toBe('5,0 · 1 avaliação');
     expect(rotuloReputacao(4.3, 12)).toBe('Nota média 4,3 de 5, 12 avaliações');
+    expect(rotuloNotaMedia(4)).toBe('nota média 4,0');
   });
 
   it('média null ou total 0: "Sem avaliações ainda"', () => {
