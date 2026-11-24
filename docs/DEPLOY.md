@@ -101,6 +101,12 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] Release #79 (#78 + #80) com o Deploy verde: `db push` aplicou só a `20261124182900_nota_motorista_busca`, 17 migrations local = remoto, Edge Functions sem mudança, `health` 200; `buscar_caronas` responde 401 `42501` sem sessão (função inexistente: 404 `PGRST202`)
 - [x] EAS Update da `main` (`d88872a`) com runtime 1.1.0, grupo `be837916-86a9-407e-874a-6630a8e3a431`; bundles de iOS e Android iguais aos publicados (hash do manifesto), com a URL do projeto `cofhvybajjzczrbojttv` e sem a do antigo; runtime 1.0.0 conferido com o update de 18/10
 
+## Foto de perfil e versão 1.2.0 (T44, 24/11/2026)
+
+- **A partir da T44 o runtime é 1.2.0.** A foto de perfil usa módulos nativos novos (`expo-image-picker` e `expo-image-manipulator`) que não existem no APK 1.1.0; por isso a `version` subiu para 1.2.0 (`android.versionCode` 4) e, com a policy `appVersion`, todo EAS Update a partir daqui sai com runtime 1.2.0. O **APK 1.1.0 fica sem a foto**: continua recebendo só os updates de runtime 1.1.0 (o último é o da T43, grupo `be837916`), e quem quiser a foto instala o APK 1.2.0 (FASE 40). O Expo Go do iPhone abre o update 1.2.0 normalmente (os dois módulos vêm no Expo Go).
+- [ ] APK 1.2.0 (versionCode 4) e release (FASE 40)
+- [ ] EAS Update com runtime 1.2.0 e conferência do runtime 1.1.0 (continua no grupo `be837916`)
+
 ## Observações
 
 - **iPhone:** o Expo Go só existe na versão mais recente e abre um único SDK. De 12/11 até a T34 o app (SDK 57) ficou indisponível no iPhone; desde a versão 1.1.0 (SDK 58) abre de novo pelo link acima.
