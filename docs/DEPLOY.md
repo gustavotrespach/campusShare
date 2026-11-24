@@ -10,7 +10,7 @@
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
 | APK v1.0.0, SDK 57 — versão entregue na TD de deploy (aponta para o backend antigo, inativo desde a T36) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/57d1e8e7-f9a2-4173-bc48-1f9523c95275` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=57d1e8e7-f9a2-4173-bc48-1f9523c95275) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/57d1e8e7-f9a2-4173-bc48-1f9523c95275) |
+| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/e789c369-9e56-4efd-909a-f4a33ac9379c` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=e789c369-9e56-4efd-909a-f4a33ac9379c) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/e789c369-9e56-4efd-909a-f4a33ac9379c) |
 | Backend (Supabase, projeto `cofhvybajjzczrbojttv`, região São Paulo, desde a T36) | <https://cofhvybajjzczrbojttv.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
 | Webhook do Mercado Pago (aba Teste da aplicação CampusShare e aplicação do vendedor de teste; ver Observações) | `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
@@ -88,6 +88,12 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 - [x] T28 (cancelar reserva e carona, tela "Minhas caronas") conferida pelo Gustavo no iPhone contra o remoto (testes 1 a 6) e pagamentos conferidos no painel do Mercado Pago; T41 (seções "Próximas"/"Anteriores", card "Para …", selo "Já partiu") conferida no iPhone
 - [x] Releases #68 (T28, com a migration `20261123225328_cancelamentos` aplicada pelo Deploy) e #70 (T41, sem migration); RPCs `cancelar_reserva` e `cancelar_carona` existem no remoto (401 `42501` sem sessão); `health` 200
 - [x] Um único EAS Update da `main` (`2bc2040`) com runtime 1.1.0, grupo `57d1e8e7-f9a2-4173-bc48-1f9523c95275`; bundles de iOS e Android iguais aos publicados (hash do manifesto), com a URL do projeto `cofhvybajjzczrbojttv` e sem a do antigo; runtime 1.0.0 conferido com o update de 18/10
+
+## Conclusão, avaliações e nota do motorista (T30 e T42, 24/11/2026)
+
+- [x] T30 (concluir carona, avaliar nos dois sentidos, médias no Perfil e no detalhe da carona) conferida pelo Gustavo no iPhone contra o remoto (testes 1 a 5); T42 ("★ 4,0" no card de "Minhas reservas" e "Motorista: <nome> · ★ 4,0 · 1 avaliação" na tela da reserva) conferida no iPhone
+- [x] Releases #74 (T30, com a migration `20261124011419_concluir_avaliar` e o job `concluir-caronas`) e #76 (T42, com a `20261124022435_nota_motorista_reservas`) com o Deploy verde: 16 migrations local = remoto, Edge Functions sem mudança, `health` 200; `minhas_reservas` responde 401 `42501` sem sessão (função inexistente: 404 `PGRST202`)
+- [x] Um único EAS Update da `main` (`66d39a5`) com runtime 1.1.0, grupo `e789c369-9e56-4efd-909a-f4a33ac9379c`; bundles de iOS e Android iguais aos publicados (hash do manifesto), com a URL do projeto `cofhvybajjzczrbojttv` e sem a do antigo; runtime 1.0.0 conferido com o update de 18/10
 
 ## Observações
 
