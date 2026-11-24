@@ -83,7 +83,7 @@ export function ItemCarona({ carona, aoAbrir }: Props) {
       <Divisoria />
 
       <View style={estilos.motorista}>
-        <Avatar nome={carona.nome_motorista} />
+        <Avatar nome={carona.nome_motorista} fotoCaminho={carona.foto_motorista} />
         <View style={estilos.textosMotorista}>
           <View style={estilos.linhaNome}>
             <Text style={estilos.nome}>{carona.nome_motorista}</Text>

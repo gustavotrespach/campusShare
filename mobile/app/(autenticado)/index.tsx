@@ -25,6 +25,7 @@ import { listarAvaliacoesPendentes } from '@/services/avaliacoes';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
+import { obterMinhaFoto } from '@/services/foto-perfil';
 import { obterMeuPerfil } from '@/services/perfil';
 import { obterProximaViagem, type ViagemDoInicio } from '@/services/proxima-viagem';
 import { tema } from '@/tema';
@@ -107,6 +108,7 @@ export default function TelaCaronasProximas() {
   const [somenteMulheres, setSomenteMulheres] = useState(false);
   const [exibirFiltro, setExibirFiltro] = useState(false);
   const [nomeUsuario, setNomeUsuario] = useState('');
+  const [minhaFoto, setMinhaFoto] = useState<string | null>(null);
   const [lista, setLista] = useState<Lista>({ tipo: 'carregando' });
   const [atualizando, setAtualizando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
@@ -155,7 +157,19 @@ export default function TelaCaronasProximas() {
           // Sem perfil, segue sem o filtro e sem a saudação; a busca continua funcionando
         }
       };
+      // A própria foto (T44) volta a ser lida ao voltar do Perfil, onde ela muda; se falhar, iniciais
+      const carregarFoto = async () => {
+        try {
+          const foto = await obterMinhaFoto();
+          if (ativo) {
+            setMinhaFoto(foto);
+          }
+        } catch {
+          // Fica com as iniciais
+        }
+      };
       void carregarPerfil();
+      void carregarFoto();
       return () => {
         ativo = false;
       };
@@ -295,6 +309,7 @@ export default function TelaCaronasProximas() {
           </Pressable>
           <Avatar
             nome={nomeUsuario}
+            fotoCaminho={minhaFoto}
             tamanho={44}
             accessibilityLabel="Meu perfil"
             onPress={() => router.push('/perfil')}

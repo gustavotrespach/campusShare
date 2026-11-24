@@ -292,7 +292,7 @@ export default function TelaDetalheCarona() {
 
         <View style={estilos.cartao}>
           <View style={estilos.motorista}>
-            <Avatar nome={carona.nome_motorista} tamanho={48} />
+            <Avatar nome={carona.nome_motorista} tamanho={48} fotoCaminho={carona.foto_motorista} />
             <View style={estilos.textosMotorista}>
               <Text style={estilos.legenda}>Motorista</Text>
               <Text style={estilos.corpoForte}>{carona.nome_motorista}</Text>
