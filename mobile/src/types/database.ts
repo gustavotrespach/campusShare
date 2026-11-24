@@ -203,7 +203,7 @@ isOneToOne: false
                            },
 "buscar_caronas":
 { Args: { "p_data"?: string,"p_lat": number,"p_lng": number,"p_pagina"?: number,"p_raio_km"?: number,"p_somente_mulheres"?: boolean }; Returns: {
-              "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"vagas_disponiveis": number,"valor_por_passageiro": number
+              "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"media_motorista": number,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"total_avaliacoes_motorista": number,"vagas_disponiveis": number,"valor_por_passageiro": number
             }[]
                            },
 "cancelar_carona":

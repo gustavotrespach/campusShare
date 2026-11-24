@@ -13,8 +13,10 @@ type LinhaDetalhe = Funcoes['detalhar_carona']['Returns'][number];
 type LinhaCarona = Database['public']['Tables']['carona']['Row'];
 
 // Dinheiro no app em centavos: a conversão de/para reais (decimal do banco) fica só aqui.
-export type CaronaResumo = Omit<LinhaBusca, 'valor_por_passageiro'> & {
+// media_motorista (T43): os tipos gerados dizem number, mas vem null para motorista sem avaliações.
+export type CaronaResumo = Omit<LinhaBusca, 'valor_por_passageiro' | 'media_motorista'> & {
   valorPorPassageiroCentavos: number;
+  media_motorista: number | null;
 };
 
 // media_motorista: os tipos gerados dizem number, mas vem null para motorista sem avaliações (T30)
@@ -103,10 +105,14 @@ export async function buscarCaronas(filtros: FiltrosBusca): Promise<CaronaResumo
     if (error) {
       throw error;
     }
-    return data.map(({ valor_por_passageiro, ...linha }) => ({
-      ...linha,
-      valorPorPassageiroCentavos: reaisParaCentavos(valor_por_passageiro),
-    }));
+    return data.map(({ valor_por_passageiro, media_motorista, ...linha }) => {
+      const media: number | null = media_motorista ?? null;
+      return {
+        ...linha,
+        media_motorista: media,
+        valorPorPassageiroCentavos: reaisParaCentavos(valor_por_passageiro),
+      };
+    });
   } catch (erro) {
     throw normalizarErro(erro);
   }

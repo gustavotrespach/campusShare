@@ -176,6 +176,34 @@ describe('buscarCaronas', () => {
     expect(lista[0]).not.toHaveProperty('valor_por_passageiro');
   });
 
+  it('traz a nota do motorista (T43): média com 1 casa, ou null sem avaliações', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(
+      resposta(200, [
+        { ...LINHA_BUSCA, media_motorista: 4.3, total_avaliacoes_motorista: 3 },
+        {
+          ...LINHA_BUSCA,
+          id_carona: 'outra',
+          media_motorista: null,
+          total_avaliacoes_motorista: 0,
+        },
+      ]),
+    );
+
+    const lista = await caronas.buscarCaronas({
+      latitude: -29.3353,
+      longitude: -49.7268,
+      somenteMulheres: false,
+    });
+
+    expect(
+      lista.map((carona) => [carona.media_motorista, carona.total_avaliacoes_motorista]),
+    ).toEqual([
+      [4.3, 3],
+      [null, 0],
+    ]);
+  });
+
   it('erro de validação do backend chega como AppError', async () => {
     const caronas = await logado();
     mockFetch.mockResolvedValue(
