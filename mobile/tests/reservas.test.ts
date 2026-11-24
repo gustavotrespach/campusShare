@@ -216,6 +216,35 @@ describe('listarMinhasReservas', () => {
     expect(lista[0]).toMatchObject({ status_reserva: 'CONFIRMADA', nome_motorista: 'Marina' });
   });
 
+  it('nota do motorista (T42): média como número e null sem avaliações', async () => {
+    const reservas = await logado();
+    const linha = {
+      id_reserva: ID_RESERVA,
+      status_reserva: 'CONFIRMADA',
+      reservado_em: '2026-10-17T20:00:00+00:00',
+      status_pagamento: 'APROVADO',
+      valor: 6,
+      id_carona: ID_CARONA,
+      origem: 'Rodoviária de Torres - RS',
+      destino: 'ULBRA Torres - RS',
+      data_hora_partida: '2026-10-18T15:30:00+00:00',
+      status_carona: 'ABERTA',
+      nome_motorista: 'Marina',
+      media_motorista: 4.5,
+      total_avaliacoes_motorista: 2,
+    };
+    mockFetch.mockResolvedValue(
+      resposta(200, [linha, { ...linha, media_motorista: null, total_avaliacoes_motorista: 0 }]),
+    );
+
+    const lista = await reservas.listarMinhasReservas();
+
+    expect(lista.map((r) => [r.media_motorista, r.total_avaliacoes_motorista])).toEqual([
+      [4.5, 2],
+      [null, 0],
+    ]);
+  });
+
   it('erro da RPC chega como AppError', async () => {
     const reservas = await logado();
     mockFetch.mockResolvedValue(

@@ -22,8 +22,12 @@ export interface ReservaCriada {
   pix: Pix;
 }
 
-// Dinheiro no app em centavos: a conversão do decimal do banco fica só nos services
-export type MinhaReserva = Omit<LinhaMinhasReservas, 'valor'> & { valorCentavos: number };
+// Dinheiro no app em centavos: a conversão do decimal do banco fica só nos services.
+// media_motorista (T42): os tipos gerados dizem number, mas vem null para motorista sem avaliações.
+export type MinhaReserva = Omit<LinhaMinhasReservas, 'valor' | 'media_motorista'> & {
+  valorCentavos: number;
+  media_motorista: number | null;
+};
 
 export interface SituacaoReserva {
   statusReserva: StatusReserva;
@@ -111,10 +115,10 @@ export async function listarMinhasReservas(): Promise<MinhaReserva[]> {
     if (error) {
       throw error;
     }
-    return data.map(({ valor, ...linha }) => ({
-      ...linha,
-      valorCentavos: reaisParaCentavos(valor),
-    }));
+    return data.map(({ valor, media_motorista, ...linha }) => {
+      const media: number | null = media_motorista ?? null;
+      return { ...linha, valorCentavos: reaisParaCentavos(valor), media_motorista: media };
+    });
   } catch (falha) {
     throw normalizarErro(falha);
   }

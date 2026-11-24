@@ -34,7 +34,12 @@ function situacao(statusReserva: SituacaoReserva['statusReserva']): SituacaoRese
   };
 }
 
-function naLista(partida: string, statusCarona: MinhaReserva['status_carona'] = 'ABERTA') {
+function naLista(
+  partida: string,
+  statusCarona: MinhaReserva['status_carona'] = 'ABERTA',
+  media: number | null = 4,
+  total = 1,
+) {
   return {
     id_reserva: ID,
     status_reserva: 'PENDENTE',
@@ -47,6 +52,8 @@ function naLista(partida: string, statusCarona: MinhaReserva['status_carona'] = 
     data_hora_partida: partida,
     status_carona: statusCarona,
     nome_motorista: 'Bruno',
+    media_motorista: media,
+    total_avaliacoes_motorista: total,
   } as MinhaReserva;
 }
 
@@ -202,5 +209,37 @@ describe('Cancelar reserva (detalhe da reserva)', () => {
 
     expect(await screen.findByRole('button', { name: /Cancelar reserva/ })).toBeOnTheScreen();
     expect(screen.queryByText('Já partiu')).toBeNull();
+  });
+
+  it('linha do motorista com a nota: "Motorista: Bruno · ★ 4,0 · 1 avaliação"', async () => {
+    jest.mocked(consultarStatusReserva).mockResolvedValue(situacao('PENDENTE'));
+    jest.mocked(listarMinhasReservas).mockResolvedValue([naLista(daqui(5))]);
+    await render(<TelaPagamentoReserva />);
+
+    expect(await screen.findByText('Motorista: Bruno ·')).toBeOnTheScreen();
+    expect(screen.getByText('4,0 · 1 avaliação')).toBeOnTheScreen();
+    expect(
+      screen.getByLabelText('Motorista Bruno, Nota média 4,0 de 5, 1 avaliação'),
+    ).toBeOnTheScreen();
+  });
+
+  it('motorista sem avaliações: "Sem avaliações ainda" (também na tela de confirmada)', async () => {
+    jest.mocked(consultarStatusReserva).mockResolvedValue(situacao('CONFIRMADA'));
+    jest.mocked(listarMinhasReservas).mockResolvedValue([naLista(daqui(5), 'ABERTA', null, 0)]);
+    await render(<TelaPagamentoReserva />);
+
+    expect(await screen.findByText('Pagamento confirmado!')).toBeOnTheScreen();
+    expect(await screen.findByText('Motorista: Bruno ·')).toBeOnTheScreen();
+    expect(screen.getByText('Sem avaliações ainda')).toBeOnTheScreen();
+  });
+
+  it('se a minhas_reservas falhar, a linha do motorista não aparece', async () => {
+    jest.mocked(consultarStatusReserva).mockResolvedValue(situacao('PENDENTE'));
+    jest.mocked(listarMinhasReservas).mockRejectedValue(new Error('rede'));
+    await render(<TelaPagamentoReserva />);
+
+    expect(await screen.findByText('Valor da sua vaga')).toBeOnTheScreen();
+    await listaCarregada();
+    expect(screen.queryByText(/^Motorista:/)).toBeNull();
   });
 });

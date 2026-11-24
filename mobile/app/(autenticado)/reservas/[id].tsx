@@ -16,6 +16,7 @@ import {
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
 import { Divisoria } from '@/components/Divisoria';
+import { Reputacao } from '@/components/Reputacao';
 import { SeloStatus } from '@/components/SeloStatus';
 import { normalizarErro } from '@/services/erros';
 import {
@@ -28,6 +29,7 @@ import {
 import { descartarPix, obterPix } from '@/store/pix';
 import { tema } from '@/tema';
 import { acompanharReserva } from '@/utils/acompanhamento-reserva';
+import { rotuloReputacao } from '@/utils/avaliacoes';
 import {
   confirmacaoCancelarReserva,
   mensagemReservaCancelada,
@@ -147,6 +149,24 @@ export default function TelaPagamentoReserva() {
   const valorCentavos = situacao?.valorCentavos ?? reservaCriada?.valorCentavos ?? null;
   const valor = valorCentavos !== null ? formatarReais(valorCentavos) : null;
 
+  // Motorista e nota (T42), da mesma minhas_reservas que a tela já busca; sem ela, a linha não aparece
+  const linhaMotorista = reservaDaLista ? (
+    <View
+      accessible
+      accessibilityLabel={`Motorista ${reservaDaLista.nome_motorista}, ${rotuloReputacao(
+        reservaDaLista.media_motorista,
+        reservaDaLista.total_avaliacoes_motorista,
+      )}`}
+      style={estilos.linhaMotorista}
+    >
+      <Text style={estilos.motorista}>Motorista: {reservaDaLista.nome_motorista} ·</Text>
+      <Reputacao
+        media={reservaDaLista.media_motorista}
+        total={reservaDaLista.total_avaliacoes_motorista}
+      />
+    </View>
+  ) : null;
+
   // A carona continua ABERTA no banco depois da partida: aqui ela aparece como "Já partiu" (T41)
   const caronaJaPartiu =
     reservaDaLista !== null &&
@@ -226,6 +246,7 @@ export default function TelaPagamentoReserva() {
           {caronaJaPartiu ? <SeloStatus tipo="JA_PARTIU" /> : null}
           {valor ? <Text style={estilos.corpoForte}>{valor}</Text> : null}
         </View>
+        {linhaMotorista}
         <View style={estilos.acoesConfirmada}>
           <Botao
             titulo="Minhas reservas"
@@ -254,6 +275,7 @@ export default function TelaPagamentoReserva() {
           </Text>
         ) : null}
         <Text style={estilos.legenda}>Valor da sua vaga</Text>
+        {linhaMotorista}
       </View>
 
       {status === 'CANCELADA' || status === 'EXPIRADA' ? (
@@ -337,6 +359,15 @@ const estilos = StyleSheet.create({
   },
   topo: { alignItems: 'center', gap: 6 },
   selos: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: tema.espaco.x2 },
+  linhaMotorista: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: tema.espaco.x1,
+    marginTop: tema.espaco.x2,
+  },
+  motorista: { ...tema.tipografia.legenda, color: cores.textoSecundario },
   valor: { ...tema.tipografia.display, ...tema.numerico, color: cores.texto },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
   corpo: { ...tema.tipografia.corpo, color: cores.texto },

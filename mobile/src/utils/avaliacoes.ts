@@ -35,6 +35,11 @@ export function rotuloReputacao(media: number | null, total: number): string {
     : `Nota média ${formatarNota(media)} de 5, ${avaliacoes(total)}`;
 }
 
+// Versão curta, para o card de "Minhas reservas" (T42): "nota média 4,0"
+export function rotuloNotaMedia(media: number): string {
+  return `nota média ${formatarNota(media)}`;
+}
+
 export function textoAvaliacoesPendentes(quantidade: number): string {
   return quantidade === 1
     ? 'Você tem 1 avaliação pendente.'
