@@ -209,7 +209,7 @@ Descrição: Tabela NOTIFICACAO com RLS; coluna `expo_push_token` em USUARIO; tr
 Aceite: passageiros recebem push no cancelamento; motorista recebe push em nova reserva.
 
 ### T30 — Concluir carona e avaliações
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T23
+Status: feito · Responsável: Gustavo Trespach · Depende de: T23
 Partes: **backend** (Fase 33, branch `feature/T30-concluir-avaliar-backend`) e **app** (Fase 34, em outra branch).
 Regras (Gustavo, 24/11): o motorista conclui a carona da partida até 1 dia depois; sem conclusão nesse prazo, o sistema conclui sozinho (job de hora em hora); avaliação até 7 dias depois da partida, entre o motorista e cada passageiro com reserva `CONFIRMADA`.
 Descrição: Função `concluir_carona`; job `concluir-caronas`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); `avaliacoes_pendentes`; perfil público (nome + média, sem e-mail, telefone ou gênero — movido da T13 em 16/10) como função `perfil_publico`; reputação do motorista no `detalhar_carona`.
@@ -217,6 +217,7 @@ Aceite: só participantes avaliam, uma vez cada, após a conclusão.
 Nota (24/11, parte backend): migration `20261124011419_concluir_avaliar` com `prazo_conclusao_carona()` (1 dia), `prazo_avaliacao()` (7 dias), `concluir_carona`, `concluir_caronas_vencidas` + job `concluir-caronas` (`0 * * * *`), tabela `avaliacao` (RLS: o avaliador lê as próprias; escrita só pela função), `avaliar_participante`, `avaliacoes_pendentes`, `perfil_publico` e `detalhar_carona` com `media_motorista`/`total_avaliacoes_motorista`. pgTAP `16_concluir_avaliar` (69 testes, 537 no total). Falta a parte app (Fase 34), merge e release.
 Nota (24/11, parte app): services `concluirCarona`, `avaliarParticipante`, `listarAvaliacoesPendentes` e `obterPerfilPublico` (média `number | null`); "Concluir carona" no detalhe da carona (motorista, carona que já partiu) e a reputação do motorista no card; telas novas "Avaliações pendentes" e "Avaliar" (componente `SeletorNota`); aviso de pendências no Início; atalho e a própria média no Perfil. O app não calcula prazo: mostra o `hint` do backend. 41 testes novos (432 no total). Falta conferir no aparelho, merge, release e EAS Update.
 
+Nota (24/11, Parte B): PRs #72 (backend) e #73 (app), release #74 (Deploy aplicou a `20261124011419_concluir_avaliar`, com o job `concluir-caronas`; `health` 200). Testada pelo Gustavo no iPhone contra o remoto (testes 1 a 5 passaram: concluir, avaliar nos dois sentidos, médias no Perfil e no detalhe). EAS Update único da `main` (`66d39a5`) com runtime 1.1.0, grupo `e789c369-9e56-4efd-909a-f4a33ac9379c` ("T30 e T42: concluir, avaliar e nota do motorista"); runtime 1.0.0 continua com o update de 18/10.
 ### T32 — Identidade visual (tema, componentes, telas da demo, ícone e splash)
 Status: feito · Responsável: Gustavo Trespach · Depende de: T25
 Descrição: Aplicar a especificação de `docs/design/DESIGN.md`: `mobile/src/tema.ts`, componentes base (Botao, CampoTexto, Aviso, SeloStatus, EstadoVazio, LinhaRota, Avatar), header padrão, telas da demo (1 Entrar, 5 Caronas próximas, 6 Detalhes da carona, 8 Pagamento, 9 Minhas reservas), ícone e splash. As demais telas ficam para a Fase 16. Só apresentação: nenhuma regra de negócio muda.
@@ -292,7 +293,8 @@ Nota (24/11, Parte A): `utils/listas.ts` (`nomeCurtoLocal`, `partidaPassada`, `s
 Nota (24/11, Parte B): PR #69 e release #70 (Deploy sem migration, `health` 200). Conferida pelo Gustavo no iPhone: seções "Próximas"/"Anteriores", título "Para …" e selo "Já partiu". EAS Update único da `main` (`2bc2040`) com runtime 1.1.0, grupo `57d1e8e7-f9a2-4173-bc48-1f9523c95275` ("T28 e T41: cancelamentos e listas legíveis"); runtime 1.0.0 continua com o update de 18/10.
 
 ### T42 — Nota do motorista em Minhas reservas e na tela da reserva
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T30
+Status: feito · Responsável: Gustavo Trespach · Depende de: T30
 Descrição: No teste da T30, o card de "Minhas reservas" mostrava o motorista sem a nota e a tela da reserva nem mostrava o motorista. A `minhas_reservas` ganha `media_motorista` e `total_avaliacoes_motorista` (nova versão por migration, pela `resumo_avaliacoes` da T30), numa consulta só para a lista; o card mostra "★ 4,0" ao lado do motorista e a tela da reserva, "Motorista: <nome> · ★ 4,0 · 1 avaliação" (ou "Sem avaliações ainda").
 Aceite: média certa e nula sem avaliações; contrato antigo da `minhas_reservas` igual; card e tela com a nota; nenhuma chamada da `detalhar_carona` por item; testes verdes.
 Nota (24/11, Parte A): migration `20261124022435_nota_motorista_reservas` (`drop` + `create` da `minhas_reservas` com as 2 colunas no fim); pgTAP `17_nota_motorista_reservas` (9 testes, 546 no total); `Reputacao` com a variante `compacta`; 6 testes novos do app (438 no total).
+Nota (24/11, Parte B): PR #75 e release #76 (Deploy aplicou a `20261124022435_nota_motorista_reservas`, 16 migrations local = remoto, `health` 200; `minhas_reservas` responde 401 `42501` sem sessão). Conferida pelo Gustavo no iPhone: "★ 4,0" no card e "Motorista: <nome> · ★ 4,0 · 1 avaliação" na tela da reserva. EAS Update único com a T30 (grupo `e789c369-9e56-4efd-909a-f4a33ac9379c`).
