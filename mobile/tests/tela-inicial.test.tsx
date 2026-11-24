@@ -2,7 +2,7 @@
 // dia, estado vazio). A busca de caronas, o perfil, a próxima viagem e a localização são falsos: o
 // teste confere com que coordenada a tela chama a buscar_caronas.
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { TextInput } from 'react-native';
+import { StyleSheet, TextInput, type StyleProp, type ViewStyle } from 'react-native';
 import type { ReactTestRendererJSON } from 'react-test-renderer';
 
 import { router } from 'expo-router';
@@ -15,6 +15,7 @@ import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao
 import { obterProximaViagem } from '@/services/proxima-viagem';
 import type { MinhaCarona } from '@/services/caronas';
 import type { MinhaReserva } from '@/services/reservas';
+import { tema } from '@/tema';
 import { pontoPorId } from '@/utils/pontos';
 
 jest.mock('expo-router', () => require('./apoio/expo-router-falso'));
@@ -259,6 +260,24 @@ interface Elemento {
   children: (Elemento | string)[];
 }
 
+// paddingBottom do contentContainerStyle da lista
+function espacoNoFimDaLista(): unknown {
+  const achar = (no: Elemento): unknown => {
+    if (no.props.contentContainerStyle) {
+      return StyleSheet.flatten(no.props.contentContainerStyle as StyleProp<ViewStyle>)
+        ?.paddingBottom;
+    }
+    for (const filho of no.children) {
+      const achado = typeof filho === 'string' ? undefined : achar(filho);
+      if (achado !== undefined) {
+        return achado;
+      }
+    }
+    return undefined;
+  };
+  return achar(screen.root as unknown as Elemento);
+}
+
 function acharAoAtualizar(no: Elemento): (() => void) | null {
   const controle = no.props.refreshControl as { props?: { onRefresh?: () => void } } | undefined;
   if (controle?.props?.onRefresh) {
@@ -419,23 +438,42 @@ describe('Início (T43)', () => {
     expect(screen.queryByText('Sua próxima viagem')).toBeNull();
   });
 
-  it('estado vazio: "Nenhuma carona perto de <local>", "Oferecer carona" e "Buscar em outro lugar"', async () => {
+  it('estado vazio: "Nenhuma carona perto de <local>" com uma ação só, "Buscar em outro lugar"', async () => {
     jest.mocked(buscarCaronas).mockResolvedValue([]);
     await render(<TelaCaronasProximas />);
 
     expect(await screen.findByText('Nenhuma carona perto de Centro de Torres')).toBeOnTheScreen();
+    expect(
+      screen.getByText('Tente outro lugar ou ofereça uma carona pelo botão abaixo.'),
+    ).toBeOnTheScreen();
     expect(screen.queryAllByRole('header').map((cabecalho) => cabecalho.props.children)).toEqual([
       'Caronas próximas',
     ]);
 
-    // O do estado vazio vem antes do botão flutuante na árvore
-    const [oferecer] = screen.getAllByRole('button', { name: /Oferecer carona/ });
-    await fireEvent.press(oferecer!);
+    // "Oferecer carona" é só o botão flutuante (o estado vazio não repete a ação)
+    const oferecer = screen.getAllByRole('button', { name: /Oferecer carona/ });
+    expect(oferecer).toHaveLength(1);
+    await fireEvent.press(oferecer[0]!);
     expect(router.push).toHaveBeenCalledWith('/caronas/publicar');
 
-    // O TextInput do jest é um componente falso com focus() no protótipo
-    await fireEvent.press(screen.getByRole('button', { name: 'Buscar em outro lugar' }));
+    // Botão principal do estado vazio (o nome inclui o ícone); o TextInput do jest é um componente
+    // falso com focus() no protótipo
+    await fireEvent.press(screen.getByRole('button', { name: /Buscar em outro lugar/ }));
     expect(jest.mocked(TextInput.prototype).focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('o fim do conteúdo reserva a altura medida do botão flutuante (nada fica embaixo dele)', async () => {
+    jest.mocked(buscarCaronas).mockResolvedValue([]);
+    await render(<TelaCaronasProximas />);
+    await screen.findByText('Nenhuma carona perto de Centro de Torres');
+
+    // Fonte grande do sistema: o botão cresce e o espaço no fim cresce junto
+    await fireEvent(screen.getByRole('button', { name: /Oferecer carona/ }), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 220, height: 120 } },
+    });
+
+    // insets do mock = 0 → 16 (distância da borda) + 120 (botão) + 16 (folga)
+    expect(espacoNoFimDaLista()).toBe(tema.espaco.x4 + 120 + tema.espaco.x4);
   });
 
   it('puxar para atualizar recarrega a lista, o card e o banner', async () => {

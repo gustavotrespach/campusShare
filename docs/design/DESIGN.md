@@ -593,10 +593,13 @@ avaliações). Ordem de cima para baixo:
    Cards de carona (3.3), `gap` 12. Sem cabeçalho fixo (`stickySectionHeadersEnabled` desligado).
    A contagem "N caronas · as mais perto primeiro" saiu: a lista não é mais pela distância.
 8. **Vazio** ✚ (T43): `EstadoVazio` (3.6) ícone `car-outline`, título "Nenhuma carona perto de {local}"
-   (o mesmo local da legenda; "Nenhuma carona por aqui" sem local), mensagem "Ofereça uma carona ou
-   procure em outro lugar.", botão primário `add` "Oferecer carona" (tela 7) e botão `texto` "Buscar em
-   outro lugar" (volta ao topo e põe o foco na barra de busca, com o teclado aberto).
-9. **Botão flutuante** "Oferecer carona" (`add`), sempre visível.
+   (o mesmo local da legenda; "Nenhuma carona por aqui" sem local), mensagem "Tente outro lugar ou
+   ofereça uma carona pelo botão abaixo." e **uma ação só**: botão primário `search-outline` "Buscar em
+   outro lugar" (volta ao topo e põe o foco na barra de busca, com o teclado aberto). Não repete
+   "Oferecer carona": o botão flutuante já está na tela, logo abaixo.
+9. **Botão flutuante** "Oferecer carona" (`add`), sempre visível, 16 acima da área segura. O fim do
+   conteúdo (último card ou estado vazio) tem `paddingBottom` = área segura + 16 + **altura medida do
+   botão** (`onLayout`, cresce com a fonte do sistema) + 16: rolando até o fim, nada fica embaixo dele.
 
 Saem do rodapé desta tela: "Meus veículos", "Meu perfil", "Sair" e o `StatusServidor` (vão para
 o Perfil). "Minhas reservas" vira o botão-ícone do cabeçalho.

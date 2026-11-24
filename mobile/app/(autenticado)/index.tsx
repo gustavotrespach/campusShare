@@ -66,9 +66,6 @@ function centroDoPonto(ponto: PontoFixo): CentroBusca {
 const PONTO_PADRAO = pontoPorId(ID_PONTO_PADRAO);
 const CENTRO_INICIAL: CentroBusca | null = PONTO_PADRAO ? centroDoPonto(PONTO_PADRAO) : null;
 
-// Altura do botão flutuante e folga: o último card não fica embaixo dele
-const ESPACO_BOTAO_FLUTUANTE = 96;
-
 async function consultar(
   latitude: number,
   longitude: number,
@@ -115,6 +112,8 @@ export default function TelaCaronasProximas() {
   const [localizando, setLocalizando] = useState(false);
   const [aviso, setAviso] = useState<AvisoBusca>(null);
   const [topo, setTopo] = useState<Topo>(TOPO_VAZIO);
+  // Medida no onLayout (cresce com a fonte do sistema): o fim da lista reserva esse espaço
+  const [alturaBotaoFlutuante, setAlturaBotaoFlutuante] = useState<number>(tema.toque.botao);
   const entradaBusca = useRef<ComponentRef<typeof TextInput>>(null);
   const listaRef = useRef<SectionList<CaronaResumo, { titulo: string }>>(null);
 
@@ -371,7 +370,8 @@ export default function TelaCaronasProximas() {
           estilos.lista,
           {
             paddingTop: insets.top + tema.espaco.x2,
-            paddingBottom: insets.bottom + ESPACO_BOTAO_FLUTUANTE,
+            // O fim do conteúdo (último card ou estado vazio) fica acima do botão flutuante
+            paddingBottom: insets.bottom + tema.espaco.x4 + alturaBotaoFlutuante + tema.espaco.x4,
           },
         ]}
         sections={grupos}
@@ -399,13 +399,13 @@ export default function TelaCaronasProximas() {
             <EstadoVazio
               icone="car-outline"
               titulo={tituloSemCaronas(centro?.rotulo ?? null)}
-              mensagem="Ofereça uma carona ou procure em outro lugar."
+              // "Oferecer carona" é o botão flutuante, sempre visível: uma ação só aqui
+              mensagem="Tente outro lugar ou ofereça uma carona pelo botão abaixo."
               acao={{
-                titulo: 'Oferecer carona',
-                icone: 'add',
-                onPress: () => router.push('/caronas/publicar'),
+                titulo: 'Buscar em outro lugar',
+                icone: 'search-outline',
+                onPress: buscarEmOutroLugar,
               }}
-              acaoSecundaria={{ titulo: 'Buscar em outro lugar', onPress: buscarEmOutroLugar }}
             />
           ) : undefined
         }
@@ -418,12 +418,18 @@ export default function TelaCaronasProximas() {
           />
         }
       />
-      <Botao
-        titulo="Oferecer carona"
-        icone="add"
-        onPress={() => router.push('/caronas/publicar')}
-        estilo={[estilos.flutuante, { bottom: insets.bottom + tema.espaco.x4 }]}
-      />
+      <View
+        pointerEvents="box-none"
+        onLayout={(evento) => setAlturaBotaoFlutuante(evento.nativeEvent.layout.height)}
+        style={[estilos.posicaoFlutuante, { bottom: insets.bottom + tema.espaco.x4 }]}
+      >
+        <Botao
+          titulo="Oferecer carona"
+          icone="add"
+          onPress={() => router.push('/caronas/publicar')}
+          estilo={estilos.flutuante}
+        />
+      </View>
     </View>
   );
 }
@@ -460,9 +466,8 @@ const estilos = StyleSheet.create({
     color: cores.texto,
     marginTop: tema.espaco.x3,
   },
+  posicaoFlutuante: { position: 'absolute', right: tema.espaco.x5 },
   flutuante: {
-    position: 'absolute',
-    right: tema.espaco.x5,
     alignSelf: 'auto',
     borderRadius: tema.raio.pilula,
     paddingVertical: 18,
