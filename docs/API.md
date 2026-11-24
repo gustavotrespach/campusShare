@@ -86,7 +86,43 @@ Os dados de `options.data` são copiados para a tabela `usuario` pelo trigger `c
 |---|---|---|
 | Tabela | `usuario` — `select` | Só a própria linha (RLS) |
 | Tabela | `usuario` — `update` | Só a própria linha; colunas `nome_completo`, `telefone`, `genero`, `expo_push_token` |
-| RPC | `perfil_publico(p_id_usuario)` | Nome, média e total de avaliações de qualquer usuário (sem e-mail, telefone ou gênero). Função, não view (T30; contrato em "avaliacoes") |
+| RPC | `perfil_publico(p_id_usuario)` | Nome, média e total de avaliações de qualquer usuário (sem e-mail, telefone ou gênero) e, desde a T44, `foto_caminho`. Função, não view (T30; contrato em "avaliacoes") |
+| RPC | `definir_foto_perfil()` → `timestamptz` | Depois do upload, confirma a foto do usuário logado (T44) |
+| RPC | `remover_foto_perfil()` | Depois de apagar o arquivo, tira a foto do perfil (T44) |
+| Storage | bucket `fotos-perfil` (privado) | Foto de perfil em `<id_usuario>/avatar.jpg`: JPEG, até 1 MB (T44) |
+
+**Foto de perfil (T44).** Opcional e removível; sem foto, o app mostra as iniciais. Caminho fixo
+`<auth.uid()>/avatar.jpg` no bucket privado `fotos-perfil` (só `image/jpeg`, até 1 MB). A coluna
+`usuario.foto_atualizada_em` é lida pelo `select` do próprio perfil (nula = sem foto), mas o app não a
+escreve: só pelas duas RPCs.
+
+```ts
+const caminho = `${idUsuario}/avatar.jpg`;
+// 1. Enviar (ou trocar): o upsert usa as políticas de INSERT e UPDATE do próprio caminho
+await supabase.storage.from('fotos-perfil').upload(caminho, arquivoJpeg, {
+  upsert: true,
+  contentType: 'image/jpeg',
+});
+// 2. Confirmar: confere que o arquivo existe e grava a data (vira o ?v= do caminho)
+const { data: definidaEm } = await supabase.rpc('definir_foto_perfil');
+
+// Remover: apagar o arquivo pela API do Storage e depois zerar a coluna
+await supabase.storage.from('fotos-perfil').remove([caminho]);
+await supabase.rpc('remover_foto_perfil');
+```
+
+Leitura: as funções devolvem `foto_caminho` (`perfil_publico`) ou `foto_motorista` (`detalhar_carona`,
+`buscar_caronas`) como `'<id>/avatar.jpg?v=<época>'`, ou nulo sem foto (o `gen types` tipa como
+`string`; o service trata como `string | null`). O bucket é privado: a imagem sai de
+`GET <SUPABASE_URL>/storage/v1/object/authenticated/fotos-perfil/<foto_caminho>` com o header
+`Authorization: Bearer <access_token da sessão>` (e o `apikey`). O `?v=` não muda o arquivo pedido: muda a
+cada troca e serve de chave de cache, para o app não mostrar a foto antiga. Sem sessão, o Storage recusa
+(`anon` não tem política de leitura).
+
+| HTTP | `message` (código) | `hint` | Quando |
+|---|---|---|---|
+| 401 | `NAO_AUTENTICADO` | Sua sessão expirou. Entre novamente. | Sem usuário na sessão (as duas RPCs) |
+| 409 | `FOTO_NAO_ENVIADA` | A foto não chegou ao servidor. Tente enviar de novo. | `definir_foto_perfil` sem o arquivo `<uid>/avatar.jpg` no bucket |
 
 ## veiculos
 
@@ -178,9 +214,9 @@ const { data: [detalhe] } = await supabase.rpc('detalhar_carona', { p_id_carona:
 - Não mostra as caronas do próprio usuário (RN14). Caronas `somente_mulheres` só aparecem para usuárias com `genero = FEMININO` (RN18); com `p_somente_mulheres = true`, só elas aparecem.
 - `p_data` é o dia em `America/Sao_Paulo` (23:30 de Brasília conta no próprio dia, mesmo sendo o dia seguinte em UTC).
 - Ordem: distância e depois horário. 20 por página; página além do fim vem vazia.
-- Colunas: `id_carona`, `origem`, `origem_lat`, `origem_lng`, `destino`, `destino_lat`, `destino_lng`, `data_hora_partida`, `vagas_disponiveis`, `tolerancia_min`, `somente_mulheres`, `distancia_km` (do ponto do passageiro até a origem, 1 casa), `valor_por_passageiro` (reais, 2 casas), `nome_motorista` (só o primeiro nome), `modelo`, `cor` e, desde a T43 (migration `nota_motorista_busca`, `drop` + `create`, no fim), `media_motorista` (média das avaliações recebidas pelo motorista, 1 casa, **nula** sem avaliações, embora o `gen types` a tipe como `number`) e `total_avaliacoes_motorista`, pela mesma conta do `perfil_publico` (`resumo_avaliacoes`). A lista inteira sai numa consulta: o app não chama nada por card. Continua sem id, e-mail, telefone ou gênero do motorista; parâmetros, filtros, ordem, paginação, erros e grants iguais aos da T18.
+- Colunas: `id_carona`, `origem`, `origem_lat`, `origem_lng`, `destino`, `destino_lat`, `destino_lng`, `data_hora_partida`, `vagas_disponiveis`, `tolerancia_min`, `somente_mulheres`, `distancia_km` (do ponto do passageiro até a origem, 1 casa), `valor_por_passageiro` (reais, 2 casas), `nome_motorista` (só o primeiro nome), `modelo`, `cor` e, desde a T43 (migration `nota_motorista_busca`, `drop` + `create`, no fim), `media_motorista` (média das avaliações recebidas pelo motorista, 1 casa, **nula** sem avaliações, embora o `gen types` a tipe como `number`) e `total_avaliacoes_motorista`, pela mesma conta do `perfil_publico` (`resumo_avaliacoes`). A lista inteira sai numa consulta: o app não chama nada por card. Continua sem id, e-mail, telefone ou gênero do motorista; parâmetros, filtros, ordem, paginação, erros e grants iguais aos da T18. Desde a T44 (migration `foto_perfil`), também `foto_motorista` no fim (`'<id>/avatar.jpg?v=<época>'` ou nulo sem foto; ver "usuarios").
 
-`detalhar_carona(p_id_carona uuid)` devolve uma linha com as colunas da busca (sem `distancia_km`) mais `vagas_ofertadas`, `status`, `custo_total`, `placa` (para reconhecer o carro no embarque), `sou_motorista` e `nome_motorista` com o nome completo (perfil público).
+`detalhar_carona(p_id_carona uuid)` devolve uma linha com as colunas da busca (sem `distancia_km`) mais `vagas_ofertadas`, `status`, `custo_total`, `placa` (para reconhecer o carro no embarque), `sou_motorista` e `nome_motorista` com o nome completo (perfil público); desde a T30, `media_motorista` e `total_avaliacoes_motorista`; desde a T44, `foto_motorista` no fim (caminho com `?v=` ou nulo).
 - Visível para o motorista (qualquer status), para quem tem reserva na carona (qualquer status) e, para os demais, se estiver `ABERTA` e futura (e, se `somente_mulheres`, para usuárias).
 
 `valor_por_passageiro = round(custo_total ÷ (vagas_ofertadas + 1), 2)` (RN11) vem da função SQL única `valor_por_passageiro`, a mesma que a `reservar_vaga` (T21) usa para cobrar. A sobra de centavos fica com o motorista (R$ 25,00 com 2 vagas → R$ 8,33).
@@ -406,7 +442,7 @@ const { data: [perfil] } = await supabase.rpc('perfil_publico', { p_id_usuario: 
 
 `avaliacoes_pendentes() returns table (id_reserva, papel, nome_avaliado, origem, destino, data_hora_partida, avaliar_ate)`: as reservas que o usuário ainda pode avaliar (mesmas condições da `avaliar_participante`, sem avaliação dele), da partida mais recente para a mais antiga. `papel` é o de quem avalia (`PASSAGEIRO` avalia o motorista; `MOTORISTA` avalia o passageiro); `nome_avaliado` é só o primeiro nome; `avaliar_ate` = partida + 7 dias. Sem sessão → 401 `NAO_AUTENTICADO`.
 
-`perfil_publico(p_id_usuario uuid) returns table (id_usuario, nome, media_avaliacoes, total_avaliacoes)`: perfil de qualquer usuário para quem está logado; `media_avaliacoes` com 1 casa (nula sem avaliações) e `total_avaliacoes` das avaliações **recebidas**. Sem e-mail, telefone nem gênero. Usuário inexistente → 404 `USUARIO_NAO_ENCONTRADO` ("Usuário não encontrado."); sem sessão → 401.
+`perfil_publico(p_id_usuario uuid) returns table (id_usuario, nome, media_avaliacoes, total_avaliacoes, foto_caminho)` (`foto_caminho` desde a T44: `'<id>/avatar.jpg?v=<época>'` ou nulo sem foto): perfil de qualquer usuário para quem está logado; `media_avaliacoes` com 1 casa (nula sem avaliações) e `total_avaliacoes` das avaliações **recebidas**. Sem e-mail, telefone nem gênero. Usuário inexistente → 404 `USUARIO_NAO_ENCONTRADO` ("Usuário não encontrado."); sem sessão → 401.
 
 O `detalhar_carona` traz a mesma reputação do motorista em `media_motorista` e `total_avaliacoes_motorista`. Atenção: o `supabase gen types` tipa `media_motorista` e `media_avaliacoes` como `number`, mas elas vêm `null` para quem ainda não foi avaliado.
 

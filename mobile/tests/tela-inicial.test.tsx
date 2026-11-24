@@ -12,6 +12,7 @@ import { listarAvaliacoesPendentes, type AvaliacaoPendente } from '@/services/av
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { AppError } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
+import { obterMinhaFoto, urlFotoPerfil } from '@/services/foto-perfil';
 import { obterProximaViagem } from '@/services/proxima-viagem';
 import type { MinhaCarona } from '@/services/caronas';
 import type { MinhaReserva } from '@/services/reservas';
@@ -29,6 +30,10 @@ jest.mock('@/services/perfil', () => ({
 }));
 jest.mock('@/services/avaliacoes', () => ({ listarAvaliacoesPendentes: jest.fn() }));
 jest.mock('@/services/proxima-viagem', () => ({ obterProximaViagem: jest.fn() }));
+jest.mock('@/services/foto-perfil', () => ({
+  obterMinhaFoto: jest.fn(),
+  urlFotoPerfil: jest.fn(),
+}));
 jest.mock('@/services/localizacao', () => ({
   localizarEndereco: jest.fn(),
   obterLocalizacaoAtual: jest.fn(),
@@ -53,6 +58,7 @@ const CARONA: CaronaResumo = {
   valorPorPassageiroCentavos: 600,
   media_motorista: 4,
   total_avaliacoes_motorista: 1,
+  foto_motorista: null,
 };
 
 const cardsDeCarona = () => screen.queryAllByRole('button', { name: /^Para .*motorista/ });
@@ -77,6 +83,7 @@ beforeEach(() => {
   jest.mocked(buscarCaronas).mockResolvedValue([CARONA]);
   jest.mocked(listarAvaliacoesPendentes).mockResolvedValue([]);
   jest.mocked(obterProximaViagem).mockResolvedValue(null);
+  jest.mocked(obterMinhaFoto).mockResolvedValue(null);
 });
 
 describe('Caronas próximas: barra de busca de local (tela 5)', () => {
@@ -494,5 +501,31 @@ describe('Início (T43)', () => {
     await screen.findByRole('button', { name: /^Para ULBRA Torres,/ });
 
     expect(chamadas()).toEqual(antes.map((total) => total + 1));
+  });
+});
+
+describe('Foto no cabeçalho do Início (T44)', () => {
+  it('com foto, o botão "Meu perfil" mostra a imagem; o rótulo não muda', async () => {
+    jest.mocked(obterMinhaFoto).mockResolvedValue('u1/avatar.jpg?v=1795521600');
+    jest.mocked(urlFotoPerfil).mockResolvedValue({
+      uri: 'http://127.0.0.1:54321/storage/v1/object/authenticated/fotos-perfil/u1/avatar.jpg?v=1795521600',
+      headers: { Authorization: 'Bearer token', apikey: 'chave' },
+    });
+    await abrirTela();
+
+    const botao = screen.getByRole('button', { name: 'Meu perfil' });
+    expect(await screen.findByTestId('avatar-foto')).toBeOnTheScreen();
+    expect(urlFotoPerfil).toHaveBeenCalledWith('u1/avatar.jpg?v=1795521600');
+    await fireEvent.press(botao);
+    expect(router.push).toHaveBeenCalledWith('/perfil');
+  });
+
+  it('sem foto (ou se a consulta falhar), as iniciais', async () => {
+    jest.mocked(obterMinhaFoto).mockRejectedValue(new Error('rede'));
+    await abrirTela();
+
+    expect(obterMinhaFoto).toHaveBeenCalled();
+    expect(screen.queryByTestId('avatar-foto')).toBeNull();
+    expect(screen.getByText('AS')).toBeOnTheScreen();
   });
 });

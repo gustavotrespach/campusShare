@@ -9,12 +9,14 @@ type LinhaPendente = Funcoes['avaliacoes_pendentes']['Returns'][number];
 
 export type AvaliacaoPendente = Omit<LinhaPendente, 'papel'> & { papel: PapelAvaliador };
 
-// Os tipos gerados dizem number, mas a média vem null para quem ainda não foi avaliado
+// Os tipos gerados dizem number/string, mas a média vem null para quem ainda não foi avaliado e a
+// foto (T44), null para quem não tem foto
 export interface PerfilPublico {
   idUsuario: string;
   nome: string;
   media: number | null;
   total: number;
+  fotoCaminho: string | null;
 }
 
 const USUARIO_NAO_ENCONTRADO = new AppError(
@@ -83,11 +85,13 @@ export async function obterPerfilPublico(idUsuario: string): Promise<PerfilPubli
       throw USUARIO_NAO_ENCONTRADO;
     }
     const media: number | null = linha.media_avaliacoes ?? null;
+    const fotoCaminho: string | null = linha.foto_caminho ?? null;
     return {
       idUsuario: linha.id_usuario,
       nome: linha.nome,
       media,
       total: linha.total_avaliacoes,
+      fotoCaminho,
     };
   } catch (falha) {
     throw normalizarErro(falha);

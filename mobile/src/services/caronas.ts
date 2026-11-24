@@ -13,20 +13,26 @@ type LinhaDetalhe = Funcoes['detalhar_carona']['Returns'][number];
 type LinhaCarona = Database['public']['Tables']['carona']['Row'];
 
 // Dinheiro no app em centavos: a conversão de/para reais (decimal do banco) fica só aqui.
-// media_motorista (T43): os tipos gerados dizem number, mas vem null para motorista sem avaliações.
-export type CaronaResumo = Omit<LinhaBusca, 'valor_por_passageiro' | 'media_motorista'> & {
+// media_motorista (T43) e foto_motorista (T44): os tipos gerados dizem number/string, mas vêm null
+// para motorista sem avaliações ou sem foto.
+export type CaronaResumo = Omit<
+  LinhaBusca,
+  'valor_por_passageiro' | 'media_motorista' | 'foto_motorista'
+> & {
   valorPorPassageiroCentavos: number;
   media_motorista: number | null;
+  foto_motorista: string | null;
 };
 
 // media_motorista: os tipos gerados dizem number, mas vem null para motorista sem avaliações (T30)
 export type CaronaDetalhe = Omit<
   LinhaDetalhe,
-  'valor_por_passageiro' | 'custo_total' | 'media_motorista'
+  'valor_por_passageiro' | 'custo_total' | 'media_motorista' | 'foto_motorista'
 > & {
   valorPorPassageiroCentavos: number;
   custoTotalCentavos: number;
   media_motorista: number | null;
+  foto_motorista: string | null;
 };
 
 // O que a tela de publicar entrega. Não existe id_motorista: o motorista é o auth.uid() da
@@ -105,11 +111,13 @@ export async function buscarCaronas(filtros: FiltrosBusca): Promise<CaronaResumo
     if (error) {
       throw error;
     }
-    return data.map(({ valor_por_passageiro, media_motorista, ...linha }) => {
+    return data.map(({ valor_por_passageiro, media_motorista, foto_motorista, ...linha }) => {
       const media: number | null = media_motorista ?? null;
+      const foto: string | null = foto_motorista ?? null;
       return {
         ...linha,
         media_motorista: media,
+        foto_motorista: foto,
         valorPorPassageiroCentavos: reaisParaCentavos(valor_por_passageiro),
       };
     });
@@ -130,11 +138,13 @@ export async function detalharCarona(idCarona: string): Promise<CaronaDetalhe> {
     if (!linha) {
       throw CARONA_NAO_ENCONTRADA;
     }
-    const { valor_por_passageiro, custo_total, media_motorista, ...resto } = linha;
+    const { valor_por_passageiro, custo_total, media_motorista, foto_motorista, ...resto } = linha;
     const media: number | null = media_motorista ?? null;
+    const foto: string | null = foto_motorista ?? null;
     return {
       ...resto,
       media_motorista: media,
+      foto_motorista: foto,
       valorPorPassageiroCentavos: reaisParaCentavos(valor_por_passageiro),
       custoTotalCentavos: reaisParaCentavos(custo_total),
     };

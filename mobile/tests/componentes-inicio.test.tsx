@@ -6,6 +6,11 @@ import { ItemCarona } from '@/components/ItemCarona';
 import { ProximaViagem } from '@/components/ProximaViagem';
 import type { CaronaResumo, MinhaCarona } from '@/services/caronas';
 import type { MinhaReserva } from '@/services/reservas';
+import { urlFotoPerfil } from '@/services/foto-perfil';
+
+jest.mock('@/services/foto-perfil', () => ({ urlFotoPerfil: jest.fn() }));
+
+const OCULTOS = { includeHiddenElements: true };
 
 // Quarta-feira, 25/11/2026, 12:00 em Brasília
 const AGORA = new Date('2026-11-25T15:00:00Z');
@@ -119,6 +124,7 @@ describe('ItemCarona (card da tela inicial)', () => {
     valorPorPassageiroCentavos: 600,
     media_motorista: 4.3,
     total_avaliacoes_motorista: 3,
+    foto_motorista: null,
   };
 
   beforeAll(() => {
@@ -171,5 +177,25 @@ describe('ItemCarona (card da tela inicial)', () => {
     expect(
       screen.getByRole('button', { name: /nota média 4,3, somente mulheres$/ }),
     ).toBeOnTheScreen();
+  });
+
+  it('motorista com foto (T44): a imagem no avatar ao lado do nome; sem foto, as iniciais', async () => {
+    jest.mocked(urlFotoPerfil).mockResolvedValue({
+      uri: 'http://127.0.0.1:54321/storage/v1/object/authenticated/fotos-perfil/m1/avatar.jpg?v=1',
+      headers: { Authorization: 'Bearer token', apikey: 'chave' },
+    });
+    const { rerender } = await render(
+      <ItemCarona
+        carona={{ ...carona, foto_motorista: 'm1/avatar.jpg?v=1' }}
+        aoAbrir={jest.fn()}
+      />,
+    );
+
+    expect(await screen.findByTestId('avatar-foto', OCULTOS)).toBeOnTheScreen();
+    expect(urlFotoPerfil).toHaveBeenCalledWith('m1/avatar.jpg?v=1');
+
+    await rerender(<ItemCarona carona={{ ...carona, foto_motorista: null }} aoAbrir={jest.fn()} />);
+    expect(screen.queryByTestId('avatar-foto', OCULTOS)).toBeNull();
+    expect(screen.getByText('B', OCULTOS)).toBeOnTheScreen();
   });
 });

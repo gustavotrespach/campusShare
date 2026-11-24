@@ -42,6 +42,7 @@ Tipos para as migrations SQL. `PK` = chave primária, `FK` = chave estrangeira.
 | genero | ENUM `FEMININO`, `MASCULINO`, `OUTRO`, `NAO_INFORMADO` | usado no filtro US05 |
 | telefone | VARCHAR(20) | opcional |
 | expo_push_token | VARCHAR(100) | opcional; registrado pelo app (T29) |
+| foto_atualizada_em | TIMESTAMPTZ | opcional (T44): quando a foto de perfil foi definida; **nulo = sem foto**. O arquivo fica em `fotos-perfil/<id_usuario>/avatar.jpg` (Storage). O app não escreve a coluna (fora do `grant update (...)`): só as funções `definir_foto_perfil` e `remover_foto_perfil` |
 | criado_em | TIMESTAMPTZ | default `now()` |
 
 Criada pelo trigger `criar_perfil_usuario` (AFTER INSERT em `auth.users`), a partir de `raw_user_meta_data`: `id_instituicao` pelo domínio do e-mail, `email_institucional` em minúsculas, `nome_completo` (ausente → parte antes do `@`), `genero` (ausente ou fora do enum → `NAO_INFORMADO`) e `telefone` (em branco → nulo). Usuário cujo domínio não está em INSTITUICAO é recusado também pelo trigger (`DOMINIO_INVALIDO`), cobrindo contas criadas fora do cadastro (painel, Admin API). Senha e confirmação de e-mail ficam em `auth.users` (`encrypted_password`, `email_confirmed_at`).
@@ -174,6 +175,18 @@ RLS habilitada em **todas** as tabelas. Escrita em tabelas com regra de negócio
 
 View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome e média de avaliações.
 
+### Storage: bucket `fotos-perfil` (T44)
+
+Criado pela migration `foto_perfil` (`insert into storage.buckets ... on conflict do nothing`), e **não** pelo `[storage.buckets]` do `config.toml`: o `config push` de Storage dá 402 no plano gratuito (docs/DEPLOY.md). **Privado**, `file_size_limit` 1 MB (1048576), `allowed_mime_types` = `{image/jpeg}`. Um arquivo por usuário, no caminho fixo `<id_usuario>/avatar.jpg`.
+
+| Política em `storage.objects` (só `bucket_id = 'fotos-perfil'`) | Para | Regra |
+|---|---|---|
+| SELECT | `authenticated` | qualquer logado lê qualquer foto (cards e perfil público) |
+| INSERT / UPDATE / DELETE | `authenticated` | só `name = auth.uid()::text || '/avatar.jpg'` (o upsert do app usa INSERT + UPDATE) |
+| — | `anon` | nenhuma: não lê nem escreve |
+
+Linhas de `storage.objects` não são apagadas por SQL (o trigger `storage.protect_delete` recusa, e o arquivo ficaria órfão): o app apaga pela API do Storage.
+
 Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `detalhar_carona` (`SECURITY DEFINER`, colunas públicas), sem política nova em `carona`, `usuario` ou `veiculo`. Isso também evita recursão de RLS: a política do motorista em `reserva` consulta `carona`, e uma política de `carona` que consultasse `reserva` entraria em loop (T18).
 
 ## Funções, triggers e jobs
@@ -205,6 +218,10 @@ Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `deta
 | `avaliacoes_pendentes()` | Função RPC `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T30) | As reservas que o `auth.uid()` ainda pode avaliar: `id_reserva`, `papel` (`PASSAGEIRO`/`MOTORISTA`, de quem avalia), `nome_avaliado` (primeiro nome), `origem`, `destino`, `data_hora_partida`, `avaliar_ate` |
 | `perfil_publico(p_id_usuario)` | Função RPC `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T30) | `id_usuario`, `nome`, `media_avaliacoes` (1 casa), `total_avaliacoes`; sem e-mail, telefone nem gênero. Função e não view `security definer` (o linter do Supabase marca essas views). Inexistente → `USUARIO_NAO_ENCONTRADO` (PT404) |
 | `detalhar_carona` (versão T30) | Mesma função, nova versão na migration `concluir_avaliar` | Passa a devolver `media_motorista` e `total_avaliacoes_motorista` (de `resumo_avaliacoes`) |
+| `caminho_foto_perfil(p_id_usuario, p_foto_atualizada_em)` | Função SQL `IMMUTABLE`, interna (sem `EXECUTE` para o app) (T44) | `'<id>/avatar.jpg?v=' \|\| extract(epoch from foto_atualizada_em)::bigint`, ou nulo sem foto. O `?v=` muda a cada troca e evita foto antiga em cache |
+| `definir_foto_perfil()` → `timestamptz` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T44) | Confere que `fotos-perfil/<auth.uid()>/avatar.jpg` existe em `storage.objects` (senão `FOTO_NAO_ENVIADA`, PT409) e grava `foto_atualizada_em = now()` |
+| `remover_foto_perfil()` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T44) | Grava `foto_atualizada_em = null` (o app já apagou o arquivo pela API do Storage) |
+| `perfil_publico`, `detalhar_carona`, `buscar_caronas` (versão T44) | Novas versões na migration `foto_perfil` (`drop` + `create`, grants refeitos) | Contrato anterior igual; no fim, `foto_caminho` (perfil) e `foto_motorista` (detalhe e busca), de `caminho_foto_perfil` |
 | Triggers de notificação | Triggers em `reserva`/`carona` | Gravam NOTIFICACAO |
 | `expirar-reservas` | Job pg_cron (`* * * * *`, T24) | RN16: `select public.expirar_reservas()`. Extensão `pg_cron` em `pg_catalog` (jeito indicado pelo Supabase Cron); `cron.schedule` com o mesmo nome substitui o job (upsert), então reagendar não duplica. O job roda como `postgres`, dono da função |
 | `concluir-caronas` | Job pg_cron (`0 * * * *`, T30) | RN07: `select public.concluir_caronas_vencidas()`, agendado com `cron.schedule` pelo nome (reagendar não duplica) |
@@ -224,7 +241,11 @@ Aprovadas em 16/10/2026 (Gustavo, no merge da T20; aplicadas na migration `reser
 - `PAGAMENTO.id_externo` (VARCHAR, UNIQUE): id da cobrança no Mercado Pago, usado para idempotência do webhook.
 - `CARONA.vagas_ofertadas` (SMALLINT, obrigatório): vagas oferecidas na publicação, base do rateio (RN11).
 
-O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima.
+Aprovada em 24/11/2026 (Gustavo, T44; aplicada na migration `foto_perfil`):
+
+- `USUARIO.foto_atualizada_em` (TIMESTAMPTZ, opcional): data da foto de perfil, nula sem foto. A foto em si fica no Storage (bucket `fotos-perfil`), fora do banco.
+
+O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima (**pendente**, inclusive a da T44).
 
 ## Migrations
 
