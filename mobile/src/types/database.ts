@@ -23,7 +23,38 @@ export type Database = {
           }
         },"public": {
           Tables: {
-            "carona": {
+            "avaliacao": {
+                  Row: {
+                    "comentario": string | null,"criado_em": string,"id_avaliacao": string,"id_avaliado": string,"id_avaliador": string,"id_reserva": string,"nota": number
+                  }
+                  Insert: {
+                    "comentario"?: string | null,"criado_em"?: string,"id_avaliacao"?: string,"id_avaliado": string,"id_avaliador": string,"id_reserva": string,"nota": number
+                  }
+                  Update: {
+                    "comentario"?: string | null,"criado_em"?: string,"id_avaliacao"?: string,"id_avaliado"?: string,"id_avaliador"?: string,"id_reserva"?: string,"nota"?: number
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "avaliacao_id_avaliado_fkey"
+      columns: ["id_avaliado"]
+isOneToOne: false
+      referencedRelation: "usuario"
+      referencedColumns: ["id_usuario"]
+    },{
+      foreignKeyName: "avaliacao_id_avaliador_fkey"
+      columns: ["id_avaliador"]
+isOneToOne: false
+      referencedRelation: "usuario"
+      referencedColumns: ["id_usuario"]
+    },{
+      foreignKeyName: "avaliacao_id_reserva_fkey"
+      columns: ["id_reserva"]
+isOneToOne: false
+      referencedRelation: "reserva"
+      referencedColumns: ["id_reserva"]
+    }
+                  ]
+                },"carona": {
                   Row: {
                     "custo_estimado": number | null,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number | null,"id_carona": string,"id_motorista": string,"id_veiculo": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number,"vagas_ofertadas": number
                   }
@@ -162,7 +193,15 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            "buscar_caronas":
+            "avaliacoes_pendentes":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "avaliar_ate": string,"data_hora_partida": string,"destino": string,"id_reserva": string,"nome_avaliado": string,"origem": string,"papel": string
+            }[]
+                           },
+"avaliar_participante":
+{ Args: { "p_comentario"?: string,"p_id_reserva": string,"p_nota": number }; Returns: string
+                           },
+"buscar_caronas":
 { Args: { "p_data"?: string,"p_lat": number,"p_lng": number,"p_pagina"?: number,"p_raio_km"?: number,"p_somente_mulheres"?: boolean }; Returns: {
               "cor": string,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"distancia_km": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"somente_mulheres": boolean,"tolerancia_min": number,"vagas_disponiveis": number,"valor_por_passageiro": number
             }[]
@@ -173,6 +212,12 @@ isOneToOne: false
 "cancelar_reserva":
 { Args: { "p_id_reserva": string }; Returns: string
                            },
+"concluir_carona":
+{ Args: { "p_id_carona": string }; Returns: number
+                           },
+"concluir_caronas_vencidas":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "confirmar_pagamento":
 { Args: { "p_id_externo": string,"p_id_pagamento": string,"p_valor": number }; Returns: string
                            },
@@ -181,7 +226,7 @@ isOneToOne: false
                            },
 "detalhar_carona":
 { Args: { "p_id_carona": string }; Returns: {
-              "cor": string,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"id_carona": string,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"placa": string,"somente_mulheres": boolean,"sou_motorista": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"vagas_disponiveis": number,"vagas_ofertadas": number,"valor_por_passageiro": number
+              "cor": string,"custo_total": number,"data_hora_partida": string,"destino": string,"destino_lat": number,"destino_lng": number,"id_carona": string,"media_motorista": number,"modelo": string,"nome_motorista": string,"origem": string,"origem_lat": number,"origem_lng": number,"placa": string,"somente_mulheres": boolean,"sou_motorista": boolean,"status": Database["public"]['Enums']["status_carona"],"tolerancia_min": number,"total_avaliacoes_motorista": number,"vagas_disponiveis": number,"vagas_ofertadas": number,"valor_por_passageiro": number
             }[]
                            },
 "expirar_reservas":
@@ -192,7 +237,18 @@ isOneToOne: false
               "data_hora_partida": string,"destino": string,"id_carona": string,"id_reserva": string,"nome_motorista": string,"origem": string,"reservado_em": string,"status_carona": Database["public"]['Enums']["status_carona"],"status_pagamento": Database["public"]['Enums']["status_pagamento"],"status_reserva": Database["public"]['Enums']["status_reserva"],"valor": number
             }[]
                            },
+"perfil_publico":
+{ Args: { "p_id_usuario": string }; Returns: {
+              "id_usuario": string,"media_avaliacoes": number,"nome": string,"total_avaliacoes": number
+            }[]
+                           },
+"prazo_avaliacao":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
 "prazo_cancelamento_confirmada":
+{ Args: Record<PropertyKey, never>; Returns: string
+                           },
+"prazo_conclusao_carona":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
 "prazo_reserva_pendente":
@@ -208,6 +264,14 @@ isOneToOne: false
 { Args: { "p_id_carona": string,"p_id_passageiro": string }; Returns: {
               "id_pagamento": string,"id_reserva": string,"status": Database["public"]['Enums']["status_reserva"],"taxa_plataforma": number,"valor_individual": number,"valor_repassado": number
             }[]
+                           },
+"resumo_avaliacoes":
+{ Args: { "p_id_usuario": string }; Returns: {
+              "media": number,"total": number
+            }[]
+                           },
+"texto_prazo_em_dias":
+{ Args: { "p_prazo": string }; Returns: string
                            },
 "validar_dominio_institucional":
 { Args: { "event": Json }; Returns: Json

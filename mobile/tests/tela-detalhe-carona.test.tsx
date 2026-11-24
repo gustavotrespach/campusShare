@@ -38,6 +38,9 @@ function detalhe(alteracoes: Partial<CaronaDetalhe> = {}): CaronaDetalhe {
     cor: 'Prata',
     placa: 'IYK4B21',
     sou_motorista: true,
+    // Reputação do motorista (T30); a tela ainda não mostra (Fase 34)
+    media_motorista: 4.3,
+    total_avaliacoes_motorista: 3,
     valorPorPassageiroCentavos: 600,
     custoTotalCentavos: 2400,
     ...alteracoes,
