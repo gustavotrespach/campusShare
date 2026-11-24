@@ -194,13 +194,14 @@ Status: adiada (pós-AP2) · Depende de: T26
 Aceite: motorista escolhe origem/destino no mapa; detalhe mostra a rota.
 
 ### T28 — Cancelar carona e reserva (US06)
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T23
+Status: feito · Responsável: Gustavo Trespach · Depende de: T23
 Partes: **backend** (funções `cancelar_reserva` e `cancelar_carona`, Fase 29, branch `feature/T28-cancelamentos-backend`) e **app** (botões de cancelar e a tela "Minhas caronas", Fase 30, em outra branch).
 Regra (Gustavo, 23/11): o passageiro cancela reserva `CONFIRMADA` até 2 horas antes da partida e reserva `PENDENTE` até a partida (RN20); o motorista cancela a carona até a partida, sem o limite de 2 h (RN07).
 Descrição: Funções RPC `cancelar_carona` e `cancelar_reserva`, devolvendo vagas na mesma transação; pagamentos aprovados passam a `REEMBOLSO_PENDENTE`.
 Aceite: cancelamento da carona cancela todas as reservas ativas; só o dono cancela.
 Nota (23/11, parte backend): PR #66. `cancelar_reserva` (RN20) e `cancelar_carona` (RN07), `SECURITY DEFINER` só para `authenticated`, locks carona → reservas → pagamentos; pgTAP `15_cancelamentos` (55 testes).
 Nota (23/11, parte app): services `cancelarReserva`, `cancelarCarona` e `listarMinhasCaronas`; botão "Cancelar reserva" no detalhe da reserva e "Cancelar carona" no detalhe da carona (motorista), com confirmação, resultado anunciado ao leitor de tela e o `hint` do backend no erro; tela nova "Minhas caronas" com atalho no Perfil; selos dos status de carona. O app não calcula o prazo de 2 h. 33 testes novos (367 no total). Falta conferir no aparelho, merge, release e EAS Update.
+Nota (24/11, Parte B): release #68 (Deploy aplicou a `20261123225328_cancelamentos`; `cancelar_reserva` e `cancelar_carona` respondem 401 `42501` sem sessão no remoto). Testada pelo Gustavo no iPhone contra o remoto (testes 1 a 6 passaram; pagamentos conferidos no painel). EAS Update único da `main` (`2bc2040`) com runtime 1.1.0, grupo `57d1e8e7-f9a2-4173-bc48-1f9523c95275` ("T28 e T41: cancelamentos e listas legíveis"); runtime 1.0.0 continua com o update de 18/10.
 
 ### T29 — Notificações (US06)
 Status: adiada (pós-AP2) · Depende de: T28
@@ -208,9 +209,13 @@ Descrição: Tabela NOTIFICACAO com RLS; coluna `expo_push_token` em USUARIO; tr
 Aceite: passageiros recebem push no cancelamento; motorista recebe push em nova reserva.
 
 ### T30 — Concluir carona e avaliações
-Status: adiada (pós-AP2) · Depende de: T23
-Descrição: Função `concluir_carona`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); view `perfil_publico` (nome + média, sem e-mail, telefone ou gênero — movida da T13 em 16/10).
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T23
+Partes: **backend** (Fase 33, branch `feature/T30-concluir-avaliar-backend`) e **app** (Fase 34, em outra branch).
+Regras (Gustavo, 24/11): o motorista conclui a carona da partida até 1 dia depois; sem conclusão nesse prazo, o sistema conclui sozinho (job de hora em hora); avaliação até 7 dias depois da partida, entre o motorista e cada passageiro com reserva `CONFIRMADA`.
+Descrição: Função `concluir_carona`; job `concluir-caronas`; tabela AVALIACAO com RLS; função `avaliar_participante` (RN19); `avaliacoes_pendentes`; perfil público (nome + média, sem e-mail, telefone ou gênero — movido da T13 em 16/10) como função `perfil_publico`; reputação do motorista no `detalhar_carona`.
 Aceite: só participantes avaliam, uma vez cada, após a conclusão.
+Nota (24/11, parte backend): migration `20261124011419_concluir_avaliar` com `prazo_conclusao_carona()` (1 dia), `prazo_avaliacao()` (7 dias), `concluir_carona`, `concluir_caronas_vencidas` + job `concluir-caronas` (`0 * * * *`), tabela `avaliacao` (RLS: o avaliador lê as próprias; escrita só pela função), `avaliar_participante`, `avaliacoes_pendentes`, `perfil_publico` e `detalhar_carona` com `media_motorista`/`total_avaliacoes_motorista`. pgTAP `16_concluir_avaliar` (69 testes, 537 no total). Falta a parte app (Fase 34), merge e release.
+Nota (24/11, parte app): services `concluirCarona`, `avaliarParticipante`, `listarAvaliacoesPendentes` e `obterPerfilPublico` (média `number | null`); "Concluir carona" no detalhe da carona (motorista, carona que já partiu) e a reputação do motorista no card; telas novas "Avaliações pendentes" e "Avaliar" (componente `SeletorNota`); aviso de pendências no Início; atalho e a própria média no Perfil. O app não calcula prazo: mostra o `hint` do backend. 41 testes novos (432 no total). Falta conferir no aparelho, merge, release e EAS Update.
 
 ### T32 — Identidade visual (tema, componentes, telas da demo, ícone e splash)
 Status: feito · Responsável: Gustavo Trespach · Depende de: T25
@@ -280,7 +285,8 @@ Nota (19/11, Parte A): PR #60. Barra `BuscaLocal` com sugestões sem rede e text
 Nota (19/11, Parte B): EAS Update da `main` (`2184a13`, release #61 com Deploy verde) com runtime 1.1.0, grupo `21b7442c-8b4d-486e-9c33-fa9442a3d38f`, publicado junto com a T39; o runtime 1.0.0 continua com o update de 18/10 (SDK 57).
 
 ### T41 — Listas Minhas caronas e Minhas reservas mais legíveis
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T28
+Status: feito · Responsável: Gustavo Trespach · Depende de: T28
 Descrição: No teste da T28, "Minhas caronas" mostrava caronas de dias atrás no meio das próximas (com selo "Aberta": nada muda o status depois da partida até a T30) e o card começava pela data. As duas listas ganham as seções "Próximas" e "Anteriores" (recolhida), o card passa a começar por "Para <destino>" e "Saindo de <origem>" (nome curto, sem a UF), e carona aberta ou lotada depois da partida aparece como "Já partiu" nas listas e nos detalhes. Só apresentação: backend, services de escrita e regras não mudam, e o app não altera status.
 Aceite: seções com a ordem certa e anteriores recolhidas por padrão; card "Para X / Saindo de Y"; selo "Já partiu" nas listas e nos detalhes; funções puras testadas; lint, typecheck, testes e `expo-doctor` verdes.
 Nota (24/11, Parte A): `utils/listas.ts` (`nomeCurtoLocal`, `partidaPassada`, `situacaoExibidaCarona`, `caronaEhProxima`, `reservaEhProxima`, `separarPorPartida`, `textoBotaoAnteriores`) e componente `ListaPorPartida` (`SectionList`); selo `JA_PARTIU`. 24 testes novos (391 no total). DESIGN.md com as telas 9 e 16 novas e o selo.
+Nota (24/11, Parte B): PR #69 e release #70 (Deploy sem migration, `health` 200). Conferida pelo Gustavo no iPhone: seções "Próximas"/"Anteriores", título "Para …" e selo "Já partiu". EAS Update único da `main` (`2bc2040`) com runtime 1.1.0, grupo `57d1e8e7-f9a2-4173-bc48-1f9523c95275` ("T28 e T41: cancelamentos e listas legíveis"); runtime 1.0.0 continua com o update de 18/10.

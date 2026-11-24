@@ -2,7 +2,10 @@
 // localização são falsos: o teste confere com que coordenada a tela chama a buscar_caronas.
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
+import { router } from 'expo-router';
+
 import TelaCaronasProximas from '../app/(autenticado)/index';
+import { listarAvaliacoesPendentes, type AvaliacaoPendente } from '@/services/avaliacoes';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { AppError } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
@@ -17,6 +20,7 @@ jest.mock('@/services/caronas', () => ({ buscarCaronas: jest.fn() }));
 jest.mock('@/services/perfil', () => ({
   obterMeuPerfil: jest.fn(async () => ({ nome_completo: 'Ana Souza', genero: 'FEMININO' })),
 }));
+jest.mock('@/services/avaliacoes', () => ({ listarAvaliacoesPendentes: jest.fn() }));
 jest.mock('@/services/localizacao', () => ({
   localizarEndereco: jest.fn(),
   obterLocalizacaoAtual: jest.fn(),
@@ -59,6 +63,7 @@ async function abrirTela() {
 beforeEach(() => {
   jest.clearAllMocks();
   jest.mocked(buscarCaronas).mockResolvedValue([CARONA]);
+  jest.mocked(listarAvaliacoesPendentes).mockResolvedValue([]);
 });
 
 describe('Caronas próximas: barra de busca de local (tela 5)', () => {
@@ -170,5 +175,44 @@ describe('Caronas próximas: barra de busca de local (tela 5)', () => {
 
     expect(await screen.findByText('Caronas perto de: sua localização')).toBeOnTheScreen();
     buscouEm(-29.3301, -49.7302);
+  });
+});
+
+describe('Caronas próximas: avaliações pendentes (T30)', () => {
+  const PENDENTE = {
+    id_reserva: 'r1',
+    papel: 'PASSAGEIRO',
+    nome_avaliado: 'Marcos',
+    origem: 'Centro, Torres - RS',
+    destino: 'ULBRA Torres - RS',
+    data_hora_partida: '2026-11-23T12:00:00Z',
+    avaliar_ate: '2026-11-30T12:00:00Z',
+  } as AvaliacaoPendente;
+
+  it('com pendências, mostra o aviso com "Avaliar"', async () => {
+    jest
+      .mocked(listarAvaliacoesPendentes)
+      .mockResolvedValue([PENDENTE, { ...PENDENTE, id_reserva: 'r2' }]);
+    await abrirTela();
+
+    expect(await screen.findByText('Você tem 2 avaliações pendentes.')).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole('button', { name: 'Avaliar' }));
+    expect(router.push).toHaveBeenCalledWith('/avaliacoes');
+  });
+
+  it('sem pendências, nada aparece', async () => {
+    await abrirTela();
+
+    expect(listarAvaliacoesPendentes).toHaveBeenCalled();
+    expect(screen.queryByText(/avaliaç(ão|ões) pendente/)).toBeNull();
+  });
+
+  it('se a consulta falhar, o aviso só não aparece (sem erro na tela)', async () => {
+    jest.mocked(listarAvaliacoesPendentes).mockRejectedValue(new Error('rede'));
+    await abrirTela();
+
+    expect(listarAvaliacoesPendentes).toHaveBeenCalled();
+    expect(screen.queryByText(/avaliaç(ão|ões) pendente/)).toBeNull();
+    expect(screen.queryByText('rede')).toBeNull();
   });
 });

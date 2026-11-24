@@ -49,7 +49,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 - RN04 — Só publica carona quem tem ao menos um veículo cadastrado.
 - RN05 — `vagas_disponiveis` na publicação ≤ `VEICULO.qtd_lugares − 1` (o motorista ocupa um lugar).
 - RN06 — `data_hora_partida` deve estar no futuro.
-- RN07 — Status da carona: `ABERTA` → `LOTADA` (vagas = 0) → `CONCLUIDA`; ou `CANCELADA` a qualquer momento antes da partida.
+- RN07 — Status da carona: `ABERTA` → `LOTADA` (vagas = 0) → `CONCLUIDA`; ou `CANCELADA` a qualquer momento antes da partida. O motorista conclui a carona entre a partida e **1 dia depois**; passado esse prazo sem conclusão, o sistema conclui sozinho (verificação de hora em hora).
 - RN08 — A carona some da busca quando está `LOTADA`, `CANCELADA`, `CONCLUIDA` ou com horário já passado.
 
 **Preço e rateio**
@@ -68,7 +68,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 - RN20 — O passageiro cancela reserva `CONFIRMADA` até 2 horas antes da partida; reserva `PENDENTE`, até a partida. O pagamento aprovado de reserva cancelada vira `REEMBOLSO_PENDENTE`. (O motorista cancela a carona até a partida, sem o limite de 2 horas: RN07.)
 
 **Avaliação**
-- RN19 — Avaliação só depois da carona `CONCLUIDA`, só entre participantes da mesma reserva, nota de 1 a 5, uma por avaliador por reserva.
+- RN19 — Avaliação só depois da carona `CONCLUIDA`, só entre participantes da mesma reserva, nota de 1 a 5, uma por avaliador por reserva, até **7 dias depois da partida**. Participantes: o motorista e cada passageiro com reserva `CONFIRMADA` (o passageiro avalia o motorista e o motorista avalia o passageiro). Comentário opcional de até 500 caracteres. O perfil público mostra o nome, a média (1 casa) e o total de avaliações recebidas.
 
 ## Requisitos não funcionais
 

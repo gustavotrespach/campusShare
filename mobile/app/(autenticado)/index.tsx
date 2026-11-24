@@ -15,11 +15,13 @@ import { OpcaoInterruptor } from '@/components/OpcaoInterruptor';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
+import { listarAvaliacoesPendentes } from '@/services/avaliacoes';
 import { obterMeuPerfil } from '@/services/perfil';
 import { tema } from '@/tema';
 import { textoContagemCaronas } from '@/utils/exibicao-carona';
 import { mostrarFiltroSomenteMulheres } from '@/utils/genero';
 import { primeiroNome } from '@/utils/nome';
+import { textoAvaliacoesPendentes } from '@/utils/avaliacoes';
 import { pontoPorTexto } from '@/utils/busca-local';
 import { ID_PONTO_PADRAO, pontoPorId, type PontoFixo } from '@/utils/pontos';
 
@@ -76,6 +78,30 @@ export default function TelaCaronasProximas() {
   const [atualizando, setAtualizando] = useState(false);
   const [localizando, setLocalizando] = useState(false);
   const [aviso, setAviso] = useState<AvisoBusca>(null);
+  const [avaliacoesPendentes, setAvaliacoesPendentes] = useState(0);
+
+  // Banner de avaliações pendentes (T30): recarrega ao voltar para a tela; se falhar, só não aparece
+  useFocusEffect(
+    useCallback(() => {
+      let ativo = true;
+      const carregar = async () => {
+        try {
+          const pendentes = await listarAvaliacoesPendentes();
+          if (ativo) {
+            setAvaliacoesPendentes(pendentes.length);
+          }
+        } catch {
+          if (ativo) {
+            setAvaliacoesPendentes(0);
+          }
+        }
+      };
+      void carregar();
+      return () => {
+        ativo = false;
+      };
+    }, []),
+  );
 
   const latitude = centro?.latitude ?? null;
   const longitude = centro?.longitude ?? null;
@@ -235,6 +261,13 @@ export default function TelaCaronasProximas() {
               ? `Caronas perto de: ${centro.rotulo}`
               : null}
       </Text>
+      {avaliacoesPendentes > 0 ? (
+        <Aviso
+          tipo="info"
+          mensagem={textoAvaliacoesPendentes(avaliacoesPendentes)}
+          acao={{ titulo: 'Avaliar', onPress: () => router.push('/avaliacoes') }}
+        />
+      ) : null}
       {exibirFiltro ? (
         <OpcaoInterruptor
           icone="female-outline"

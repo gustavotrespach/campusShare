@@ -11,13 +11,16 @@ import { Cartao } from '@/components/Cartao';
 import { Divisoria } from '@/components/Divisoria';
 import { ErroCarregamento } from '@/components/ErroCarregamento';
 import { LinhaAtalho, RECUO_DIVISORIA_ATALHO } from '@/components/LinhaAtalho';
+import { Reputacao } from '@/components/Reputacao';
 import { SeletorGenero } from '@/components/SeletorGenero';
 import { SeloEmailConfirmado } from '@/components/SeloEmailConfirmado';
 import { StatusServidor } from '@/components/StatusServidor';
 import { sair } from '@/services/auth';
+import { obterPerfilPublico, type PerfilPublico } from '@/services/avaliacoes';
 import { normalizarErro } from '@/services/erros';
 import { atualizarPerfil, obterMeuPerfil, type MeuPerfil } from '@/services/perfil';
 import { limparPix } from '@/store/pix';
+import { useSessao } from '@/store/sessao';
 import { tema } from '@/tema';
 import type { Genero } from '@/utils/genero';
 import { temErros, validarPerfil, type CamposPerfil, type ErrosDeCampo } from '@/utils/validacao';
@@ -38,6 +41,30 @@ export default function TelaPerfil() {
   const [salvando, setSalvando] = useState(false);
   const [saindo, setSaindo] = useState(false);
   const [erroSair, setErroSair] = useState<string | null>(null);
+  const idUsuario = useSessao().sessao?.user.id ?? null;
+  const [reputacao, setReputacao] = useState<PerfilPublico | null>(null);
+
+  // A própria média (T30), como os outros a veem; se falhar, o topo só não mostra a reputação
+  useEffect(() => {
+    if (!idUsuario) {
+      return undefined;
+    }
+    let ativo = true;
+    const carregar = async () => {
+      try {
+        const perfilPublico = await obterPerfilPublico(idUsuario);
+        if (ativo) {
+          setReputacao(perfilPublico);
+        }
+      } catch {
+        // Sem reputação no topo; o resto do perfil segue
+      }
+    };
+    void carregar();
+    return () => {
+      ativo = false;
+    };
+  }, [idUsuario]);
 
   const preencher = (dados: MeuPerfil) => {
     setPerfil(dados);
@@ -121,6 +148,12 @@ export default function TelaPerfil() {
           titulo="Minhas reservas"
           onPress={() => router.push('/reservas')}
         />
+        <Divisoria recuo={RECUO_DIVISORIA_ATALHO} />
+        <LinhaAtalho
+          icone="star-outline"
+          titulo="Avaliações pendentes"
+          onPress={() => router.push('/avaliacoes')}
+        />
       </Cartao>
       {erroSair ? <Aviso mensagem={erroSair} /> : null}
       <Botao
@@ -164,6 +197,7 @@ export default function TelaPerfil() {
           <Avatar nome={perfil.nome_completo} tamanho={72} />
           <Text style={estilos.nome}>{perfil.nome_completo}</Text>
           <SeloEmailConfirmado />
+          {reputacao ? <Reputacao media={reputacao.media} total={reputacao.total} /> : null}
         </View>
 
         <Cartao titulo="Seus dados">

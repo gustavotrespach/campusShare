@@ -6,12 +6,17 @@ import { router } from 'expo-router';
 import TelaPerfil from '../app/(autenticado)/perfil';
 import { sair } from '@/services/auth';
 import { AppError } from '@/services/erros';
+import { obterPerfilPublico } from '@/services/avaliacoes';
 import { atualizarPerfil, obterMeuPerfil, type MeuPerfil } from '@/services/perfil';
 
 jest.mock('expo-router', () => require('./apoio/expo-router-falso'));
 jest.mock('@/services/auth', () => ({ sair: jest.fn() }));
 jest.mock('@/services/perfil', () => ({ obterMeuPerfil: jest.fn(), atualizarPerfil: jest.fn() }));
 jest.mock('@/services/sistema', () => ({ verificarSaude: jest.fn(async () => 'ok') }));
+jest.mock('@/services/avaliacoes', () => ({ obterPerfilPublico: jest.fn() }));
+jest.mock('@/store/sessao', () => ({
+  useSessao: () => ({ sessao: { user: { id: 'u1' } }, carregando: false }),
+}));
 
 const PERFIL: MeuPerfil = {
   nome_completo: 'Mariana Souza',
@@ -23,6 +28,9 @@ const PERFIL: MeuPerfil = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  jest
+    .mocked(obterPerfilPublico)
+    .mockResolvedValue({ idUsuario: 'u1', nome: 'Mariana Souza', media: 4.8, total: 5 });
 });
 
 describe('Meu perfil (tela 10)', () => {
@@ -47,6 +55,8 @@ describe('Meu perfil (tela 10)', () => {
     expect(router.push).toHaveBeenCalledWith('/caronas/minhas');
     await fireEvent.press(screen.getByRole('button', { name: /Minhas reservas/ }));
     expect(router.push).toHaveBeenCalledWith('/reservas');
+    await fireEvent.press(screen.getByRole('button', { name: /Avaliações pendentes/ }));
+    expect(router.push).toHaveBeenCalledWith('/avaliacoes');
     await fireEvent.press(screen.getByRole('button', { name: /Sair/ }));
     expect(sair).toHaveBeenCalled();
   });
@@ -72,5 +82,28 @@ describe('Meu perfil (tela 10)', () => {
     expect(screen.getByRole('button', { name: 'Tentar de novo' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /Meus veículos/ })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: /Sair/ })).toBeOnTheScreen();
+  });
+
+  it('mostra a própria média no topo (perfil público do usuário logado)', async () => {
+    jest.mocked(obterMeuPerfil).mockResolvedValue(PERFIL);
+    await render(<TelaPerfil />);
+
+    expect(await screen.findByText('4,8 · 5 avaliações')).toBeOnTheScreen();
+    expect(obterPerfilPublico).toHaveBeenCalledWith('u1');
+  });
+
+  it('sem avaliações: "Sem avaliações ainda"; se falhar, o topo só não mostra a média', async () => {
+    jest.mocked(obterMeuPerfil).mockResolvedValue(PERFIL);
+    jest
+      .mocked(obterPerfilPublico)
+      .mockResolvedValueOnce({ idUsuario: 'u1', nome: 'Mariana', media: null, total: 0 });
+    const primeira = await render(<TelaPerfil />);
+    expect(await screen.findByText('Sem avaliações ainda')).toBeOnTheScreen();
+    await primeira.unmount();
+
+    jest.mocked(obterPerfilPublico).mockRejectedValueOnce(new Error('rede'));
+    await render(<TelaPerfil />);
+    expect(await screen.findByText('E-mail institucional confirmado')).toBeOnTheScreen();
+    expect(screen.queryByText(/avaliaç/)).toBeNull();
   });
 });

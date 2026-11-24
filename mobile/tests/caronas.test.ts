@@ -323,3 +323,54 @@ describe('listarMinhasCaronas (T28)', () => {
     });
   });
 });
+
+describe('concluirCarona (T30)', () => {
+  it('chama a RPC só com o id da carona e devolve as reservas confirmadas', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(resposta(200, 3));
+
+    await expect(caronas.concluirCarona(ID_CARONA)).resolves.toBe(3);
+
+    expect(chamada().url).toContain('/rest/v1/rpc/concluir_carona');
+    expect(chamada().corpo).toEqual({ p_id_carona: ID_CARONA });
+  });
+
+  it('prazo encerrado chega com a frase do hint', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValue(
+      resposta(409, {
+        code: 'PT409',
+        details: null,
+        hint: 'O prazo para concluir esta carona era de 1 dia depois da partida. Ela é concluída automaticamente.',
+        message: 'CONCLUSAO_ENCERRADA',
+      }),
+    );
+
+    await expect(caronas.concluirCarona(ID_CARONA)).rejects.toMatchObject({
+      code: 'CONCLUSAO_ENCERRADA',
+      message:
+        'O prazo para concluir esta carona era de 1 dia depois da partida. Ela é concluída automaticamente.',
+    });
+  });
+});
+
+describe('detalharCarona: reputação do motorista (T30)', () => {
+  it('média e total chegam; média null (sem avaliações) continua null', async () => {
+    const caronas = await logado();
+    mockFetch.mockResolvedValueOnce(
+      resposta(200, [{ ...LINHA_DETALHE, media_motorista: 4.3, total_avaliacoes_motorista: 12 }]),
+    );
+    await expect(caronas.detalharCarona(ID_CARONA)).resolves.toMatchObject({
+      media_motorista: 4.3,
+      total_avaliacoes_motorista: 12,
+    });
+
+    mockFetch.mockResolvedValueOnce(
+      resposta(200, [{ ...LINHA_DETALHE, media_motorista: null, total_avaliacoes_motorista: 0 }]),
+    );
+    await expect(caronas.detalharCarona(ID_CARONA)).resolves.toMatchObject({
+      media_motorista: null,
+      total_avaliacoes_motorista: 0,
+    });
+  });
+});

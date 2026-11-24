@@ -20,13 +20,20 @@ import { EstadoVazio } from '@/components/EstadoVazio';
 import type { NomeIcone } from '@/components/icones';
 import { LinhaRota } from '@/components/LinhaRota';
 import { Placa } from '@/components/Placa';
+import { Reputacao } from '@/components/Reputacao';
 import { SeloEmailConfirmado } from '@/components/SeloEmailConfirmado';
 import { SeloStatus } from '@/components/SeloStatus';
-import { cancelarCarona, detalharCarona, type CaronaDetalhe } from '@/services/caronas';
+import {
+  cancelarCarona,
+  concluirCarona,
+  detalharCarona,
+  type CaronaDetalhe,
+} from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { reservarVaga } from '@/services/reservas';
 import { guardarPix } from '@/store/pix';
 import { tema } from '@/tema';
+import { CONFIRMACAO_CONCLUIR_CARONA, podeConcluirCarona } from '@/utils/avaliacoes';
 import {
   CONFIRMACAO_CANCELAR_CARONA,
   mensagemCaronaCancelada,
@@ -86,6 +93,9 @@ export default function TelaDetalheCarona() {
   const [cancelandoCarona, setCancelandoCarona] = useState(false);
   const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
   const [caronaCancelada, setCaronaCancelada] = useState<string | null>(null);
+  const [concluindo, setConcluindo] = useState(false);
+  const [erroConclusao, setErroConclusao] = useState<string | null>(null);
+  const [caronaConcluida, setCaronaConcluida] = useState(false);
 
   useEffect(() => {
     // Ignora a resposta se a tela foi desmontada antes de ela chegar
@@ -154,10 +164,36 @@ export default function TelaDetalheCarona() {
   };
 
   const exibirCancelarCarona = podeCancelarCarona(carona);
+  // Mesma regra do selo "Já partiu"; o prazo de 1 dia para concluir é do backend (CONCLUSAO_ENCERRADA)
+  const exibirConcluir = podeConcluirCarona(carona);
   // ABERTA/LOTADA com a partida no passado aparece como "Já partiu" (só exibição, T41)
   const situacao = situacaoExibidaCarona(carona);
 
   // RN07: quem decide se ainda dá para cancelar é a cancelar_carona; o erro chega com o hint
+  const concluir = async () => {
+    setConcluindo(true);
+    setErroConclusao(null);
+    try {
+      await concluirCarona(carona.id_carona);
+      setCaronaConcluida(true);
+      AccessibilityInfo.announceForAccessibility('Carona concluída.');
+      setVersao((anterior) => anterior + 1);
+    } catch (falha) {
+      const mensagem = normalizarErro(falha).message;
+      setErroConclusao(mensagem);
+      AccessibilityInfo.announceForAccessibility(mensagem);
+    } finally {
+      setConcluindo(false);
+    }
+  };
+
+  const confirmarConclusao = () => {
+    Alert.alert('Concluir carona', CONFIRMACAO_CONCLUIR_CARONA, [
+      { text: 'Voltar', style: 'cancel' },
+      { text: 'Concluir carona', onPress: () => void concluir() },
+    ]);
+  };
+
   const cancelar = async () => {
     setCancelandoCarona(true);
     setErroCancelamento(null);
@@ -205,6 +241,7 @@ export default function TelaDetalheCarona() {
         ]}
       >
         {caronaCancelada ? <Aviso tipo="sucesso" mensagem={caronaCancelada} /> : null}
+        {caronaConcluida ? <Aviso tipo="sucesso" mensagem="Carona concluída." /> : null}
         {carona.sou_motorista ? <Aviso tipo="info" mensagem="Esta é a sua carona." /> : null}
         {situacao !== 'ABERTA' ? (
           <Aviso tipo="info" mensagem={`Situação: ${aparenciaSelo(situacao).rotulo}.`} />
@@ -260,6 +297,7 @@ export default function TelaDetalheCarona() {
               <Text style={estilos.legenda}>Motorista</Text>
               <Text style={estilos.corpoForte}>{carona.nome_motorista}</Text>
               <SeloEmailConfirmado />
+              <Reputacao media={carona.media_motorista} total={carona.total_avaliacoes_motorista} />
             </View>
           </View>
           <View style={estilos.divisoria} />
@@ -271,6 +309,19 @@ export default function TelaDetalheCarona() {
             <Placa placa={carona.placa} />
           </View>
         </View>
+
+        {exibirConcluir ? (
+          <View style={estilos.cancelamento}>
+            <Divisoria />
+            {erroConclusao ? <Aviso mensagem={erroConclusao} /> : null}
+            <Botao
+              titulo="Concluir carona"
+              icone="flag-outline"
+              carregando={concluindo}
+              onPress={confirmarConclusao}
+            />
+          </View>
+        ) : null}
 
         {exibirCancelarCarona ? (
           <View style={estilos.cancelamento}>

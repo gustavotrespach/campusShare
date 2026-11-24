@@ -5,7 +5,12 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useLocalSearchParams } from 'expo-router';
 
 import TelaDetalheCarona from '../app/(autenticado)/caronas/[id]';
-import { cancelarCarona, detalharCarona, type CaronaDetalhe } from '@/services/caronas';
+import {
+  cancelarCarona,
+  concluirCarona,
+  detalharCarona,
+  type CaronaDetalhe,
+} from '@/services/caronas';
 import { AppError } from '@/services/erros';
 
 jest.mock('expo-router', () => require('./apoio/expo-router-falso'));
@@ -13,7 +18,11 @@ jest.mock(
   'react-native-safe-area-context',
   () => require('react-native-safe-area-context/jest/mock').default,
 );
-jest.mock('@/services/caronas', () => ({ cancelarCarona: jest.fn(), detalharCarona: jest.fn() }));
+jest.mock('@/services/caronas', () => ({
+  cancelarCarona: jest.fn(),
+  concluirCarona: jest.fn(),
+  detalharCarona: jest.fn(),
+}));
 jest.mock('@/services/reservas', () => ({ reservarVaga: jest.fn() }));
 
 const daqui = (horas: number) => new Date(Date.now() + horas * 3_600_000).toISOString();
@@ -38,6 +47,9 @@ function detalhe(alteracoes: Partial<CaronaDetalhe> = {}): CaronaDetalhe {
     cor: 'Prata',
     placa: 'IYK4B21',
     sou_motorista: true,
+    // Reputação do motorista (T30); a tela ainda não mostra (Fase 34)
+    media_motorista: 4.3,
+    total_avaliacoes_motorista: 3,
     valorPorPassageiroCentavos: 600,
     custoTotalCentavos: 2400,
     ...alteracoes,
@@ -140,5 +152,84 @@ describe('Cancelar carona (detalhe da carona)', () => {
 
     expect(await screen.findByText('Valor por passageiro')).toBeOnTheScreen();
     expect(screen.queryByText(/^Situação:/)).toBeNull();
+  });
+
+  it('motorista conclui a carona que já partiu: confirmação, aviso e recarga como Concluída', async () => {
+    jest
+      .mocked(detalharCarona)
+      .mockResolvedValueOnce(detalhe({ data_hora_partida: daqui(-2) }))
+      .mockResolvedValueOnce(detalhe({ data_hora_partida: daqui(-2), status: 'CONCLUIDA' }));
+    jest.mocked(concluirCarona).mockResolvedValue(2);
+    const alerta = responderAlerta('Concluir carona');
+    const anuncio = jest.spyOn(AccessibilityInfo, 'announceForAccessibility');
+    await render(<TelaDetalheCarona />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: /Concluir carona/ }));
+
+    expect(alerta).toHaveBeenCalledWith(
+      'Concluir carona',
+      'Confirme que a viagem aconteceu. Depois de concluída, você e os passageiros podem se avaliar.',
+      expect.any(Array),
+    );
+    expect(concluirCarona).toHaveBeenCalledWith('c1');
+    expect(await screen.findByText('Carona concluída.')).toBeOnTheScreen();
+    expect(await screen.findByText('Situação: Concluída.')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Concluir carona/ })).toBeNull();
+    expect(anuncio).toHaveBeenCalledWith('Carona concluída.');
+  });
+
+  it('erro ao concluir mostra o hint do backend', async () => {
+    jest.mocked(detalharCarona).mockResolvedValue(detalhe({ data_hora_partida: daqui(-30) }));
+    jest
+      .mocked(concluirCarona)
+      .mockRejectedValue(
+        new AppError(
+          409,
+          'CONCLUSAO_ENCERRADA',
+          'O prazo para concluir esta carona era de 1 dia depois da partida. Ela é concluída automaticamente.',
+        ),
+      );
+    responderAlerta('Concluir carona');
+    await render(<TelaDetalheCarona />);
+
+    await fireEvent.press(await screen.findByRole('button', { name: /Concluir carona/ }));
+
+    expect(
+      await screen.findByText(
+        'O prazo para concluir esta carona era de 1 dia depois da partida. Ela é concluída automaticamente.',
+      ),
+    ).toBeOnTheScreen();
+  });
+
+  it.each([
+    ['antes da partida', {}],
+    ['passageiro depois da partida', { sou_motorista: false, data_hora_partida: daqui(-2) }],
+    ['carona já CONCLUIDA', { status: 'CONCLUIDA' as const, data_hora_partida: daqui(-2) }],
+    ['carona CANCELADA', { status: 'CANCELADA' as const, data_hora_partida: daqui(-2) }],
+  ])('sem "Concluir carona": %s', async (_caso, alteracoes) => {
+    jest.mocked(detalharCarona).mockResolvedValue(detalhe(alteracoes));
+    await render(<TelaDetalheCarona />);
+
+    expect(await screen.findByText('Valor por passageiro')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: /Concluir carona/ })).toBeNull();
+  });
+
+  it('card do motorista: média com vírgula e total', async () => {
+    jest.mocked(detalharCarona).mockResolvedValue(detalhe({ sou_motorista: false }));
+    await render(<TelaDetalheCarona />);
+
+    expect(await screen.findByText('4,3 · 3 avaliações')).toBeOnTheScreen();
+    expect(screen.getByLabelText('Nota média 4,3 de 5, 3 avaliações')).toBeOnTheScreen();
+  });
+
+  it('card do motorista sem avaliações: "Sem avaliações ainda"', async () => {
+    jest
+      .mocked(detalharCarona)
+      .mockResolvedValue(
+        detalhe({ sou_motorista: false, media_motorista: null, total_avaliacoes_motorista: 0 }),
+      );
+    await render(<TelaDetalheCarona />);
+
+    expect(await screen.findByText('Sem avaliações ainda')).toBeOnTheScreen();
   });
 });
