@@ -62,6 +62,39 @@ export function formatarDiaCurto(instante: Date | string): string {
   return `${DIAS_SEMANA_CURTOS[p.diaSemana]} ${doisDigitos(p.dia)}/${doisDigitos(p.mes)}`;
 }
 
+// Dia de Brasília como "2026-11-25": a chave dos grupos por dia da tela inicial (T43)
+export function chaveDiaBrasilia(instante: Date | string): string {
+  const p = partesEmBrasilia(instante);
+  return `${p.ano}-${doisDigitos(p.mes)}-${doisDigitos(p.dia)}`;
+}
+
+const UM_DIA_MS = 24 * 60 * 60 * 1000;
+
+// Cabeçalho do grupo (T43): "Hoje", "Amanhã" ou "qua 26/11", sempre no dia de Brasília (23:30 de
+// Brasília já é o dia seguinte em UTC, e continua "Hoje")
+export function rotuloDia(instante: Date | string, agora: Date = new Date()): string {
+  const dia = chaveDiaBrasilia(instante);
+  if (dia === chaveDiaBrasilia(agora)) {
+    return 'Hoje';
+  }
+  if (dia === chaveDiaBrasilia(new Date(agora.getTime() + UM_DIA_MS))) {
+    return 'Amanhã';
+  }
+  return formatarDiaCurto(instante);
+}
+
+// Card "Sua próxima viagem" (T43): "hoje 12:30", "amanhã 12:30" ou "qua 26/11 12:30"
+export function formatarQuandoRelativo(instante: Date | string, agora: Date = new Date()): string {
+  const dia = rotuloDia(instante, agora);
+  const prefixo = dia === 'Hoje' || dia === 'Amanhã' ? dia.toLocaleLowerCase('pt-BR') : dia;
+  return `${prefixo} ${formatarHora(instante)}`;
+}
+
+// Leitor de tela: "hoje às 12:30", "qua 26/11 às 12:30"
+export function descreverQuandoRelativo(instante: Date | string, agora: Date = new Date()): string {
+  return formatarQuandoRelativo(instante, agora).replace(/ (\d{2}:\d{2})$/, ' às $1');
+}
+
 // Detalhe, acima da hora: "domingo, 18/10/2026"
 export function formatarDataLonga(instante: Date | string): string {
   const p = partesEmBrasilia(instante);

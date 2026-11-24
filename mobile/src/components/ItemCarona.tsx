@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { CaronaResumo } from '@/services/caronas';
 import { tema } from '@/tema';
-import { formatarDiaCurto, formatarHora } from '@/utils/data-hora';
+import { formatarHora } from '@/utils/data-hora';
 import { formatarReais } from '@/utils/dinheiro';
 import {
   descreverCarona,
@@ -11,10 +11,12 @@ import {
   textoDistancia,
   textoVagas,
 } from '@/utils/exibicao-carona';
+import { nomeCurtoLocal } from '@/utils/listas';
 
 import { Avatar } from './Avatar';
+import { Divisoria } from './Divisoria';
 import type { NomeIcone } from './icones';
-import { LinhaRota } from './LinhaRota';
+import { Reputacao } from './Reputacao';
 import { SeloStatus } from './SeloStatus';
 
 interface Props {
@@ -23,18 +25,32 @@ interface Props {
 }
 
 const { cores } = tema;
+const TAMANHO_ICONE_METADADO = 16;
+const TAMANHO_CHEVRON = 20;
 
-function Metadado({ icone, texto }: { icone: NomeIcone; texto: string }) {
+function Metadado({
+  icone,
+  texto,
+  forte = false,
+}: {
+  icone: NomeIcone;
+  texto: string;
+  forte?: boolean;
+}) {
   return (
     <View style={estilos.metadado}>
-      <Ionicons name={icone} size={16} color={cores.textoSecundario} />
-      <Text style={estilos.legenda}>{texto}</Text>
+      <Ionicons name={icone} size={TAMANHO_ICONE_METADADO} color={cores.textoSecundario} />
+      <Text style={forte ? estilos.metadadoForte : estilos.legenda}>{texto}</Text>
     </View>
   );
 }
 
-// O nome do motorista é o que a buscar_caronas devolve: só o primeiro nome (decisão de 17/10)
+// Card da tela inicial (T43): começa pelo destino, como as listas da T41. O dia está no cabeçalho
+// do grupo, então o card só mostra a hora. O nome do motorista é o primeiro nome que a
+// buscar_caronas devolve (decisão de 17/10), com a nota dele ao lado (nada sem avaliações).
 export function ItemCarona({ carona, aoAbrir }: Props) {
+  const destino = nomeCurtoLocal(carona.destino);
+  const origem = nomeCurtoLocal(carona.origem);
   return (
     <Pressable
       accessibilityRole="button"
@@ -44,9 +60,13 @@ export function ItemCarona({ carona, aoAbrir }: Props) {
       style={({ pressed }) => [estilos.card, pressed && estilos.pressionado]}
     >
       <View style={estilos.topo}>
-        <View style={estilos.quando}>
-          <Text style={estilos.hora}>{formatarHora(carona.data_hora_partida)}</Text>
-          <Text style={estilos.legenda}>{formatarDiaCurto(carona.data_hora_partida)}</Text>
+        <View style={estilos.trajeto}>
+          <Text style={estilos.titulo} numberOfLines={2}>
+            Para {destino}
+          </Text>
+          <Text style={estilos.saindo} numberOfLines={1}>
+            Saindo de {origem} · {textoDistancia(carona.distancia_km)}
+          </Text>
         </View>
         <View style={estilos.preco}>
           <Text style={estilos.valor}>{formatarReais(carona.valorPorPassageiroCentavos)}</Text>
@@ -54,24 +74,28 @@ export function ItemCarona({ carona, aoAbrir }: Props) {
         </View>
       </View>
 
-      <LinhaRota origem={carona.origem} destino={carona.destino} />
-
       <View style={estilos.metadados}>
+        <Metadado icone="time-outline" texto={formatarHora(carona.data_hora_partida)} forte />
         <Metadado icone="people-outline" texto={textoVagas(carona.vagas_disponiveis)} />
-        <Metadado icone="navigate-outline" texto={textoDistancia(carona.distancia_km)} />
-        <Metadado icone="hourglass-outline" texto={`${carona.tolerancia_min} min`} />
+        {carona.somente_mulheres ? <SeloStatus tipo="SOMENTE_MULHERES" /> : null}
       </View>
-      {carona.somente_mulheres ? <SeloStatus tipo="SOMENTE_MULHERES" /> : null}
 
-      <View style={estilos.divisoria} />
+      <Divisoria />
 
       <View style={estilos.motorista}>
         <Avatar nome={carona.nome_motorista} />
         <View style={estilos.textosMotorista}>
-          <Text style={estilos.nome}>{carona.nome_motorista}</Text>
+          <View style={estilos.linhaNome}>
+            <Text style={estilos.nome}>{carona.nome_motorista}</Text>
+            <Reputacao
+              media={carona.media_motorista}
+              total={carona.total_avaliacoes_motorista}
+              compacta
+            />
+          </View>
           <Text style={estilos.legenda}>{descreverVeiculo(carona.modelo, carona.cor)}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={cores.textoSutil} />
+        <Ionicons name="chevron-forward" size={TAMANHO_CHEVRON} color={cores.textoSutil} />
       </View>
     </Pressable>
   );
@@ -88,9 +112,10 @@ const estilos = StyleSheet.create({
     ...tema.sombra.cartao,
   },
   pressionado: { backgroundColor: cores.superficieAlternativa },
-  topo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  quando: { flexDirection: 'row', alignItems: 'baseline', gap: tema.espaco.x2 },
-  hora: { ...tema.tipografia.destaque, ...tema.numerico, color: cores.texto },
+  topo: { flexDirection: 'row', alignItems: 'flex-start', gap: tema.espaco.x3 },
+  trajeto: { flex: 1, gap: tema.espaco.x1 },
+  titulo: { ...tema.tipografia.subtitulo, color: cores.texto },
+  saindo: { ...tema.tipografia.apoio, color: cores.textoSecundario },
   preco: { alignItems: 'flex-end' },
   valor: {
     ...tema.tipografia.subtitulo,
@@ -99,10 +124,16 @@ const estilos = StyleSheet.create({
     color: cores.primaria,
   },
   legenda: { ...tema.tipografia.legenda, color: cores.textoSecundario },
-  metadados: { flexDirection: 'row', flexWrap: 'wrap', gap: tema.espaco.x4 },
+  metadados: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: tema.espaco.x4,
+  },
   metadado: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x1 },
-  divisoria: { height: 1, backgroundColor: cores.borda },
+  metadadoForte: { ...tema.tipografia.corpoForte, ...tema.numerico, color: cores.texto },
   motorista: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x3 },
   textosMotorista: { flex: 1 },
+  linhaNome: { flexDirection: 'row', alignItems: 'center', gap: tema.espaco.x2 },
   nome: { ...tema.tipografia.corpoForte, color: cores.texto },
 });

@@ -1,5 +1,5 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useRef, useState, type ComponentRef, type ReactElement } from 'react';
+import { useRef, useState, type ComponentRef, type ReactElement, type RefObject } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { tema } from '@/tema';
@@ -20,6 +20,8 @@ interface Props {
   aoUsarMinhaLocalizacao: () => void;
   // Obtendo a localização: o botão vira um indicador
   localizando?: boolean;
+  // A tela pode pôr o foco na barra (T43: "Buscar em outro lugar" do estado vazio)
+  refEntrada?: RefObject<ComponentRef<typeof TextInput> | null>;
 }
 
 const { cores } = tema;
@@ -64,8 +66,10 @@ export function BuscaLocal({
   aoEscolherPonto,
   aoUsarMinhaLocalizacao,
   localizando = false,
+  refEntrada,
 }: Props) {
-  const entrada = useRef<ComponentRef<typeof TextInput>>(null);
+  const entradaInterna = useRef<ComponentRef<typeof TextInput>>(null);
+  const entrada = refEntrada ?? entradaInterna;
   const [focado, setFocado] = useState(false);
   const digitado = texto.trim();
   const pontos = filtrarPontos(texto);

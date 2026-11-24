@@ -12,7 +12,7 @@
 |---|---|
 | `mockups/00-marca.png` | Ícone em vários tamanhos, Android adaptativo, monocromático, splash e assinatura |
 | `mockups/01-componentes.png` | Botão, campo, aviso, selo, chip e esqueleto de carregamento com os estados |
-| `mockups/05-caronas-proximas.png` | Tela 5 — **desatualizado desde a T40**: mostra os chips "Perto de", que viraram a barra de busca de local (ver Tela 5) |
+| `mockups/05-caronas-proximas.png` | Tela 5 — **antigo** (anterior à T40 e à T43): mostra os chips "Perto de" (hoje, barra de busca), a lista sem grupos por dia e o card antigo. Vale o texto da Tela 5 |
 | `mockups/06-detalhe-carona.png` | Tela 6 |
 | `mockups/08-pagamento.png` | Tela 8: aguardando e confirmado |
 | `mockups/09-minhas-reservas.png` | Tela 9: lista e vazia |
@@ -281,27 +281,27 @@ Estrutura (coluna, `gap` 6): rótulo → caixa → mensagem (ajuda ou erro).
 Ícones sugeridos: e-mail `mail-outline`, senha `lock-closed-outline`, nome `person-outline`,
 telefone `call-outline`, placa `card-outline`, valor `cash-outline`.
 
-### 3.3 Card de carona (`ItemCarona.tsx`, já existe — redesenhar)
+### 3.3 Card de carona (`ItemCarona.tsx`) — redesenhado na T43 ✚
 
-`Pressable` com `accessibilityRole="button"` e o `accessibilityHint` atual.
+`Pressable` com `accessibilityRole="button"` e o `accessibilityHint` atual ("Abre os detalhes da carona").
+Começa pelo destino, como os cards das listas da T41; o dia fica no cabeçalho do grupo (tela 5), então o
+card só mostra a hora.
 
 | Parte | Medida |
 |---|---|
 | Container | fundo `superficie`, raio 16, borda 1 `borda`, `sombra.cartao`, padding 16, `gap` 12 |
 | Pressionado | fundo `superficieAlternativa` |
-| Linha 1 | esquerda: hora (`destaque`, numérico) + dia curto (`legenda`), alinhados pela base, `gap` 8. Direita: valor (`subtitulo` em 700, `primaria`, numérico) e embaixo "por pessoa" (`legenda`), alinhados à direita |
-| Linha 2 — trajeto | componente **LinhaRota compacta** (3.8) |
-| Linha 3 — metadados | linha com `gap` 16, `flexWrap`: `people-outline` + "2 vagas" / "1 vaga"; `navigate-outline` + "a 0,4 km"; `hourglass-outline` + "10 min". Ícones 16 `textoSecundario`, texto `legenda` |
-| Selo opcional | se `somente_mulheres`: SeloStatus "Somente mulheres" (3.4) |
+| Linha 1 | esquerda (`flex: 1`, `gap` 4): "Para ULBRA Torres" (`subtitulo` `texto`, até 2 linhas) e embaixo "Saindo de Centro, Torres · a 0,4 km" (`apoio` `textoSecundario`, 1 linha). Nomes curtos, sem a UF (`nomeCurtoLocal`). Direita: valor (`subtitulo` em 700, `primaria`, numérico) e embaixo "por pessoa" (`legenda`), alinhados à direita |
+| Linha 2 — metadados | linha com `gap` 16, `flexWrap`: `time-outline` + "17:00" (`corpoForte` `texto`, numérico); `people-outline` + "2 vagas" / "1 vaga" (`legenda`); se `somente_mulheres`, SeloStatus "Somente mulheres" (3.4) na mesma linha. Ícones 16 `textoSecundario` |
 | Divisória | 1 pt `borda` |
-| Linha 4 — motorista | Avatar 40 (3.9) + coluna (nome `corpoForte`; "Onix prata" = modelo + cor em minúsculas na `legenda`) + `chevron-forward` 20 `textoSutil` |
+| Linha 3 — motorista | Avatar 40 (3.9) + coluna (linha com o nome `corpoForte` + a nota compacta 3.10, `gap` 8; "Onix prata" = modelo + cor em minúsculas na `legenda`) + `chevron-forward` 20 `textoSutil`. Sem avaliações, só o nome |
 
-A hora e o dia vêm da formatação já existente (`formatarDataHoraCurta` produz "dom 18/10 · 12:30");
-para separar hora e dia, criar em `utils/data-hora.ts` `formatarHora` ("12:30") e
-`formatarDiaCurto` ("dom 18/10") — só exibição.
+Saíram do card na T43: o dia (vai para o cabeçalho do grupo), a LinhaRota (o "Para …/Saindo de …" diz o
+trajeto) e a tolerância (continua no detalhe, tela 6).
 
-`accessibilityLabel` do card ✚: "Carona dom 18/10 às 12:30, de Centro de Torres para ULBRA
-Torres, R$ 6,00 por pessoa, 2 vagas, motorista Ana Souza".
+`accessibilityLabel` do card, numa frase: "Para ULBRA Torres, saindo de Centro, Torres, a 0,4 km, hoje às
+17:00, R$ 6,00 por pessoa, 2 vagas, motorista Bruno, nota média 4,3" (sem a nota quando não há
+avaliações; ", somente mulheres" no fim quando for o caso). O dia é "hoje", "amanhã" ou "sex 27/11".
 
 ### 3.4 Selo de status (`SeloStatus.tsx`, novo)
 
@@ -434,7 +434,8 @@ sem estrela. Lida como um elemento: "Nota média 4,3 de 5, 12 avaliações". Usa
 (tela 6) e no topo do Perfil (tela 10).
 
 **Compacta** (T42, `compacta`): só `star` 14 + "4,0", sem total; sem avaliações não mostra nada. Lida
-como "nota média 4,0". Usada no card de "Minhas reservas" (tela 9).
+como "nota média 4,0". Usada no card de "Minhas reservas" (tela 9) e, desde a T43, no card de carona
+(3.3) e no "Sua próxima viagem" (3.12) da tela 5.
 
 ### 3.11 Seletor de nota (`SeletorNota.tsx`, T30) ✚
 
@@ -443,6 +444,26 @@ pressionado `superficieAlternativa`) com `star` 32 `secundaria` até a nota esco
 32 `bordaForte` depois (3,68:1, componente). Leitor de tela: grupo "Nota" (`radiogroup`), cada estrela
 `radio` "Nota N de 5" com `selected` na escolhida. Abaixo, `legenda`: "Toque numa estrela." ou "4 de 5".
 Sem biblioteca: Ionicons.
+
+### 3.12 Sua próxima viagem (`ProximaViagem.tsx`, T43) ✚
+
+Card de destaque no topo da tela 5: a reserva (`PENDENTE`/`CONFIRMADA`, carona `ABERTA`/`LOTADA`, partida
+futura) ou a carona própria (`ABERTA`/`LOTADA`, partida futura) de **partida mais próxima** entre as duas
+(as regras de "Próximas" da T41; no empate de horário, a reserva).
+
+| Parte | Medida |
+|---|---|
+| Container | fundo `primariaClara`, borda 1 `primaria`, raio 16, padding 16, `gap` 8; pressionado `superficieAlternativa`; sem sombra (a cor já destaca) |
+| Linha 1 | `navigate-circle-outline` 16 `primaria` + "Sua próxima viagem" (`rotulo` `primaria`), `gap` 4; à direita, o SeloStatus (reserva: o status da reserva; carona própria: Aberta/Lotada) |
+| Linha 2 | coluna (`flex: 1`, `gap` 4) + `chevron-forward` 20 `primaria`. Título "Para ULBRA Torres · amanhã 09:00" (`subtitulo` `texto`, numérico, até 2 linhas; "hoje", "amanhã" ou "sex 27/11" no dia de Brasília). Embaixo (`apoio` `textoSecundario`, 5,4:1 sobre `primariaClara`): reserva → "com Marcos" + a nota compacta (3.10; nada sem avaliações); carona própria → "Você dirige · 2 de 3 vagas livres" |
+
+Toque: a reserva abre a tela da reserva (tela 8, `accessibilityHint` "Abre a sua reserva"); a carona própria
+abre o detalhe (tela 6, "Abre os detalhes da sua carona"). Leitor de tela, numa frase: "Sua próxima viagem,
+Para ULBRA Torres, amanhã às 09:00, com Marcos, nota média 4,0, Confirmada".
+
+Dados: `minhas_reservas` e as caronas do motorista (as mesmas consultas das telas 9 e 16), sem chamada
+nova. Uma falhando, usa a outra; as duas falhando ou nenhuma viagem, o card **não aparece** (sem erro).
+Recarrega ao focar a tela e no "puxar para atualizar".
 
 ## 4. Telas
 
@@ -518,12 +539,13 @@ Centralizada na vertical, padding 20.
   erro com a mensagem → campo "Seu e-mail institucional" → Aviso info do reenvio → botão
   primário "Reenviar link" → botão `texto` "Ir para o início" (com sessão) ou "Voltar ao login".
 
-### Tela 5 — Caronas próximas (Início) ★ — `mockups/05-caronas-proximas.png`
+### Tela 5 — Caronas próximas (Início) ★ — reescrita na T43 ✚
 
-> O mockup 05 é anterior à T40: no lugar dos chips "Perto de" (item 2) vale a barra de busca de
-> local descrita abaixo.
+> O mockup `05-caronas-proximas.png` é **antigo** (anterior à T40 e à T43): vale este texto.
 
-`FlatList` com `ListHeaderComponent`; `headerShown: false`.
+`SectionList` (`ListHeaderComponent` + um grupo por dia), `headerShown: false`, tudo no mesmo scroll,
+`gap` 12 entre os blocos, puxar para atualizar (recarrega a lista, o card "Sua próxima viagem" e o aviso de
+avaliações). Ordem de cima para baixo:
 
 1. **Cabeçalho** (linha, `space-between`):
    - Esquerda: "Olá, {primeiro nome}" ✚ (`corpo` `textoSecundario`; o nome vem do
@@ -554,26 +576,36 @@ Centralizada na vertical, padding 20.
      `erro` abaixo do filtro: "Não encontramos esse lugar. Tente o bairro e a cidade." ou a mensagem
      de busca indisponível; a lista e o local anteriores continuam na tela, e o texto fica na barra
      para corrigir.
-3. 12 → **filtro** (só para quem tem gênero Feminino, como hoje): linha com Switch, ícone
+3. **Sua próxima viagem** (T43, 3.12), logo abaixo da legenda "Caronas perto de". Some quando não há
+   viagem ou as consultas falham.
+4. **Avaliações pendentes** (T30): Aviso `info` "Você tem 2 avaliações pendentes." ("1 avaliação
+   pendente") com a ação "Avaliar" (vai para a tela 17). Carregado ao focar a tela; se a consulta
+   falhar, o aviso só não aparece (sem erro).
+5. **Filtro** (só para quem tem gênero Feminino, como hoje): linha com Switch, ícone
    `female-outline` `secundariaTexto`, título "Somente mulheres", ajuda "Mostrar só caronas para
    passageiras" ✚. `accessibilityLabel` do Switch: o atual.
-4. Aviso de erro (localização ou busca) com ação "Tentar de novo".
-**Avaliações pendentes** (T30) ✚ — logo abaixo da legenda "Caronas perto de", quando há pendências:
-Aviso `info` "Você tem 2 avaliações pendentes." ("1 avaliação pendente") com a ação "Avaliar" (vai para
-a tela 17). Carregado ao focar a tela; se a consulta falhar, o aviso só não aparece (sem erro).
-
-5. 20 → contagem ✚ (`legenda`): "3 caronas · as mais perto primeiro" ("1 carona · …" no
-   singular). Some enquanto carrega.
-6. Lista de **cards de carona** (3.3), `gap` 12.
-7. **Vazio:** `EstadoVazio` ícone `car-outline`, título "Nenhuma carona por aqui" ✚, mensagem
-   "Nenhuma carona disponível perto deste ponto. Tente outro ponto ou volte mais tarde.", sem
-   botão (o botão flutuante já está na tela).
-8. **Botão flutuante** "Oferecer carona" (`add`), sempre visível.
+6. Aviso de erro (localização, busca de local ou da lista) com ação "Tentar de novo"; esqueleto enquanto
+   a lista carrega.
+7. **Grupos por dia** ✚ (T43): cabeçalho do grupo (`subtitulo` `texto`, `accessibilityRole="header"`, 12
+   a mais de espaço acima) "Hoje", "Amanhã" e, depois, o dia curto "sex 27/11", sempre no dia de
+   `America/Sao_Paulo` (23:30 de Brasília é "Hoje", mesmo já sendo o dia seguinte em UTC). Grupos em
+   ordem cronológica; dentro do grupo, por horário (empate: a mais perto primeiro, a ordem da busca).
+   Cards de carona (3.3), `gap` 12. Sem cabeçalho fixo (`stickySectionHeadersEnabled` desligado).
+   A contagem "N caronas · as mais perto primeiro" saiu: a lista não é mais pela distância.
+8. **Vazio** ✚ (T43): `EstadoVazio` (3.6) ícone `car-outline`, título "Nenhuma carona perto de {local}"
+   (o mesmo local da legenda; "Nenhuma carona por aqui" sem local), mensagem "Tente outro lugar ou
+   ofereça uma carona pelo botão abaixo." e **uma ação só**: botão primário `search-outline` "Buscar em
+   outro lugar" (volta ao topo e põe o foco na barra de busca, com o teclado aberto). Não repete
+   "Oferecer carona": o botão flutuante já está na tela, logo abaixo.
+9. **Botão flutuante** "Oferecer carona" (`add`), sempre visível, 16 acima da área segura. O fim do
+   conteúdo (último card ou estado vazio) tem `paddingBottom` = área segura + 16 + **altura medida do
+   botão** (`onLayout`, cresce com a fonte do sistema) + 16: rolando até o fim, nada fica embaixo dele.
 
 Saem do rodapé desta tela: "Meus veículos", "Meu perfil", "Sair" e o `StatusServidor` (vão para
 o Perfil). "Minhas reservas" vira o botão-ícone do cabeçalho.
 
-Hierarquia: título → chips → cards; em cada card, hora e preço são o que o olho pega primeiro.
+Hierarquia: título → busca → próxima viagem → dias → cards; em cada card, o destino, a hora e o preço são
+o que o olho pega primeiro.
 
 ### Tela 6 — Detalhes da carona ★ — `mockups/06-detalhe-carona.png`
 
