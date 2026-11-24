@@ -21,6 +21,7 @@
 - Funções `SECURITY DEFINER`: `set search_path = ''`, nomes qualificados (`public.carona`), `revoke execute ... from public, anon` e `grant` só para `authenticated` ou `service_role`, conforme o caso.
 - A chave **`service_role`** ignora a RLS: existe só dentro das Edge Functions (variável injetada pelo Supabase). Nunca no app, no repositório ou em log.
 - `PARAMETRO_CUSTO` não tem política de leitura para o app; só funções SQL e Edge Functions a usam.
+- **Storage (T44):** o bucket `fotos-perfil` é **privado** (sem URL pública), aceita só JPEG de até 1 MB e tem políticas em `storage.objects` só para ele: `authenticated` lê; INSERT/UPDATE/DELETE só em `auth.uid()::text || '/avatar.jpg'`; nada para `anon`. Nenhuma política de escrita é `using (true)`. A coluna `usuario.foto_atualizada_em` fica fora do `grant update (...)` do app: só muda pelas funções `definir_foto_perfil` (que confere se o arquivo existe) e `remover_foto_perfil`.
 
 ## Regras de negócio protegidas no backend
 
@@ -105,4 +106,5 @@ Cadastrados em GitHub → Settings → Secrets and variables → Actions → *Re
 - Telefone e e-mail do motorista não aparecem para quem não tem reserva confirmada (RLS / funções de detalhe).
 - `genero` é usado exclusivamente para a regra "somente mulheres"; não é exibido publicamente (fora da view `perfil_publico`).
 - Não registrar dados pessoais, tokens ou senhas em logs das Edge Functions.
-- Usuário pode solicitar exclusão da conta (fora do MVP, mas previsto: excluir em `auth.users` apaga o perfil em cascata).
+- Usuário pode solicitar exclusão da conta (fora do MVP, mas previsto: excluir em `auth.users` apaga o perfil em cascata). **Pendente:** a exclusão da conta precisa apagar também o arquivo `fotos-perfil/<id>/avatar.jpg` pela API do Storage (a cascata do banco não alcança o arquivo).
+- **Foto de perfil (T44):** opcional e removível (o app apaga o arquivo e chama `remover_foto_perfil`); sem foto, o app mostra as iniciais. Só usuários logados a veem. O caminho devolvido pelas funções (`foto_caminho`, `foto_motorista` = `<id_usuario>/avatar.jpg?v=...`) **contém o id do usuário**: ele já é um identificador opaco (UUID), só aparece para quem está logado (as funções e o bucket recusam `anon`), e a escrita é protegida pela RLS do Storage (cada um só escreve no próprio caminho). O bucket privado exige o token da sessão para baixar.

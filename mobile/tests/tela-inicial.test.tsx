@@ -53,6 +53,7 @@ const CARONA: CaronaResumo = {
   valorPorPassageiroCentavos: 600,
   media_motorista: 4,
   total_avaliacoes_motorista: 1,
+  foto_motorista: null,
 };
 
 const cardsDeCarona = () => screen.queryAllByRole('button', { name: /^Para .*motorista/ });

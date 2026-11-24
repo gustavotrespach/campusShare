@@ -452,10 +452,14 @@ select results_eq(
 );
 reset role;
 
+-- Prefixo: versões depois da T30 só acrescentam colunas no fim (T44: foto_caminho)
 select is(
-  pg_get_function_result('public.perfil_publico(uuid)'::regprocedure),
-  'TABLE(id_usuario uuid, nome text, media_avaliacoes numeric, total_avaliacoes integer)',
-  'perfil_publico não devolve e-mail, telefone nem gênero'
+  left(
+    pg_get_function_result('public.perfil_publico(uuid)'::regprocedure),
+    length('TABLE(id_usuario uuid, nome text, media_avaliacoes numeric, total_avaliacoes integer')
+  ),
+  'TABLE(id_usuario uuid, nome text, media_avaliacoes numeric, total_avaliacoes integer',
+  'perfil_publico não devolve e-mail, telefone nem gênero (contrato da T30 no começo)'
 );
 
 -- ============================================================

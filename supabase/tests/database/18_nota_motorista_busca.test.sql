@@ -91,13 +91,21 @@ select is(
     || 'p_data date DEFAULT NULL::date, p_pagina integer DEFAULT 1',
   'mesmos parâmetros e padrões da T18'
 );
+-- Prefixo: versões depois da T43 só acrescentam colunas no fim (T44: foto_motorista)
 select is(
-  pg_get_function_result('public.buscar_caronas(numeric, numeric, numeric, boolean, date, int)'::regprocedure),
+  left(
+    pg_get_function_result('public.buscar_caronas(numeric, numeric, numeric, boolean, date, int)'::regprocedure),
+    length('TABLE(id_carona uuid, origem text, origem_lat numeric, origem_lng numeric, destino text, '
+    || 'destino_lat numeric, destino_lng numeric, data_hora_partida timestamp with time zone, '
+    || 'vagas_disponiveis integer, tolerancia_min integer, somente_mulheres boolean, '
+    || 'distancia_km numeric, valor_por_passageiro numeric, nome_motorista text, modelo text, '
+    || 'cor text, media_motorista numeric, total_avaliacoes_motorista integer')
+  ),
   'TABLE(id_carona uuid, origem text, origem_lat numeric, origem_lng numeric, destino text, '
     || 'destino_lat numeric, destino_lng numeric, data_hora_partida timestamp with time zone, '
     || 'vagas_disponiveis integer, tolerancia_min integer, somente_mulheres boolean, '
     || 'distancia_km numeric, valor_por_passageiro numeric, nome_motorista text, modelo text, '
-    || 'cor text, media_motorista numeric, total_avaliacoes_motorista integer)',
+    || 'cor text, media_motorista numeric, total_avaliacoes_motorista integer',
   'mesmas colunas e ordem da T18, mais media_motorista e total_avaliacoes_motorista no fim (sem id, e-mail, telefone ou gênero do motorista)'
 );
 select ok(
