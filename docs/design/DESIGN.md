@@ -425,6 +425,22 @@ O desenho da marca no app: anel de origem, linha, ponto coral de destino.
 
 ---
 
+### 3.10 Reputação (`Reputacao.tsx`, T30) ✚
+
+Linha com `star` 14 `secundaria` (gráfico; o coral não é texto) + "4,3 · 12 avaliações" (`legenda` 600
+`texto`, numérico), `gap` 4. Vírgula decimal, 1 casa ("5,0"), singular certo ("1 avaliação"). Sem
+avaliações (média nula ou total 0): só o texto "Sem avaliações ainda" (`legenda` `textoSecundario`),
+sem estrela. Lida como um elemento: "Nota média 4,3 de 5, 12 avaliações". Usada no card do motorista
+(tela 6) e no topo do Perfil (tela 10).
+
+### 3.11 Seletor de nota (`SeletorNota.tsx`, T30) ✚
+
+Rótulo "Nota" (`rotulo`) → linha de 5 estrelas, `gap` 4: cada uma é um alvo de 44 × 44 (raio `pilula`,
+pressionado `superficieAlternativa`) com `star` 32 `secundaria` até a nota escolhida e `star-outline`
+32 `bordaForte` depois (3,68:1, componente). Leitor de tela: grupo "Nota" (`radiogroup`), cada estrela
+`radio` "Nota N de 5" com `selected` na escolhida. Abaixo, `legenda`: "Toque numa estrela." ou "4 de 5".
+Sem biblioteca: Ionicons.
+
 ## 4. Telas
 
 Fundo de todas as telas: `fundo`. Gutter 20. Entre blocos: 16 (12 entre cards de lista).
@@ -539,6 +555,10 @@ Centralizada na vertical, padding 20.
    `female-outline` `secundariaTexto`, título "Somente mulheres", ajuda "Mostrar só caronas para
    passageiras" ✚. `accessibilityLabel` do Switch: o atual.
 4. Aviso de erro (localização ou busca) com ação "Tentar de novo".
+**Avaliações pendentes** (T30) ✚ — logo abaixo da legenda "Caronas perto de", quando há pendências:
+Aviso `info` "Você tem 2 avaliações pendentes." ("1 avaliação pendente") com a ação "Avaliar" (vai para
+a tela 17). Carregado ao focar a tela; se a consulta falhar, o aviso só não aparece (sem erro).
+
 5. 20 → contagem ✚ (`legenda`): "3 caronas · as mais perto primeiro" ("1 carona · …" no
    singular). Some enquanto carrega.
 6. Lista de **cards de carona** (3.3), `gap` 12.
@@ -577,7 +597,8 @@ Hierarquia: título → chips → cards; em cada card, hora e preço são o que 
 5. **Card do motorista:** Avatar 48 → coluna: "Motorista" (`legenda`), "Ana Souza"
    (`corpoForte`), `shield-checkmark` 14 + "E-mail institucional confirmado" ✚ (`legenda` em
    600, cor `sucesso`). Todo usuário com acesso confirmou o e-mail, então o selo é sempre
-   verdadeiro. → divisória → `car-outline` 22 `textoSecundario` + "Onix · prata" (`corpo`) +
+   verdadeiro. Abaixo, a reputação do motorista (3.10, T30): "★ 4,3 · 12 avaliações" ou "Sem
+   avaliações ainda". → divisória → `car-outline` 22 `textoSecundario` + "Onix · prata" (`corpo`) +
    placa à direita (3.9).
 6. Erro da reserva: Aviso `erro` com a mensagem; se o erro for `RESERVA_DUPLICADA`, ação
    "Ver minhas reservas".
@@ -588,6 +609,14 @@ Hierarquia: título → chips → cards; em cada card, hora e preço são o que 
    R$ 6,00? O pagamento é por Pix.", botões "Cancelar" e "Reservar".
 
 Erro de carregamento: estado comum, com ação "Voltar".
+
+**Concluir carona** (T30) ✚ — só para o motorista, quando a carona aparece como "Já partiu" (`ABERTA`/
+`LOTADA` depois da partida; o app não calcula o prazo de 1 dia): no fim da rolagem, divisória → Aviso
+`erro` (falha, com o `hint`, ex.: CONCLUSAO_ENCERRADA) → botão **primário** `flag-outline` "Concluir
+carona". Confirmação por `Alert`: "Concluir carona" / "Confirme que a viagem aconteceu. Depois de
+concluída, você e os passageiros podem se avaliar.", botões "Voltar" (`cancel`) e "Concluir carona".
+Sucesso: Aviso `sucesso` "Carona concluída." no topo, anunciado, e a tela recarrega com "Situação:
+Concluída.".
 
 **Cancelar carona** (T28) ✚ — só para o motorista (`sou_motorista`), com a carona `ABERTA`/`LOTADA` e
 partida futura: no fim da rolagem, divisória → Aviso `erro` (se o cancelamento falhar, com o `hint`
@@ -720,7 +749,8 @@ anteriores fica logo abaixo.
 Header "Meu perfil". Rolável, `gap` 16.
 
 1. **Topo** ✚: Avatar 72 centralizado, nome (`subtitulo`), e embaixo SeloStatus-like verde:
-   `shield-checkmark` + "E-mail institucional confirmado" (`legenda` 600 `sucesso`).
+   `shield-checkmark` + "E-mail institucional confirmado" (`legenda` 600 `sucesso`); abaixo, a
+   própria reputação (3.10, T30), como os outros a veem (some se a consulta falhar).
 2. **Card "Seus dados"** ✚: campos somente leitura "E-mail institucional" e "Instituição" + nota
    "E-mail e instituição vêm do cadastro e não podem ser alterados." (`legenda`); campos
    editáveis "Nome completo", "Telefone (opcional)"; `SeletorGenero`; Aviso de retorno
@@ -730,6 +760,7 @@ Header "Meu perfil". Rolável, `gap` 16.
    - `car-outline` "Meus veículos"
    - `map-outline` "Minhas caronas" ✚ (T28, tela 16)
    - `receipt-outline` "Minhas reservas"
+   - `star-outline` "Avaliações pendentes" ✚ (T30, tela 17)
 4. Botão `texto` com `log-out-outline` "Sair" em cor `erro` (`carregando` enquanto sai).
 5. `StatusServidor` no rodapé, em `legenda`, centralizado (ferramenta de desenvolvimento).
 
@@ -785,6 +816,43 @@ saindo de Centro, Torres, dom 18/10 · 12:30, Aberta, 2 de 3 vagas livres".
 "Você ainda não ofereceu caronas" ("Nenhuma carona próxima" quando só há anteriores), mensagem "As
 caronas que você oferecer aparecem aqui, com as vagas e o status de cada uma.", botão primário `add`
 "Oferecer carona" (vai para a tela 7); o botão das anteriores fica logo abaixo.
+
+### Tela 17 — Avaliações pendentes (`avaliacoes/index.tsx`) ✚ (T30)
+
+Header "Avaliações pendentes". Acesso pelo aviso do Início e pelo atalho do Perfil. `FlatList`, `gap` 12,
+puxar para atualizar; recarrega ao voltar da tela 18. Itens de `avaliacoes_pendentes` (a partida mais
+recente antes).
+
+**Card:** container do card (3.3), padding 12/16, `gap` 4.
+1. Linha: coluna com "Avaliar Marcos" (`subtitulo`) e "seu motorista" / "seu passageiro" (`apoio`
+   `textoSecundario`) + `star-outline` 22 `primaria` à direita.
+2. "Para ULBRA Torres" (`corpo`, nome curto da T41).
+3. "seg 23/11 · 09:00" (`corpoForte`, numérico): a partida.
+4. Linha: "Avaliar até seg 30/11 · 09:00" (`legenda`) + `chevron-forward` 18 `textoSutil`.
+
+`accessibilityLabel`: "Avaliar Marcos, seu motorista, carona para ULBRA Torres em seg 23/11 · 09:00,
+avaliar até seg 30/11 · 09:00". Tocar abre a tela 18.
+
+Topo da lista: Aviso `sucesso` "Avaliação enviada." quando a tela 18 acabou de enviar (aparece uma vez).
+**Carregando:** 3 esqueletos. **Erro:** estado comum. **Vazio:** `EstadoVazio` `star-outline`, "Nenhuma
+avaliação pendente", "Depois que uma carona é concluída, você pode avaliar quem viajou com você por 7
+dias.", sem botão.
+
+### Tela 18 — Avaliar (`avaliacoes/[idReserva].tsx`) ✚ (T30)
+
+Header "Avaliar". `ScrollView` com teclado (`KeyboardAvoidingView`), `gap` 20.
+1. "Avaliar Marcos" (`titulo`) + "seu motorista na carona para ULBRA Torres, seg 23/11 · 09:00" (`apoio`
+   `textoSecundario`).
+2. SeletorNota (3.11).
+3. Campo "Comentário (opcional)" (3.2, várias linhas, 96 de altura mínima, texto no topo), placeholder
+   "Como foi a viagem?", ajuda = contador "37/500", `maxLength` 500.
+4. Aviso `erro` (falha, com o `hint`: prazo, duplicada…).
+5. Botão primário "Enviar avaliação", **desabilitado sem nota**, `carregando` no envio.
+6. `legenda` centralizada: "Avalie até seg 30/11 · 09:00. Cada carona é avaliada uma vez."
+
+Sucesso: anuncia "Avaliação enviada.", volta para a tela 17, que mostra o aviso. Reserva que não está
+mais nas pendentes (já avaliada ou fora do prazo): `EstadoVazio` `star-outline` "Avaliação
+indisponível", "Esta avaliação já foi feita ou o prazo para avaliar terminou.", botão "Voltar".
 
 ### Tela 15 — Ícone e splash
 
