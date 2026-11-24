@@ -43,6 +43,8 @@ describe('Meu perfil (tela 10)', () => {
 
     await fireEvent.press(screen.getByRole('button', { name: /Meus veículos/ }));
     expect(router.push).toHaveBeenCalledWith('/veiculos');
+    await fireEvent.press(screen.getByRole('button', { name: /Minhas caronas/ }));
+    expect(router.push).toHaveBeenCalledWith('/caronas/minhas');
     await fireEvent.press(screen.getByRole('button', { name: /Minhas reservas/ }));
     expect(router.push).toHaveBeenCalledWith('/reservas');
     await fireEvent.press(screen.getByRole('button', { name: /Sair/ }));

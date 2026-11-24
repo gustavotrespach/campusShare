@@ -168,9 +168,11 @@ Nota (17/10, T22): no sandbox, a order com pagador `APRO` termina em `processed/
 Nota (17/10, T23): feita (migration `confirmar_pagamento`, pgTAP `12_confirmar_pagamento`, `deno test`); verificada no local com notificações assinadas de verdade. O teste com o Mercado Pago chamando o webhook depende da release (secrets e URL no painel).
 
 ### T24 — Expiração de reservas pendentes
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T21
+Status: feito · Responsável: Gustavo Trespach · Depende de: T21
 Descrição: Função `expirar_reservas()` agendada no pg_cron a cada minuto: marca `EXPIRADA` a reserva `PENDENTE` vencida (15 minutos desde `reserva.criado_em`, decisão do Gustavo em 21/11) e devolve a vaga (RN16).
 Aceite: reserva não paga após o prazo libera a vaga automaticamente (pgTAP chamando a função com reserva antiga).
+Nota (21/11, Parte A): PR #63. Migration `20261121154122_expirar_reservas`: `pg_cron` em `pg_catalog`, `prazo_reserva_pendente()` (15 min), `expirar_reservas()` (`SECURITY DEFINER`, só job e `service_role`; trava carona → reserva → pagamento e confere de novo), índice parcial das `PENDENTE` e job `expirar-reservas` (`* * * * *`, upsert pelo nome). pgTAP `14_expirar_reservas` (31 testes, 413 no total). A `confirmar_pagamento` já trata Pix pago depois da expiração (`REEMBOLSO_PENDENTE`, sem mexer na vaga). O prazo do QR no Mercado Pago ficou pendente (documentação não fecha os limites para Pix).
+Nota (23/11, Parte B): release #64; o workflow Deploy aplicou a `20261121154122` no remoto (`db push` sem erro no pg_cron) e a `health` respondeu 200; o `migration list` do Manter ativo mostra local = remoto até a `20261121154122`. Edge Functions sem mudança de código (o CLI reimplantou a `reservar-vaga` com o mesmo código-fonte; `health` 200, `reservar-vaga` e `webhook-mercado-pago` 401 sem credenciais, como antes).
 
 ### T25 — Telas de reserva e pagamento
 Status: feito · Responsável: Gustavo Trespach · Depende de: T22, T23
@@ -192,9 +194,13 @@ Status: adiada (pós-AP2) · Depende de: T26
 Aceite: motorista escolhe origem/destino no mapa; detalhe mostra a rota.
 
 ### T28 — Cancelar carona e reserva (US06)
-Status: adiada (pós-AP2) · Depende de: T23
+Status: em andamento · Responsável: Gustavo Trespach · Depende de: T23
+Partes: **backend** (funções `cancelar_reserva` e `cancelar_carona`, Fase 29, branch `feature/T28-cancelamentos-backend`) e **app** (botões de cancelar e a tela "Minhas caronas", Fase 30, em outra branch).
+Regra (Gustavo, 23/11): o passageiro cancela reserva `CONFIRMADA` até 2 horas antes da partida e reserva `PENDENTE` até a partida (RN20); o motorista cancela a carona até a partida, sem o limite de 2 h (RN07).
 Descrição: Funções RPC `cancelar_carona` e `cancelar_reserva`, devolvendo vagas na mesma transação; pagamentos aprovados passam a `REEMBOLSO_PENDENTE`.
 Aceite: cancelamento da carona cancela todas as reservas ativas; só o dono cancela.
+Nota (23/11, parte backend): PR #66. `cancelar_reserva` (RN20) e `cancelar_carona` (RN07), `SECURITY DEFINER` só para `authenticated`, locks carona → reservas → pagamentos; pgTAP `15_cancelamentos` (55 testes).
+Nota (23/11, parte app): services `cancelarReserva`, `cancelarCarona` e `listarMinhasCaronas`; botão "Cancelar reserva" no detalhe da reserva e "Cancelar carona" no detalhe da carona (motorista), com confirmação, resultado anunciado ao leitor de tela e o `hint` do backend no erro; tela nova "Minhas caronas" com atalho no Perfil; selos dos status de carona. O app não calcula o prazo de 2 h. 33 testes novos (367 no total). Falta conferir no aparelho, merge, release e EAS Update.
 
 ### T29 — Notificações (US06)
 Status: adiada (pós-AP2) · Depende de: T28

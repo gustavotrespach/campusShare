@@ -1,11 +1,12 @@
 // Aparência de cada selo de status (DESIGN.md §3.4). A cor nunca é a única pista: todo selo tem
 // ícone e texto. Os rótulos de reserva vêm de rotuloStatusReserva, para não duplicar textos.
+// Os status de carona (T28, Minhas caronas) dividem o CANCELADA com a reserva: mesmo selo.
 import type { NomeIcone } from '@/components/icones';
 import { tema } from '@/tema';
 
-import { rotuloStatusReserva, type StatusReserva } from './reserva';
+import { rotuloStatusReserva, type StatusCarona, type StatusReserva } from './reserva';
 
-export type TipoSelo = StatusReserva | 'SOMENTE_MULHERES';
+export type TipoSelo = StatusReserva | StatusCarona | 'SOMENTE_MULHERES';
 
 export interface AparenciaSelo {
   rotulo: string;
@@ -21,6 +22,9 @@ const VISUAL: Record<TipoSelo, Omit<AparenciaSelo, 'rotulo'>> = {
   CONFIRMADA: { icone: 'checkmark-circle', fundo: cores.sucessoClaro, cor: cores.sucesso },
   CANCELADA: { icone: 'close-circle', fundo: cores.erroClaro, cor: cores.erro },
   EXPIRADA: { icone: 'hourglass-outline', fundo: cores.neutroClaro, cor: cores.neutro },
+  ABERTA: { icone: 'lock-open-outline', fundo: cores.primariaClara, cor: cores.primaria },
+  LOTADA: { icone: 'people', fundo: cores.alertaClaro, cor: cores.alerta },
+  CONCLUIDA: { icone: 'flag-outline', fundo: cores.neutroClaro, cor: cores.neutro },
   SOMENTE_MULHERES: {
     icone: 'female-outline',
     fundo: cores.secundariaClara,
@@ -28,7 +32,20 @@ const VISUAL: Record<TipoSelo, Omit<AparenciaSelo, 'rotulo'>> = {
   },
 };
 
+const ROTULO_PROPRIO: Partial<Record<TipoSelo, string>> = {
+  ABERTA: 'Aberta',
+  LOTADA: 'Lotada',
+  CONCLUIDA: 'Concluída',
+  SOMENTE_MULHERES: 'Somente mulheres',
+};
+
+function ehStatusReserva(tipo: TipoSelo): tipo is StatusReserva {
+  return (
+    tipo === 'PENDENTE' || tipo === 'CONFIRMADA' || tipo === 'CANCELADA' || tipo === 'EXPIRADA'
+  );
+}
+
 export function aparenciaSelo(tipo: TipoSelo): AparenciaSelo {
-  const rotulo = tipo === 'SOMENTE_MULHERES' ? 'Somente mulheres' : rotuloStatusReserva(tipo);
+  const rotulo = ehStatusReserva(tipo) ? rotuloStatusReserva(tipo) : (ROTULO_PROPRIO[tipo] ?? tipo);
   return { rotulo, ...VISUAL[tipo] };
 }

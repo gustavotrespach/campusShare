@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Alert,
   Image,
   ScrollView,
   StyleSheet,
@@ -14,12 +15,24 @@ import {
 
 import { Aviso } from '@/components/Aviso';
 import { Botao } from '@/components/Botao';
+import { Divisoria } from '@/components/Divisoria';
 import { SeloStatus } from '@/components/SeloStatus';
 import { normalizarErro } from '@/services/erros';
-import { consultarStatusReserva, type SituacaoReserva } from '@/services/reservas';
+import {
+  cancelarReserva,
+  consultarStatusReserva,
+  listarMinhasReservas,
+  type MinhaReserva,
+  type SituacaoReserva,
+} from '@/services/reservas';
 import { descartarPix, obterPix } from '@/store/pix';
 import { tema } from '@/tema';
 import { acompanharReserva } from '@/utils/acompanhamento-reserva';
+import {
+  confirmacaoCancelarReserva,
+  mensagemReservaCancelada,
+  podeCancelarReserva,
+} from '@/utils/cancelamento';
 import { formatarReais } from '@/utils/dinheiro';
 import { confirmouAgora, reservaEmAberto, type StatusReserva } from '@/utils/reserva';
 
@@ -40,6 +53,12 @@ export default function TelaPagamentoReserva() {
   const pararAcompanhamento = useRef<(() => void) | null>(null);
   const statusAnterior = useRef<StatusReserva | null>(null);
   const temporizadorCopiado = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Partida e status da carona (minhas_reservas): o passageiro não lê a tabela carona
+  const [reservaDaLista, setReservaDaLista] = useState<MinhaReserva | null>(null);
+  const [cancelando, setCancelando] = useState(false);
+  const [erroCancelamento, setErroCancelamento] = useState<string | null>(null);
+  // Cancelada nesta tela: a frase do resultado (o status passa a CANCELADA sem esperar o polling)
+  const [cancelamentoFeito, setCancelamentoFeito] = useState<string | null>(null);
 
   const acompanhar = useCallback(() => {
     pararAcompanhamento.current?.();
@@ -74,6 +93,24 @@ export default function TelaPagamentoReserva() {
     }, [acompanhar]),
   );
 
+  useEffect(() => {
+    let ativo = true;
+    const carregar = async () => {
+      try {
+        const reservas = await listarMinhasReservas();
+        if (ativo) {
+          setReservaDaLista(reservas.find((reserva) => reserva.id_reserva === id) ?? null);
+        }
+      } catch {
+        // Sem a partida, o botão de cancelar não aparece; o resto da tela segue igual
+      }
+    };
+    void carregar();
+    return () => {
+      ativo = false;
+    };
+  }, [id]);
+
   useEffect(
     () => () => {
       if (temporizadorCopiado.current !== null) {
@@ -103,9 +140,65 @@ export default function TelaPagamentoReserva() {
     );
   }
 
-  const status = situacao?.statusReserva ?? 'PENDENTE';
+  const status: StatusReserva = cancelamentoFeito
+    ? 'CANCELADA'
+    : (situacao?.statusReserva ?? 'PENDENTE');
   const valorCentavos = situacao?.valorCentavos ?? reservaCriada?.valorCentavos ?? null;
   const valor = valorCentavos !== null ? formatarReais(valorCentavos) : null;
+
+  const exibirCancelar =
+    !cancelamentoFeito &&
+    reservaDaLista !== null &&
+    podeCancelarReserva({
+      statusReserva: status,
+      statusCarona: reservaDaLista.status_carona,
+      partida: reservaDaLista.data_hora_partida,
+    });
+
+  const cancelar = async () => {
+    const anterior = status;
+    setCancelando(true);
+    setErroCancelamento(null);
+    try {
+      await cancelarReserva(id);
+      // Reserva encerrada: o polling para e o Pix em memória não serve mais
+      pararAcompanhamento.current?.();
+      pararAcompanhamento.current = null;
+      descartarPix(id);
+      const mensagem = mensagemReservaCancelada(anterior);
+      setCancelamentoFeito(mensagem);
+      AccessibilityInfo.announceForAccessibility(mensagem);
+    } catch (falha) {
+      // A frase vem do backend (ex.: prazo de 2 h da reserva paga, RN20)
+      const mensagem = normalizarErro(falha).message;
+      setErroCancelamento(mensagem);
+      AccessibilityInfo.announceForAccessibility(mensagem);
+    } finally {
+      setCancelando(false);
+    }
+  };
+
+  const confirmarCancelamento = () => {
+    Alert.alert('Cancelar reserva', confirmacaoCancelarReserva(status), [
+      { text: 'Voltar', style: 'cancel' },
+      { text: 'Cancelar reserva', style: 'destructive', onPress: () => void cancelar() },
+    ]);
+  };
+
+  // Separado do resto por uma divisória; o erro fica logo acima do botão
+  const acaoCancelar = exibirCancelar ? (
+    <View style={estilos.cancelamento}>
+      <Divisoria />
+      {erroCancelamento ? <Aviso mensagem={erroCancelamento} /> : null}
+      <Botao
+        titulo="Cancelar reserva"
+        icone="close-circle-outline"
+        variante="perigo"
+        carregando={cancelando}
+        onPress={confirmarCancelamento}
+      />
+    </View>
+  ) : null;
 
   if (status === 'CONFIRMADA') {
     return (
@@ -131,6 +224,7 @@ export default function TelaPagamentoReserva() {
           />
           <Botao titulo="Voltar ao início" variante="texto" onPress={() => router.navigate('/')} />
         </View>
+        {acaoCancelar}
       </ScrollView>
     );
   }
@@ -151,13 +245,17 @@ export default function TelaPagamentoReserva() {
 
       {status === 'CANCELADA' || status === 'EXPIRADA' ? (
         <>
-          <Aviso
-            mensagem={
-              status === 'EXPIRADA'
-                ? 'Esta reserva expirou porque o pagamento não foi feito a tempo.'
-                : 'Esta reserva foi cancelada.'
-            }
-          />
+          {cancelamentoFeito ? (
+            <Aviso tipo="sucesso" mensagem={cancelamentoFeito} />
+          ) : (
+            <Aviso
+              mensagem={
+                status === 'EXPIRADA'
+                  ? 'Esta reserva expirou porque o pagamento não foi feito a tempo.'
+                  : 'Esta reserva foi cancelada.'
+              }
+            />
+          )}
           <Botao
             titulo="Buscar outra carona"
             variante="secundario"
@@ -210,6 +308,7 @@ export default function TelaPagamentoReserva() {
           <Text style={estilos.legenda}>Pagamento processado pelo Mercado Pago.</Text>
         </View>
       ) : null}
+      {acaoCancelar}
     </ScrollView>
   );
 }
@@ -300,4 +399,6 @@ const estilos = StyleSheet.create({
     marginTop: tema.espaco.x4,
   },
   acoesConfirmada: { alignSelf: 'stretch', gap: tema.espaco.x3, marginTop: tema.espaco.x8 },
+  // Esticado também na tela de confirmada, que centraliza o conteúdo
+  cancelamento: { alignSelf: 'stretch', gap: tema.espaco.x4, marginTop: tema.espaco.x4 },
 });
