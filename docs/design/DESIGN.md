@@ -324,6 +324,10 @@ O texto vem de `rotuloStatusReserva` (já existe), para não duplicar rótulos.
 | ABERTA (carona) ✚ | `primariaClara` | `primaria` | `lock-open-outline` | Aberta |
 | LOTADA (carona) ✚ | `alertaClaro` | `alerta` | `people` | Lotada |
 | CONCLUIDA (carona) ✚ | `neutroClaro` | `neutro` | `flag-outline` | Concluída |
+| JA_PARTIU (carona) ✚ | `neutroClaro` | `neutro` | `exit-outline` | Já partiu |
+
+"Já partiu" (T41) é só exibição: carona `ABERTA` ou `LOTADA` com a partida no passado (o banco só muda
+o status com a conclusão, T30). Vale nas listas e nos detalhes da carona e da reserva.
 
 A cor nunca é a única pista: todo selo tem ícone e texto.
 
@@ -553,7 +557,8 @@ Hierarquia: título → chips → cards; em cada card, hora e preço são o que 
 `ScrollView` (`paddingBottom` = altura da barra + 16) + barra de ação inferior fixa.
 
 1. Avisos no topo, se for o caso (Aviso `info`): "Esta é a sua carona." /
-   "Situação: Lotada." (ou Cancelada, Concluída).
+   "Situação: Lotada." (ou Cancelada, Concluída; "Já partiu" quando a carona aberta ou lotada já
+   passou da partida, T41).
 2. **Card da viagem:** data completa sem a hora, "domingo, 18/10/2026" (`legenda`) → linha com
    "12:30" (`display`, numérico) + "Horário de Brasília" (`legenda`, alinhado pela base) →
    divisória → LinhaRota completa: "Origem" / Centro de Torres, "Destino" / ULBRA Torres.
@@ -657,6 +662,9 @@ Leitor de tela: ao mudar para CONFIRMADA, anunciar "Pagamento confirmado! Sua va
 garantida." (`AccessibilityInfo.announceForAccessibility`). Vibração curta opcional
 (`Vibration.vibrate(50)`, nativo, sem biblioteca).
 
+**"Já partiu"** (T41) ✚ — com a carona aberta ou lotada já depois da partida, o selo "Já partiu" (§3.4)
+entra ao lado do selo da reserva, no bloco do topo (8a) e na linha do selo (8b).
+
 **Cancelar reserva** (T28) ✚ — em 8a e 8b, quando a reserva está `PENDENTE` ou `CONFIRMADA` e a carona
 está `ABERTA`/`LOTADA` com partida futura (partida e status vêm da `minhas_reservas`): no fim,
 divisória → Aviso `erro` (falha, com o `hint` do backend, ex.: "Reservas pagas só podem ser
@@ -675,23 +683,37 @@ cancelada."; botão secundário "Buscar outra carona" ✚ (vai para o Início).
 
 ### Tela 9 — Minhas reservas ★ — `mockups/09-minhas-reservas.png`
 
-Header "Minhas reservas". `FlatList`, `gap` 12, puxar para atualizar.
+Header "Minhas reservas". `SectionList` (`ListaPorPartida`, igual à tela 16), puxar para atualizar.
+O mockup 09 é anterior à T41: o card e as seções abaixo valem no lugar dele.
 
-**Card de reserva** (`ItemReserva`): container do card (3.3) com padding 14/16, `gap` 10.
+**Seções (T41)** ✚:
+- **"Próximas"** (`subtitulo`): reserva `PENDENTE`/`CONFIRMADA` com a carona `ABERTA`/`LOTADA` e partida
+  futura, da mais perto para a mais distante. Sem nenhuma, o título some e entra o estado vazio.
+- **"Anteriores"**: o resto (partida passada, reserva cancelada ou expirada, carona cancelada ou
+  concluída), da mais recente para a mais antiga. Começa **recolhida**: botão `texto` com
+  `chevron-down` "Ver anteriores (N)" (leitor de tela: "Ver 3 reservas anteriores"); aberta, título
+  "Anteriores" e o botão vira "Ocultar anteriores" (`chevron-up`). Sem nenhuma anterior, nada aparece.
+  O estado aberto/recolhido fica só em memória. 24 de espaço antes da seção.
 
-1. Linha: SeloStatus (esquerda) + valor "R$ 6,00" (`corpoForte`, numérico, direita).
-2. "dom 18/10 · 12:30" (`corpoForte`, numérico).
-3. LinhaRota em linha: "Centro de Torres → ULBRA Torres".
-4. Linha: "Motorista: Ana Souza" (`legenda`) + `chevron-forward` 18 `textoSutil` à direita.
-5. Só PENDENTE ✚: divisória + linha "Pagar com Pix" (`corpoForte` `primaria`) + `chevron-forward`
+**Card de reserva** (`ItemReserva`): container do card (3.3) com padding 12/16, `gap` 4, 12 entre cards.
+
+1. Linha: "Para ULBRA Torres" (`subtitulo`, até 2 linhas, `flex: 1`) + SeloStatus da reserva à
+   direita. O nome é o curto, sem o sufixo de UF (`nomeCurtoLocal`).
+2. "Saindo de Centro, Torres" (`apoio` `textoSecundario`, 1 linha).
+3. Linha: "dom 18/10 · 12:30" (`corpoForte`, numérico) + valor "R$ 6,00" (`corpoForte`, numérico,
+   direita).
+4. Linha: "Motorista: Ana" (`legenda`) + `chevron-forward` 18 `textoSutil` à direita.
+5. Só PENDENTE: divisória + linha "Pagar com Pix" (`corpoForte` `primaria`) + `chevron-forward`
    20 `primaria`. Substitui o chevron do item 4.
 
-Expirada e Cancelada: data, trajeto e valor em `textoSecundario` (o selo continua colorido).
-O card inteiro abre o pagamento, como hoje (`accessibilityHint` atual).
+Anteriores: título, data e valor em `textoSecundario` (o selo continua colorido). O card inteiro abre
+o pagamento (`accessibilityHint` atual). `accessibilityLabel` ✚: "Para ULBRA Torres, saindo de Centro,
+Torres, dom 18/10 · 12:30, Confirmada, R$ 6,00".
 
-**Vazio** (9b): `EstadoVazio` ícone `ticket-outline`, título "Nenhuma reserva ainda" ✚, mensagem
-"Você ainda não tem reservas. Encontre uma carona na tela inicial.", botão primário
-`search-outline` "Buscar caronas" ✚ (`router.navigate('/')`).
+**Vazio** (9b): `EstadoVazio` ícone `ticket-outline`, título "Nenhuma reserva ainda" ✚ ("Nenhuma reserva
+próxima" quando só há anteriores), mensagem "Você ainda não tem reservas. Encontre uma carona na tela
+inicial.", botão primário `search-outline` "Buscar caronas" ✚ (`router.navigate('/')`); o botão das
+anteriores fica logo abaixo.
 
 ### Tela 10 — Meu perfil (`perfil.tsx`)
 
@@ -739,27 +761,30 @@ Só em Editar: divisória 1 `borda` com 24 acima e abaixo → Aviso de erro da e
 **perigo** `trash-outline` "Excluir veículo" (hoje é secundário) → `Alert` atual: "Excluir
 veículo", "Excluir Onix (IYK4B21)?", botões "Cancelar" e "Excluir" (`destructive`).
 
-### Tela 16 — Minhas caronas (`caronas/minhas.tsx`) ✚ (T28)
+### Tela 16 — Minhas caronas (`caronas/minhas.tsx`) ✚ (T28, T41)
 
-Header "Minhas caronas". Acesso pelo atalho do Perfil (tela 10). `FlatList`, `gap` 12, puxar para
-atualizar; recarrega ao voltar do detalhe (a carona pode ter sido cancelada). Mesmo padrão da tela 9.
+Header "Minhas caronas". Acesso pelo atalho do Perfil (tela 10). Mesmas seções da tela 9
+(`ListaPorPartida`): **"Próximas"** (carona `ABERTA`/`LOTADA` com partida futura, a mais perto antes) e
+**"Anteriores"** recolhida ("Ver anteriores (N)" / "Ocultar anteriores"; leitor de tela: "Ver 2
+caronas anteriores"). Puxar para atualizar; recarrega ao voltar do detalhe (a carona pode ter sido
+cancelada).
 
-**Card de carona do motorista:** container do card (3.3) com padding 12/16, `gap` 8.
+**Card de carona do motorista:** container do card (3.3) com padding 12/16, `gap` 4.
 
-1. SeloStatus da carona (Aberta, Lotada, Cancelada, Concluída).
-2. "dom 18/10 · 12:30" (`corpoForte`, numérico).
-3. LinhaRota em linha: "Centro de Torres → ULBRA Torres".
+1. Linha: "Para ULBRA Torres" (`subtitulo`, até 2 linhas) + SeloStatus à direita: Aberta, Lotada,
+   Cancelada, Concluída ou **Já partiu** (aberta ou lotada depois da partida).
+2. "Saindo de Centro, Torres" (`apoio` `textoSecundario`).
+3. "dom 18/10 · 12:30" (`corpoForte`, numérico).
 4. Linha: "2 de 3 vagas livres" (`legenda`) + `chevron-forward` 18 `textoSutil` à direita.
 
-Ordem: em andamento (`ABERTA`/`LOTADA` com partida futura) primeiro, a mais próxima antes; depois as
-passadas, canceladas e concluídas, a mais recente antes. Estas ficam com data e trajeto em
-`textoSecundario` (o selo continua colorido). Tocar abre o Detalhe da carona (tela 6), onde o
-motorista pode cancelar. `accessibilityLabel` do card: "Aberta, dom 18/10 · 12:30, de Centro de
-Torres para ULBRA Torres, 2 de 3 vagas livres".
+Anteriores com título e data em `textoSecundario` (o selo continua colorido). Tocar abre o Detalhe
+da carona (tela 6), onde o motorista pode cancelar. `accessibilityLabel` do card: "Para ULBRA Torres,
+saindo de Centro, Torres, dom 18/10 · 12:30, Aberta, 2 de 3 vagas livres".
 
 **Carregando:** 3 esqueletos. **Erro:** estado comum. **Vazio:** `EstadoVazio` `car-outline`, título
-"Você ainda não ofereceu caronas", mensagem "As caronas que você oferecer aparecem aqui, com as vagas
-e o status de cada uma.", botão primário `add` "Oferecer carona" (vai para a tela 7).
+"Você ainda não ofereceu caronas" ("Nenhuma carona próxima" quando só há anteriores), mensagem "As
+caronas que você oferecer aparecem aqui, com as vagas e o status de cada uma.", botão primário `add`
+"Oferecer carona" (vai para a tela 7); o botão das anteriores fica logo abaixo.
 
 ### Tela 15 — Ícone e splash
 
