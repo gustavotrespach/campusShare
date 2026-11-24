@@ -5,7 +5,6 @@ import { formatarDataLonga, formatarDiaCurto, formatarHora } from '@/utils/data-
 import {
   descreverCarona,
   descreverVeiculo,
-  textoContagemCaronas,
   textoDistancia,
   textoVagas,
 } from '@/utils/exibicao-carona';
@@ -71,6 +70,9 @@ describe('textos do card de carona', () => {
     valorPorPassageiroCentavos: 600,
     vagas_disponiveis: 2,
     nome_motorista: 'Ana',
+    distancia_km: 0.4,
+    media_motorista: null,
+    somente_mulheres: false,
   };
 
   it('vagas no singular e no plural', () => {
@@ -88,16 +90,11 @@ describe('textos do card de carona', () => {
     expect(descreverVeiculo('Onix', 'Prata', ' · ')).toBe('Onix · prata');
   });
 
-  it('contagem acima da lista; nada com a lista vazia', () => {
-    expect(textoContagemCaronas(3)).toBe('3 caronas · as mais perto primeiro');
-    expect(textoContagemCaronas(1)).toBe('1 carona · as mais perto primeiro');
-    expect(textoContagemCaronas(0)).toBeNull();
-  });
-
   it('descrição do card para o leitor de tela', () => {
-    expect(descreverCarona(carona)).toBe(
-      'Carona dom 18/10 às 12:30, de Centro de Torres para ULBRA Torres, R$ 6,00 por pessoa, ' +
-        '2 vagas, motorista Ana',
+    // T43: começa pelo destino, como o card; o dia fica relativo a "agora" (aqui, outro dia)
+    expect(descreverCarona(carona, new Date('2026-10-15T15:00:00Z'))).toBe(
+      'Para ULBRA Torres, saindo de Centro de Torres, a 0,4 km, dom 18/10 às 12:30, ' +
+        'R$ 6,00 por pessoa, 2 vagas, motorista Ana',
     );
   });
 });
