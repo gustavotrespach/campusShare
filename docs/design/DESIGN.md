@@ -470,6 +470,18 @@ Dados: `minhas_reservas` e as caronas do motorista (as mesmas consultas das tela
 nova. Uma falhando, usa a outra; as duas falhando ou nenhuma viagem, o card **não aparece** (sem erro).
 Recarrega ao focar a tela e no "puxar para atualizar".
 
+### 3.13 Sininho (`Sininho.tsx`, T29) ✚
+
+Botão-ícone 44 igual ao "Minhas reservas" do cabeçalho da tela 5 (círculo `superficie`, borda 1
+`borda`, pressionado `superficieAlternativa`), com `notifications-outline` 22 `primaria`
+(`notifications`, cheio, quando há não lidas). **Selo** no canto de cima à direita (deslocado 4 para
+fora): altura e largura mínima 20, raio `pilula`, fundo `erro` com borda 2 `fundo`, texto `selo`
+numérico `textoSobrePrimaria` (branco sobre vermelho, contraste alto). Mostra o número até 9 e "9+"
+acima; com 0 o selo some. O selo é só visual (escondido do leitor de tela): o `accessibilityLabel` do
+botão diz tudo — "Notificações", "Notificações, 1 não lida", "Notificações, 3 não lidas". A contagem
+vem da RPC `contar_notificacoes_nao_lidas`, ao focar a tela e no "puxar para atualizar"; se falhar, o
+selo só some (sem erro na tela). O toque abre a tela 19.
+
 ## 4. Telas
 
 Fundo de todas as telas: `fundo`. Gutter 20. Entre blocos: 16 (12 entre cards de lista).
@@ -556,8 +568,8 @@ avaliações). Ordem de cima para baixo:
    - Esquerda: "Olá, {primeiro nome}" ✚ (`corpo` `textoSecundario`; o nome vem do
      `obterMeuPerfil` que a tela já chama; sem nome, não mostra a linha) e "Caronas próximas"
      (`titulo`).
-   - Direita (`gap` 8): botão-ícone 44 (círculo `superficie`, borda 1 `borda`, `receipt-outline`
-     22 `primaria`, `accessibilityLabel` "Minhas reservas") e Avatar 44 do usuário
+   - Direita (`gap` 8): **sininho** ✚ (T29, 3.13), botão-ícone 44 (círculo `superficie`, borda 1
+     `borda`, `receipt-outline` 22 `primaria`, `accessibilityLabel` "Minhas reservas") e Avatar 44 do usuário
      (`accessibilityLabel` "Meu perfil"), com a própria foto desde a T44 (pelo `perfil_publico`).
 2. 20 → **barra de busca de local** (T40) ✚, no lugar dos chips "Perto de":
    - Caixa igual à do campo de texto (3.2: altura 52, raio 12, fundo `superficie`, borda 1.5
@@ -913,6 +925,30 @@ Header "Avaliar". `ScrollView` com teclado (`KeyboardAvoidingView`), `gap` 20.
 Sucesso: anuncia "Avaliação enviada.", volta para a tela 17, que mostra o aviso. Reserva que não está
 mais nas pendentes (já avaliada ou fora do prazo): `EstadoVazio` `star-outline` "Avaliação
 indisponível", "Esta avaliação já foi feita ou o prazo para avaliar terminou.", botão "Voltar".
+
+### Tela 19 — Notificações (`notificacoes.tsx`) ✚ (T29)
+
+Header "Notificações". `FlatList`, padding 20, `gap` 12, puxar para atualizar. Avisos **dentro do app**
+(o push fica para depois). Mais recentes primeiro (até 50).
+
+1. **Cabeçalho da lista**, só se houver não lidas: botão `texto` `checkmark-done-outline` "Marcar todas
+   como lidas", alinhado à direita (altura mínima 44). Erro ao marcar: Aviso `erro` abaixo dele.
+2. **Item** (card 3.3 em linha: padding 12/16, `gap` 12, altura mínima 44, `accessibilityRole="button"`):
+   - círculo 44 com o ícone 22 do tipo — `NOVA_RESERVA` `person-add-outline`, `RESERVA_CONFIRMADA`
+     `checkmark-circle-outline`, `CARONA_CANCELADA` `close-circle-outline`, `RESERVA_CANCELADA`
+     `remove-circle-outline`, `AVALIACAO` `star-outline`;
+   - coluna: a mensagem (vem pronta do backend) e embaixo o quando (`legenda` `textoSecundario`):
+     "agora", "há 5 min", "hoje 14:30", "ontem 19:00" ou "dom 22/11 · 19:00" (dia de Brasília);
+   - **não lida em destaque**: borda `primaria`, círculo `primariaClara` com o ícone `primaria`,
+     mensagem `corpoForte` `texto` e um ponto 8 `primaria` à direita; **lida**: borda `borda`, círculo
+     `superficieAlternativa` com o ícone `textoSecundario`, mensagem `corpo` `textoSecundario`;
+   - leitor de tela: "Não lida. <mensagem> há 5 min" (sem o "Não lida." quando lida).
+   - Toque: marca como lida na hora (sem esperar o servidor) e abre a tela do aviso — reserva
+     (`RESERVA_CONFIRMADA`, `CARONA_CANCELADA`), carona (`NOVA_RESERVA`, `RESERVA_CANCELADA`) ou o Perfil
+     (`AVALIACAO`).
+3. **Estados:** carregando (esqueleto), erro (`ErroCarregamento` com "Tentar de novo") e vazio
+   (`EstadoVazio` `notifications-outline`, "Nenhuma notificação", "Avisos de reservas, pagamentos,
+   cancelamentos e avaliações aparecem aqui.").
 
 ### Tela 15 — Ícone e splash
 
