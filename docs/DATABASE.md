@@ -124,12 +124,16 @@ UNIQUE (`id_reserva`, `id_avaliador`) (RN19); CHECK `id_avaliador <> id_avaliado
 ### NOTIFICACAO
 | Coluna | Tipo | Regras |
 |---|---|---|
-| id_notificacao | UUID | PK |
-| id_usuario | UUID | FK → USUARIO |
-| tipo | ENUM `NOVA_RESERVA`, `RESERVA_CONFIRMADA`, `CARONA_CANCELADA`, `RESERVA_CANCELADA`, `AVALIACAO` | |
-| mensagem | VARCHAR(300) | |
-| lida | BOOLEAN | default `false` |
+| id_notificacao | UUID | PK, default `gen_random_uuid()` |
+| id_usuario | UUID | FK → USUARIO `on delete cascade`; quem recebe |
+| tipo | ENUM `tipo_notificacao`: `NOVA_RESERVA`, `RESERVA_CONFIRMADA`, `CARONA_CANCELADA`, `RESERVA_CANCELADA`, `AVALIACAO` | obrigatório |
+| mensagem | VARCHAR(300) | obrigatório; texto pronto, com o destino curto e a data/hora de Brasília |
+| lida | BOOLEAN | default `false`; muda só pela RPC `marcar_notificacoes_lidas` |
 | criado_em | TIMESTAMPTZ | default `now()` |
+| id_carona | UUID | opcional (T29), FK → CARONA `on delete set null`; para o app abrir a carona |
+| id_reserva | UUID | opcional (T29), FK → RESERVA `on delete set null`; para o app abrir a reserva |
+
+Criada na T29 (migration `notificacoes`). Índice `(id_usuario, criado_em desc)` para a lista. Gravada **só pelos gatilhos** (abaixo, em "Funções, triggers e jobs"); o app lê as próprias pela RLS. O push (Expo) fica para depois: a `expo_push_token` de USUARIO e o Database Webhook ainda não existem.
 
 ### PARAMETRO_CUSTO
 | Coluna | Tipo | Regras |
@@ -170,7 +174,7 @@ RLS habilitada em **todas** as tabelas. Escrita em tabelas com regra de negócio
 | reserva | passageiro vê as próprias; motorista vê as das suas caronas | — (Edge Function `reservar-vaga`, função `cancelar_reserva`) |
 | pagamento | passageiro da reserva (o motorista não vê) | — (Edge Functions) |
 | avaliacao | só o avaliador lê as próprias (o que recebeu aparece só agregado no `perfil_publico`) | — (função `avaliar_participante`) |
-| notificacao | só as próprias | UPDATE da coluna `lida` nas próprias |
+| notificacao | só as próprias | — (gatilhos gravam; `lida` muda pela RPC `marcar_notificacoes_lidas`) |
 | parametro_custo | — | — |
 
 View `perfil_publico` (`security_invoker = false`, só colunas públicas): nome e média de avaliações.
@@ -222,10 +226,14 @@ Leitura de caronas de outros motoristas: só pelas RPCs `buscar_caronas` e `deta
 | `definir_foto_perfil()` → `timestamptz` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T44) | Confere que `fotos-perfil/<auth.uid()>/avatar.jpg` existe em `storage.objects` (senão `FOTO_NAO_ENVIADA`, PT409) e grava `foto_atualizada_em = now()` |
 | `remover_foto_perfil()` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T44) | Grava `foto_atualizada_em = null` (o app já apagou o arquivo pela API do Storage) |
 | `perfil_publico`, `detalhar_carona`, `buscar_caronas` (versão T44) | Novas versões na migration `foto_perfil` (`drop` + `create`, grants refeitos) | Contrato anterior igual; no fim, `foto_caminho` (perfil) e `foto_motorista` (detalhe e busca), de `caminho_foto_perfil` |
-| Triggers de notificação | Triggers em `reserva`/`carona` | Gravam NOTIFICACAO |
+| `notificar_mudanca_reserva` | Trigger `AFTER UPDATE OF status` em `reserva` (`when old.status is distinct from new.status`), função `SECURITY DEFINER` (T29) | → `CONFIRMADA`: `RESERVA_CONFIRMADA` ao passageiro e `NOVA_RESERVA` ao motorista. `PENDENTE`/`CONFIRMADA` → `CANCELADA`: se a carona já está `CANCELADA` (a `cancelar_carona` cancela a carona antes das reservas), `CARONA_CANCELADA` ao passageiro (um por reserva ativa, nada ao motorista); se a carona segue ativa, `RESERVA_CANCELADA` ao motorista só quando a reserva estava `CONFIRMADA`. `EXPIRADA`: nada. Só insere e **nunca propaga erro** (bloco `exception when others` → `raise warning`): o aviso que falha não desfaz o pagamento nem o cancelamento |
+| `notificar_avaliacao` | Trigger `AFTER INSERT` em `avaliacao`, função `SECURITY DEFINER` (T29) | `AVALIACAO` ao avaliado ("Você recebeu uma avaliação de N estrelas pela carona para … em …"); também nunca propaga erro |
+| `nome_curto_local`, `descrever_carona_aviso` | Funções SQL internas (sem `EXECUTE` para o app) (T29) | Textos dos avisos: destino sem o sufixo de UF (a mesma regra do `nomeCurtoLocal` do app) e "carona para ULBRA Torres em 26/11 às 19:00" em `America/Sao_Paulo` |
+| `marcar_notificacoes_lidas(p_ids uuid[] = null)` → `integer` | Função RPC `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T29) | Marca como lidas as do `auth.uid()` (as de `p_ids`, ou todas com null); ids de outro usuário são ignorados; devolve quantas mudaram |
+| `contar_notificacoes_nao_lidas()` → `integer` | Função RPC `STABLE`, `SECURITY DEFINER`, `EXECUTE` só para `authenticated` (T29) | Quantas não lidas o `auth.uid()` tem (selo do sininho) |
 | `expirar-reservas` | Job pg_cron (`* * * * *`, T24) | RN16: `select public.expirar_reservas()`. Extensão `pg_cron` em `pg_catalog` (jeito indicado pelo Supabase Cron); `cron.schedule` com o mesmo nome substitui o job (upsert), então reagendar não duplica. O job roda como `postgres`, dono da função |
 | `concluir-caronas` | Job pg_cron (`0 * * * *`, T30) | RN07: `select public.concluir_caronas_vencidas()`, agendado com `cron.schedule` pelo nome (reagendar não duplica) |
-| Webhook `notificacao` INSERT | Database Webhook | Chama a Edge Function `enviar-push` |
+| Webhook `notificacao` INSERT | Database Webhook (**futuro**, push adiado na T29) | Chamaria a Edge Function `enviar-push` |
 
 ## Alterações propostas em relação ao DER da Aula 08
 
@@ -245,7 +253,11 @@ Aprovada em 24/11/2026 (Gustavo, T44; aplicada na migration `foto_perfil`):
 
 - `USUARIO.foto_atualizada_em` (TIMESTAMPTZ, opcional): data da foto de perfil, nula sem foto. A foto em si fica no Storage (bucket `fotos-perfil`), fora do banco.
 
-O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima (**pendente**, inclusive a da T44).
+Aprovada em 25/11/2026 (Gustavo, T29; aplicada na migration `notificacoes`):
+
+- `NOTIFICACAO.id_carona` e `NOTIFICACAO.id_reserva` (UUID, opcionais): para o app abrir a carona ou a reserva do aviso.
+
+O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima (**pendente**, inclusive as da T44 e da T29).
 
 ## Migrations
 
@@ -259,6 +271,6 @@ O DER da Aula 08 ainda precisa ser redesenhado com todas as alterações acima (
 
 ## Performance
 
-- Índices: `carona(status, data_hora_partida)`, `carona(origem_lat, origem_lng)`, `reserva(id_carona)`, `reserva(id_passageiro)`, `notificacao(id_usuario, lida)`.
+- Índices: `carona(status, data_hora_partida)`, `carona(origem_lat, origem_lng)`, `reserva(id_carona)`, `reserva(id_passageiro)`, `notificacao(id_usuario, criado_em desc)` (T29).
 - Colunas usadas nas políticas RLS (`id_motorista`, `id_passageiro`, `id_usuario`) indexadas; nas políticas, usar `(select auth.uid())` para o Postgres avaliar uma vez por consulta.
 - Busca por proximidade no MVP: dentro de `buscar_caronas`, filtro por bounding box (lat/lng ± delta) + distância haversine em SQL. PostGIS fica para depois, se necessário.

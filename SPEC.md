@@ -35,7 +35,7 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 | US03 | Como motorista, quero informar o horário exato de partida para que os passageiros se organizem. | Carona exige data e hora de partida no futuro; horário aparece na listagem e no detalhe. |
 | US04 | Como passageiro, quero que o valor da carona seja calculado automaticamente para evitar constrangimento. | Ao reservar, o backend calcula `valor_individual` (função SQL) e gera a cobrança (Edge Function); o passageiro vê o valor antes de confirmar. |
 | US05 | Como aluna, quero filtrar caronas "somente mulheres" para me sentir mais segura. | Motorista pode marcar a carona como `somente_mulheres`; a busca oferece o filtro; a regra é validada no backend na reserva. |
-| US06 | Como passageiro, quero ser notificado se a carona for cancelada. | Cancelamento pelo motorista gera NOTIFICACAO + push para todos os passageiros com reserva ativa; motorista recebe push quando uma vaga é reservada. |
+| US06 | Como passageiro, quero ser notificado se a carona for cancelada. | Cancelamento pelo motorista gera NOTIFICACAO para todos os passageiros com reserva ativa (PENDENTE ou CONFIRMADA); o motorista é avisado quando uma vaga é paga (reserva CONFIRMADA) e quando um passageiro cancela uma reserva paga. Na entrega de 26/11 o aviso aparece **dentro do app** (sininho no Início e tela Notificações); o **push** (Expo Notifications) fica para depois (decisão do Gustavo em 25/11: no Android exige development build). |
 | US07 | Como motorista, quero definir um tempo de tolerância para esperar os passageiros. | Carona tem `tolerancia_min` (0 a 30 min), exibida ao passageiro. |
 
 ## Regras de negócio
@@ -99,5 +99,5 @@ Permitir que alunos da mesma instituição ofereçam e encontrem caronas com seg
 | US03 | caronas | RPC `publicar_carona` | CARONA, VEICULO |
 | US04 | reservas + pagamentos | Edge Function `reservar-vaga` + RPC `reservar_vaga` + webhook | CARONA, RESERVA, PAGAMENTO |
 | US05 | caronas | RPC `buscar_caronas` | CARONA, USUARIO |
-| US06 | notificacoes | Triggers + Database Webhook + Edge Function `enviar-push` | NOTIFICACAO, RESERVA |
+| US06 | notificacoes | Triggers em `reserva` e `avaliacao` + RPCs `marcar_notificacoes_lidas` e `contar_notificacoes_nao_lidas` (push: Database Webhook + Edge Function `enviar-push`, futuro) | NOTIFICACAO, RESERVA, AVALIACAO |
 | US07 | caronas | RPC `publicar_carona` | CARONA |

@@ -92,6 +92,37 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"notificacao": {
+                  Row: {
+                    "criado_em": string,"id_carona": string | null,"id_notificacao": string,"id_reserva": string | null,"id_usuario": string,"lida": boolean,"mensagem": string,"tipo": Database["public"]['Enums']["tipo_notificacao"]
+                  }
+                  Insert: {
+                    "criado_em"?: string,"id_carona"?: string | null,"id_notificacao"?: string,"id_reserva"?: string | null,"id_usuario": string,"lida"?: boolean,"mensagem": string,"tipo": Database["public"]['Enums']["tipo_notificacao"]
+                  }
+                  Update: {
+                    "criado_em"?: string,"id_carona"?: string | null,"id_notificacao"?: string,"id_reserva"?: string | null,"id_usuario"?: string,"lida"?: boolean,"mensagem"?: string,"tipo"?: Database["public"]['Enums']["tipo_notificacao"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "notificacao_id_carona_fkey"
+      columns: ["id_carona"]
+isOneToOne: false
+      referencedRelation: "carona"
+      referencedColumns: ["id_carona"]
+    },{
+      foreignKeyName: "notificacao_id_reserva_fkey"
+      columns: ["id_reserva"]
+isOneToOne: false
+      referencedRelation: "reserva"
+      referencedColumns: ["id_reserva"]
+    },{
+      foreignKeyName: "notificacao_id_usuario_fkey"
+      columns: ["id_usuario"]
+isOneToOne: false
+      referencedRelation: "usuario"
+      referencedColumns: ["id_usuario"]
+    }
+                  ]
                 },"pagamento": {
                   Row: {
                     "id_externo": string | null,"id_pagamento": string,"id_reserva": string,"metodo": Database["public"]['Enums']["metodo_pagamento"],"pago_em": string | null,"status": Database["public"]['Enums']["status_pagamento"],"taxa_plataforma": number,"valor": number,"valor_repassado": number
@@ -224,8 +255,14 @@ isOneToOne: false
 "confirmar_pagamento":
 { Args: { "p_id_externo": string,"p_id_pagamento": string,"p_valor": number }; Returns: string
                            },
+"contar_notificacoes_nao_lidas":
+{ Args: Record<PropertyKey, never>; Returns: number
+                           },
 "definir_foto_perfil":
 { Args: Record<PropertyKey, never>; Returns: string
+                           },
+"descrever_carona_aviso":
+{ Args: { "p_destino": string,"p_partida": string }; Returns: string
                            },
 "desfazer_reserva_sem_cobranca":
 { Args: { "p_id_reserva": string }; Returns: boolean
@@ -238,10 +275,16 @@ isOneToOne: false
 "expirar_reservas":
 { Args: Record<PropertyKey, never>; Returns: number
                            },
+"marcar_notificacoes_lidas":
+{ Args: { "p_ids"?: (string)[] }; Returns: number
+                           },
 "minhas_reservas":
 { Args: Record<PropertyKey, never>; Returns: {
               "data_hora_partida": string,"destino": string,"id_carona": string,"id_reserva": string,"media_motorista": number,"nome_motorista": string,"origem": string,"reservado_em": string,"status_carona": Database["public"]['Enums']["status_carona"],"status_pagamento": Database["public"]['Enums']["status_pagamento"],"status_reserva": Database["public"]['Enums']["status_reserva"],"total_avaliacoes_motorista": number,"valor": number
             }[]
+                           },
+"nome_curto_local":
+{ Args: { "p_local": string }; Returns: string
                            },
 "perfil_publico":
 { Args: { "p_id_usuario": string }; Returns: {
@@ -290,7 +333,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "genero_usuario": "FEMININO"|"MASCULINO"|"OUTRO"|"NAO_INFORMADO","metodo_pagamento": "PIX","status_carona": "ABERTA"|"LOTADA"|"CANCELADA"|"CONCLUIDA","status_pagamento": "PENDENTE"|"APROVADO"|"RECUSADO"|"REEMBOLSO_PENDENTE","status_reserva": "PENDENTE"|"CONFIRMADA"|"CANCELADA"|"EXPIRADA"
+            "genero_usuario": "FEMININO"|"MASCULINO"|"OUTRO"|"NAO_INFORMADO","metodo_pagamento": "PIX","status_carona": "ABERTA"|"LOTADA"|"CANCELADA"|"CONCLUIDA","status_pagamento": "PENDENTE"|"APROVADO"|"RECUSADO"|"REEMBOLSO_PENDENTE","status_reserva": "PENDENTE"|"CONFIRMADA"|"CANCELADA"|"EXPIRADA","tipo_notificacao": "NOVA_RESERVA"|"RESERVA_CONFIRMADA"|"CARONA_CANCELADA"|"RESERVA_CANCELADA"|"AVALIACAO"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -410,7 +453,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "genero_usuario": ["FEMININO", "MASCULINO", "OUTRO", "NAO_INFORMADO"],"metodo_pagamento": ["PIX"],"status_carona": ["ABERTA", "LOTADA", "CANCELADA", "CONCLUIDA"],"status_pagamento": ["PENDENTE", "APROVADO", "RECUSADO", "REEMBOLSO_PENDENTE"],"status_reserva": ["PENDENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA"]
+            "genero_usuario": ["FEMININO", "MASCULINO", "OUTRO", "NAO_INFORMADO"],"metodo_pagamento": ["PIX"],"status_carona": ["ABERTA", "LOTADA", "CANCELADA", "CONCLUIDA"],"status_pagamento": ["PENDENTE", "APROVADO", "RECUSADO", "REEMBOLSO_PENDENTE"],"status_reserva": ["PENDENTE", "CONFIRMADA", "CANCELADA", "EXPIRADA"],"tipo_notificacao": ["NOVA_RESERVA", "RESERVA_CONFIRMADA", "CARONA_CANCELADA", "RESERVA_CANCELADA", "AVALIACAO"]
           }
         }
 } as const

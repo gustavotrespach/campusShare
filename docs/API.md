@@ -388,9 +388,38 @@ Resposta 200: `{ "recebido": true, "resultado": "CONFIRMADO" }`. Resultados: `CO
 
 | Tipo | Nome | Descrição |
 |---|---|---|
-| Tabela | `notificacao` — `select` | Do próprio usuário, mais recentes primeiro |
-| Tabela | `notificacao` — `update` | Só a coluna `lida`, da própria notificação |
-| Edge Function (interna) | `enviar-push` | Chamada pelo Database Webhook no INSERT de `notificacao`; envia push pela Expo |
+| Tabela | `notificacao` — `select` | Do próprio usuário (RLS), mais recentes primeiro |
+| RPC | `contar_notificacoes_nao_lidas()` → `integer` | Selo do sininho no Início (T29) |
+| RPC | `marcar_notificacoes_lidas(p_ids uuid[] = null)` → `integer` | Marca as de `p_ids` (ou todas) como lidas; devolve quantas mudaram (T29) |
+| Edge Function (interna, **futuro**) | `enviar-push` | Push pela Expo, adiado na T29 (no Android exige development build) |
+
+**Notificações dentro do app (T29).** Os avisos são gravados pelo backend, por gatilhos nas mudanças
+de status que as funções já fazem; o app não insere, não altera e não apaga linhas de `notificacao`
+(só `select` das próprias). Quem recebe o quê:
+
+| `tipo` | Para | Quando | Abre no app |
+|---|---|---|---|
+| `RESERVA_CONFIRMADA` | passageiro | o pagamento confirma a reserva | a reserva (`id_reserva`) |
+| `NOVA_RESERVA` | motorista | o pagamento confirma a reserva de um passageiro | a carona (`id_carona`) |
+| `CARONA_CANCELADA` | cada passageiro com reserva `PENDENTE` ou `CONFIRMADA` | o motorista cancela a carona | a reserva |
+| `RESERVA_CANCELADA` | motorista | o passageiro cancela uma reserva **paga** (a pendente não avisa) | a carona |
+| `AVALIACAO` | o avaliado | alguém o avalia | o Perfil (a própria média) |
+
+A expiração de reserva não avisa ninguém. A `mensagem` vem pronta (até 300 caracteres), com o destino
+curto e a data/hora de Brasília, ex.: "Bruna reservou uma vaga na sua carona para ULBRA Torres em 26/11
+às 19:00.".
+
+```ts
+const { data: notificacoes } = await supabase
+  .from('notificacao')
+  .select('id_notificacao, tipo, mensagem, lida, criado_em, id_carona, id_reserva')
+  .order('criado_em', { ascending: false })
+  .limit(50);
+const { data: naoLidas } = await supabase.rpc('contar_notificacoes_nao_lidas');
+await supabase.rpc('marcar_notificacoes_lidas', { p_ids: ['uuid'] }); // ou sem p_ids: todas
+```
+
+Sem sessão, as duas RPCs → 401 `NAO_AUTENTICADO`; `anon` não lê a tabela nem executa as RPCs.
 
 ## avaliacoes
 
