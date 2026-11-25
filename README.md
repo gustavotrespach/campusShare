@@ -33,20 +33,24 @@ Sem conta Apple Developer não há build instalável de iOS: o app abre dentro d
 1. Instale o **Expo Go** pela App Store (versão do **SDK 58**; o app foi migrado do SDK 57 na T34, versão 1.1.0).
 2. Abra o update publicado no canal `preview`:
    - pela página do update no expo.dev → botão **Preview** → leia o QR com a câmera:
-     [update de 24/11 (SDK 58, versão 1.1.0, T43)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/be837916-86a9-407e-874a-6630a8e3a431);
-   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/be837916-86a9-407e-874a-6630a8e3a431`
-     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=be837916-86a9-407e-874a-6630a8e3a431)).
+     [update de 24/11 (SDK 58, versão 1.2.0, T44 foto de perfil)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/910841a5-37d1-41c4-a114-217b9349d957);
+   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/910841a5-37d1-41c4-a114-217b9349d957`
+     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=910841a5-37d1-41c4-a114-217b9349d957)).
 3. Depois da primeira vez, o app aparece na lista de recentes do Expo Go.
 
 Cada `eas update` gera um grupo novo: depois de publicar de novo, use o link do update mais recente em [Updates](https://expo.dev/accounts/trespaco/projects/campusshare/updates).
 
 ### Android — APK
 
-1. No celular, baixe o APK atual, da release **v1.1.0** (SDK 58, link permanente):
-   <https://github.com/gustavotrespach/campusShare/releases/download/v1.1.0/CampusShare-1.1.0.apk>
-   ([página da release](https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0)).
-2. Permita a instalação de apps de fonte desconhecida quando o Android pedir. Quem tem a 1.0.0 pode instalar a 1.1.0 por cima.
-3. O APK é do canal `preview`: ao abrir, ele baixa o update mais recente desse canal para o `runtimeVersion` dele (1.1.0).
+1. No celular, baixe o APK atual, da release **v1.2.0** (SDK 58, com a foto de perfil, link permanente):
+   <https://github.com/gustavotrespach/campusShare/releases/download/v1.2.0/CampusShare-1.2.0.apk>
+   ([página da release](https://github.com/gustavotrespach/campusShare/releases/tag/v1.2.0)).
+2. Permita a instalação de apps de fonte desconhecida quando o Android pedir. Quem tem a 1.0.0 ou a 1.1.0 pode instalar a 1.2.0 por cima (mesma assinatura, `versionCode` maior).
+3. O APK é do canal `preview`: ao abrir, ele baixa o update mais recente desse canal para o `runtimeVersion` dele (1.2.0).
+
+A release **v1.1.0** (SDK 58) é a anterior, **sem a foto de perfil**: o APK dela tem `runtimeVersion` 1.1.0 e
+fica no último update desse runtime (T43, nova tela inicial), porque a foto usa módulos nativos que ele não
+tem: <https://github.com/gustavotrespach/campusShare/releases/download/v1.1.0/CampusShare-1.1.0.apk>.
 
 A release **v1.0.0** (SDK 57) é a versão entregue na TD de deploy e continua disponível sem mudança:
 <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk>. Ela tem `runtimeVersion` 1.0.0 e não recebe os updates do SDK 58.

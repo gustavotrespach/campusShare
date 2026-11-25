@@ -1,21 +1,23 @@
 # Deploy público — CampusShare (T33)
 
-> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11), com a navegação após "Sair" (T37, 17/11), com a migração do backend para o projeto Supabase novo (T36, 18/11), com a identidade visual das telas restantes e a busca de local (T39 e T40, 19/11), com a expiração de reservas (T24, 23/11) e com os cancelamentos e as listas legíveis (T28 e T41, 24/11).
+> Publicação do MVP para acesso por link público, sem segredos no repositório. Estado de 12/11/2026, atualizado com a versão 1.1.0 (SDK 58, T34), com as correções pós-deploy (T35, 17/11), com a navegação após "Sair" (T37, 17/11), com a migração do backend para o projeto Supabase novo (T36, 18/11), com a identidade visual das telas restantes e a busca de local (T39 e T40, 19/11), com a expiração de reservas (T24, 23/11), com os cancelamentos e as listas legíveis (T28 e T41, 24/11) e com a foto de perfil e a versão 1.2.0 (T44, 24/11).
 
 ## Links
 
 | O quê | Link |
 |---|---|
-| APK Android atual — v1.1.0, SDK 58 (permanente) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.1.0/CampusShare-1.1.0.apk> |
+| APK Android atual — v1.2.0, SDK 58, com a foto de perfil (permanente) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.2.0/CampusShare-1.2.0.apk> |
+| Página da release v1.2.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.2.0> |
+| APK v1.1.0, SDK 58 — anterior, **sem a foto de perfil** (runtime 1.1.0, fica no update da T43) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.1.0/CampusShare-1.1.0.apk> |
 | Página da release v1.1.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.1.0> |
 | APK v1.0.0, SDK 57 — versão entregue na TD de deploy (aponta para o backend antigo, inativo desde a T36) | <https://github.com/gustavotrespach/campusShare/releases/download/v1.0.0/CampusShare-1.0.0.apk> |
 | Página da release v1.0.0 | <https://github.com/gustavotrespach/campusShare/releases/tag/v1.0.0> |
-| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/be837916-86a9-407e-874a-6630a8e3a431` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=be837916-86a9-407e-874a-6630a8e3a431) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/be837916-86a9-407e-874a-6630a8e3a431) |
+| App iPhone (Expo Go SDK 58) | `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/910841a5-37d1-41c4-a114-217b9349d957` — [QR](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=910841a5-37d1-41c4-a114-217b9349d957) · [página do update](https://expo.dev/accounts/trespaco/projects/campusshare/updates/910841a5-37d1-41c4-a114-217b9349d957) |
 | Backend (Supabase, projeto `cofhvybajjzczrbojttv`, região São Paulo, desde a T36) | <https://cofhvybajjzczrbojttv.supabase.co> — `GET /functions/v1/health` → `{"status":"ok"}` |
 | Webhook do Mercado Pago (aba Teste da aplicação CampusShare e aplicação do vendedor de teste; ver Observações) | `https://cofhvybajjzczrbojttv.supabase.co/functions/v1/webhook-mercado-pago` |
 | Repositório | <https://github.com/gustavotrespach/campusShare> |
 
-**A versão atual é a v1.1.0.** O APK v1.0.0 continua baixável, mas o update dele (runtime 1.0.0, de 18/10) aponta para o projeto Supabase antigo (`yqovnmlrbpkgwzmlnncb`), que ficou sem uso desde a migração da T36 e pausa sozinho: o login nele deixa de funcionar.
+**A versão atual é a v1.2.0** (T44, foto de perfil). O APK v1.1.0 continua baixável e funcionando, sem a foto (runtime 1.1.0, último update: T43). O APK v1.0.0 continua baixável, mas o update dele (runtime 1.0.0, de 18/10) aponta para o projeto Supabase antigo (`yqovnmlrbpkgwzmlnncb`), que ficou sem uso desde a migração da T36 e pausa sozinho: o login nele deixa de funcionar.
 
 O link de artefato do EAS expira (o do APK de 18/10 deixou de funcionar em 01/11); por isso o APK fica anexado à release do GitHub.
 
@@ -24,7 +26,7 @@ O link de artefato do EAS expira (o do APK de 18/10 deixou de funcionar em 01/11
 | Parte | Plataforma | Como é publicada |
 |---|---|---|
 | App Android | EAS Build (perfil `preview`, APK) + GitHub Releases | `npx eas-cli build -p android --profile preview` e upload na release |
-| App iPhone | Expo Go + EAS Update (canal `preview`) | `npx eas-cli update --channel preview --environment preview`; SDK 58 desde a versão 1.1.0 (T34) |
+| App iPhone | Expo Go + EAS Update (canal `preview`) | `npx eas-cli update --channel preview --environment preview`; SDK 58 desde a versão 1.1.0 (T34); runtime 1.2.0 desde a T44 |
 | Banco, Auth, RLS e funções SQL | Supabase (free) | workflow **Deploy** a cada merge na `main` (`db push`) |
 | Edge Functions | Supabase Edge Functions | workflow **Deploy** (`functions deploy`) |
 | Projeto ativo | GitHub Actions | workflow **Manter ativo** a cada 3 dias (o free pausa após ~7 dias sem uso) |
@@ -104,8 +106,11 @@ No repositório só existem os modelos `mobile/.env.example` e `supabase/functio
 ## Foto de perfil e versão 1.2.0 (T44, 24/11/2026)
 
 - **A partir da T44 o runtime é 1.2.0.** A foto de perfil usa módulos nativos novos (`expo-image-picker` e `expo-image-manipulator`) que não existem no APK 1.1.0; por isso a `version` subiu para 1.2.0 (`android.versionCode` 4) e, com a policy `appVersion`, todo EAS Update a partir daqui sai com runtime 1.2.0. O **APK 1.1.0 fica sem a foto**: continua recebendo só os updates de runtime 1.1.0 (o último é o da T43, grupo `be837916`), e quem quiser a foto instala o APK 1.2.0 (FASE 40). O Expo Go do iPhone abre o update 1.2.0 normalmente (os dois módulos vêm no Expo Go).
-- [ ] APK 1.2.0 (versionCode 4) e release (FASE 40)
-- [ ] EAS Update com runtime 1.2.0 e conferência do runtime 1.1.0 (continua no grupo `be837916`)
+- [x] Release #84 (#82 + #83) com o Deploy verde: `db push` aplicou a `20261124193537_foto_perfil` (bucket `fotos-perfil` e as 4 políticas em `storage.objects` criados sem erro), 18 migrations local = remoto, Edge Functions sem mudança, `health` 200. Sem sessão: `definir_foto_perfil` e `remover_foto_perfil` → 401 `42501` (função inexistente: 404 `PGRST202`); `GET /storage/v1/object/authenticated/fotos-perfil/x.jpg` → `NoSuchKey` ("Object not found"), contra `NoSuchBucket` ("Bucket not found") num bucket inexistente: o bucket existe
+- [x] Conferida pelo Gustavo no iPhone (`npx expo start`, conta de teste): alterar foto, troca sem a foto antiga em cache, foto no cabeçalho do Início, nos cards e no detalhe da carona, remover com confirmação. A primeira tentativa, antes de o Deploy aplicar a migration, deu "Algo deu errado"; depois funcionou
+- [x] APK 1.2.0 pelo EAS Build (perfil `preview`, build `35450c17`, da `main` `ae80356`): `version` 1.2.0, `versionCode` 4, canal `preview`, bundle com `cofhvybajjzczrbojttv` e sem `yqovnmlrbpkgwzmlnncb`, módulos `ExponentImagePicker` e `ExpoImageManipulator` presentes, sem `CAMERA` nem `RECORD_AUDIO` no manifest. Release `v1.2.0` com `CampusShare-1.2.0.apk` (93.743.553 bytes, SHA-256 `9b25194d…a8a8f`); download 200 com o tamanho certo; `v1.0.0` e `v1.1.0` intactas
+- [x] EAS Update da `main` (`ae80356`) com runtime **1.2.0**, grupo `910841a5-37d1-41c4-a114-217b9349d957` ("T44: foto de perfil"); bundles de iOS e Android iguais aos publicados (hash do manifesto), com a URL do projeto `cofhvybajjzczrbojttv` e sem a do antigo, com os textos da T44; runtime 1.1.0 conferido no grupo `be837916` (T43) e 1.0.0 no de 18/10
+- [ ] Teste do APK 1.2.0 num Android real (foto pela galeria)
 
 ## Observações
 
