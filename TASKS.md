@@ -185,7 +185,8 @@ Aceite: passageiro vê valor, paga pelo Pix sandbox e vê a reserva confirmada s
 ## Sprint 3 — Sugestão de preço, notificações e avaliações
 
 ### T26 — Distância, sugestão de preço e teto (RN09, RN10)
-Status: adiada (pós-AP2) · Depende de: T17
+Status: adiada (pós-AP2; fora da entrega final de 26/11) · Depende de: T17
+Nota (25/11): decisão do Gustavo: a T26 fica como próximo passo, fora da entrega final de 26/11. Continua pendente a escolha entre a Directions API (exige conta com cobrança no Google Cloud) e uma estimativa sem serviço pago, registrada em ADR.
 Descrição: Edge Function `sugestao-preco` (Directions API) retorna `distancia_km` e `custo_estimado`; Edge Function `publicar-carona` recalcula o custo no servidor, aplica o teto e chama `publicar_carona`, que passa a ser executável só pela `service_role`.
 Aceite: `custo_total > custo_estimado` → 422 `PRECO_ACIMA_DO_TETO`; fallback sem sugestão (e sem teto) se a Directions API falhar.
 
@@ -204,12 +205,12 @@ Nota (23/11, parte app): services `cancelarReserva`, `cancelarCarona` e `listarM
 Nota (24/11, Parte B): release #68 (Deploy aplicou a `20261123225328_cancelamentos`; `cancelar_reserva` e `cancelar_carona` respondem 401 `42501` sem sessão no remoto). Testada pelo Gustavo no iPhone contra o remoto (testes 1 a 6 passaram; pagamentos conferidos no painel). EAS Update único da `main` (`2bc2040`) com runtime 1.1.0, grupo `57d1e8e7-f9a2-4173-bc48-1f9523c95275` ("T28 e T41: cancelamentos e listas legíveis"); runtime 1.0.0 continua com o update de 18/10.
 
 ### T29 — Notificações (US06)
-Status: em andamento · Responsável: Gustavo Trespach · Depende de: T28
+Status: feito · Responsável: Gustavo Trespach · Depende de: T28
 Decisão (Gustavo, 25/11, entrega final em 26/11): só notificações **dentro do app** nesta entrega. O push (coluna `expo_push_token`, Database Webhook → Edge Function `enviar-push`, Expo Notifications) fica como próximo passo, porque no Android exige development build.
 Descrição: Tabela NOTIFICACAO com RLS (só leitura das próprias); gatilhos que gravam o aviso quando a reserva é confirmada (passageiro e motorista), quando a carona é cancelada (cada passageiro com reserva ativa), quando o passageiro cancela uma reserva paga (motorista) e quando alguém é avaliado; RPCs para contar e marcar como lidas; sininho no Início e tela de notificações com "marcar como lida".
 Aceite: passageiros são avisados no app do cancelamento da carona; o motorista é avisado no app de nova reserva; um aviso que falha não desfaz o pagamento nem o cancelamento; nenhuma função existente muda.
 Nota (25/11, Fase 41): migration `20261125224239_notificacoes` (tabela, enum `tipo_notificacao`, gatilhos `notificar_mudanca_reserva` e `notificar_avaliacao`, RPCs `marcar_notificacoes_lidas` e `contar_notificacoes_nao_lidas`); pgTAP `20_notificacoes` (40 testes, 640 no total; os antigos sem mudança). App: `services/notificacoes.ts`, `Sininho` no Início, tela `notificacoes.tsx`; 21 testes novos (529 no total). Faltam merge, release e EAS Update (runtime 1.2.0, sem mudança no `app.json`).
-
+Nota (25/11, Parte B): PR #86 e release #87 (Deploy aplicou a `20261125224239_notificacoes`, 19 migrations local = remoto, `health` 200; as duas RPCs novas → 401 `42501` sem sessão). Conferida pelo Gustavo no iPhone (pagamento confirmado e nova reserva, carona cancelada, toque abre a tela certa, marcar todas como lidas). EAS Update da `main` (`5b30b56`) com runtime 1.2.0, grupo `10a6add2-5627-46b1-aada-c521dc81f3eb` ("T29: notificações no app"). Próximo passo (fora da entrega): push com Expo Notifications.
 ### T30 — Concluir carona e avaliações
 Status: feito · Responsável: Gustavo Trespach · Depende de: T23
 Partes: **backend** (Fase 33, branch `feature/T30-concluir-avaliar-backend`) e **app** (Fase 34, em outra branch).
