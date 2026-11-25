@@ -21,10 +21,12 @@ import { EstadoVazio } from '@/components/EstadoVazio';
 import { ItemCarona } from '@/components/ItemCarona';
 import { OpcaoInterruptor } from '@/components/OpcaoInterruptor';
 import { ProximaViagem } from '@/components/ProximaViagem';
+import { Sininho } from '@/components/Sininho';
 import { listarAvaliacoesPendentes } from '@/services/avaliacoes';
 import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { normalizarErro } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
+import { contarNaoLidas } from '@/services/notificacoes';
 import { obterMinhaFoto } from '@/services/foto-perfil';
 import { obterMeuPerfil } from '@/services/perfil';
 import { obterProximaViagem, type ViagemDoInicio } from '@/services/proxima-viagem';
@@ -56,9 +58,11 @@ type AvisoBusca = { mensagem: string; tentarDeNovo?: () => void } | null;
 interface Topo {
   viagem: ViagemDoInicio | null;
   avaliacoesPendentes: number;
+  // Selo do sininho (T29); se a contagem falhar, 0 (o selo só some)
+  notificacoesNaoLidas: number;
 }
 
-const TOPO_VAZIO: Topo = { viagem: null, avaliacoesPendentes: 0 };
+const TOPO_VAZIO: Topo = { viagem: null, avaliacoesPendentes: 0, notificacoesNaoLidas: 0 };
 
 function centroDoPonto(ponto: PontoFixo): CentroBusca {
   return { rotulo: ponto.rotulo, latitude: ponto.latitude, longitude: ponto.longitude };
@@ -92,12 +96,21 @@ async function contarAvaliacoesPendentes(): Promise<number> {
 }
 
 // Nenhuma das duas rejeita: falha vira "sem card" e "sem banner", sem erro na tela
+async function contarNotificacoes(): Promise<number> {
+  try {
+    return await contarNaoLidas();
+  } catch {
+    return 0;
+  }
+}
+
 async function consultarTopo(): Promise<Topo> {
-  const [viagem, avaliacoesPendentes] = await Promise.all([
+  const [viagem, avaliacoesPendentes, notificacoesNaoLidas] = await Promise.all([
     obterProximaViagem(),
     contarAvaliacoesPendentes(),
+    contarNotificacoes(),
   ]);
-  return { viagem, avaliacoesPendentes };
+  return { viagem, avaliacoesPendentes, notificacoesNaoLidas };
 }
 
 export default function TelaCaronasProximas() {
@@ -299,6 +312,10 @@ export default function TelaCaronasProximas() {
           </Text>
         </View>
         <View style={estilos.acoesTopo}>
+          <Sininho
+            naoLidas={topo.notificacoesNaoLidas}
+            onPress={() => router.push('/notificacoes')}
+          />
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Minhas reservas"
