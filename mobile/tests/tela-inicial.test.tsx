@@ -13,6 +13,7 @@ import { buscarCaronas, type CaronaResumo } from '@/services/caronas';
 import { AppError } from '@/services/erros';
 import { localizarEndereco, obterLocalizacaoAtual } from '@/services/localizacao';
 import { obterMinhaFoto, urlFotoPerfil } from '@/services/foto-perfil';
+import { contarNaoLidas } from '@/services/notificacoes';
 import { obterProximaViagem } from '@/services/proxima-viagem';
 import type { MinhaCarona } from '@/services/caronas';
 import type { MinhaReserva } from '@/services/reservas';
@@ -30,6 +31,7 @@ jest.mock('@/services/perfil', () => ({
 }));
 jest.mock('@/services/avaliacoes', () => ({ listarAvaliacoesPendentes: jest.fn() }));
 jest.mock('@/services/proxima-viagem', () => ({ obterProximaViagem: jest.fn() }));
+jest.mock('@/services/notificacoes', () => ({ contarNaoLidas: jest.fn() }));
 jest.mock('@/services/foto-perfil', () => ({
   obterMinhaFoto: jest.fn(),
   urlFotoPerfil: jest.fn(),
@@ -84,6 +86,7 @@ beforeEach(() => {
   jest.mocked(listarAvaliacoesPendentes).mockResolvedValue([]);
   jest.mocked(obterProximaViagem).mockResolvedValue(null);
   jest.mocked(obterMinhaFoto).mockResolvedValue(null);
+  jest.mocked(contarNaoLidas).mockResolvedValue(0);
 });
 
 describe('Caronas próximas: barra de busca de local (tela 5)', () => {
@@ -483,13 +486,14 @@ describe('Início (T43)', () => {
     expect(espacoNoFimDaLista()).toBe(tema.espaco.x4 + 120 + tema.espaco.x4);
   });
 
-  it('puxar para atualizar recarrega a lista, o card e o banner', async () => {
+  it('puxar para atualizar recarrega a lista, o card, o banner e o sininho', async () => {
     await render(<TelaCaronasProximas />);
     await screen.findByRole('button', { name: /^Para ULBRA Torres,/ });
     const chamadas = () => [
       jest.mocked(buscarCaronas).mock.calls.length,
       jest.mocked(obterProximaViagem).mock.calls.length,
       jest.mocked(listarAvaliacoesPendentes).mock.calls.length,
+      jest.mocked(contarNaoLidas).mock.calls.length,
     ];
     const antes = chamadas();
 
@@ -527,5 +531,48 @@ describe('Foto no cabeçalho do Início (T44)', () => {
     expect(obterMinhaFoto).toHaveBeenCalled();
     expect(screen.queryByTestId('avatar-foto')).toBeNull();
     expect(screen.getByText('AS')).toBeOnTheScreen();
+  });
+});
+
+describe('Sininho de notificações (T29)', () => {
+  const OCULTOS = { includeHiddenElements: true };
+
+  it('sem não lidas: "Notificações", sem selo; o toque abre a tela de notificações', async () => {
+    await abrirTela();
+
+    const sininho = await screen.findByRole('button', { name: 'Notificações' });
+    expect(contarNaoLidas).toHaveBeenCalled();
+    expect(screen.queryByText(/^(\d|9\+)$/, OCULTOS)).toBeNull();
+    await fireEvent.press(sininho);
+    expect(router.push).toHaveBeenCalledWith('/notificacoes');
+  });
+
+  it('3 não lidas: selo "3" e o rótulo com a quantidade', async () => {
+    jest.mocked(contarNaoLidas).mockResolvedValue(3);
+    await abrirTela();
+
+    expect(
+      await screen.findByRole('button', { name: 'Notificações, 3 não lidas' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('3', OCULTOS)).toBeOnTheScreen();
+  });
+
+  it('12 não lidas: selo "9+", e o rótulo diz o número certo', async () => {
+    jest.mocked(contarNaoLidas).mockResolvedValue(12);
+    await abrirTela();
+
+    expect(
+      await screen.findByRole('button', { name: 'Notificações, 12 não lidas' }),
+    ).toBeOnTheScreen();
+    expect(screen.getByText('9+', OCULTOS)).toBeOnTheScreen();
+  });
+
+  it('falha na contagem: o selo só some (sem erro na tela)', async () => {
+    jest.mocked(contarNaoLidas).mockRejectedValue(new Error('rede'));
+    await abrirTela();
+
+    expect(await screen.findByRole('button', { name: 'Notificações' })).toBeOnTheScreen();
+    expect(screen.queryByText('rede')).toBeNull();
+    expect(screen.queryByText(/^(\d|9\+)$/, OCULTOS)).toBeNull();
   });
 });

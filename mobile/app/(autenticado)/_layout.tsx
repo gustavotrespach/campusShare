@@ -28,6 +28,7 @@ export default function LayoutAutenticado() {
       <Stack.Screen name="reservas/[id]" options={{ title: 'Pagamento da reserva' }} />
       <Stack.Screen name="avaliacoes/index" options={{ title: 'Avaliações pendentes' }} />
       <Stack.Screen name="avaliacoes/[idReserva]" options={{ title: 'Avaliar' }} />
+      <Stack.Screen name="notificacoes" options={{ title: 'Notificações' }} />
     </Stack>
   );
 }
