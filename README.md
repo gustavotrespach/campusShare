@@ -13,7 +13,7 @@ App de caronas universitárias para Android e iOS. Só alunos com e-mail institu
 - Busca de caronas por proximidade, com filtro "somente mulheres"
 - Reserva de vaga com cálculo automático do rateio
 - Pagamento via Pix (sandbox Mercado Pago)
-- Notificação de reserva e de cancelamento
+- Notificação de reserva e de cancelamento (dentro do app: sininho no Início; push é o próximo passo)
 - Avaliação mútua após a viagem
 
 ## Stack
@@ -33,9 +33,9 @@ Sem conta Apple Developer não há build instalável de iOS: o app abre dentro d
 1. Instale o **Expo Go** pela App Store (versão do **SDK 58**; o app foi migrado do SDK 57 na T34, versão 1.1.0).
 2. Abra o update publicado no canal `preview`:
    - pela página do update no expo.dev → botão **Preview** → leia o QR com a câmera:
-     [update de 24/11 (SDK 58, versão 1.2.0, T44 foto de perfil)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/910841a5-37d1-41c4-a114-217b9349d957);
-   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/910841a5-37d1-41c4-a114-217b9349d957`
-     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=910841a5-37d1-41c4-a114-217b9349d957)).
+     [update de 25/11 (SDK 58, versão 1.2.0, T29 notificações)](https://expo.dev/accounts/trespaco/projects/campusshare/updates/10a6add2-5627-46b1-aada-c521dc81f3eb);
+   - ou abra no iPhone o link `exp://u.expo.dev/248fc581-4de3-436c-a33e-749b0be9f49b/group/10a6add2-5627-46b1-aada-c521dc81f3eb`
+     ([QR do mesmo link](https://qr.expo.dev/eas-update?slug=exp&projectId=248fc581-4de3-436c-a33e-749b0be9f49b&groupId=10a6add2-5627-46b1-aada-c521dc81f3eb)).
 3. Depois da primeira vez, o app aparece na lista de recentes do Expo Go.
 
 Cada `eas update` gera um grupo novo: depois de publicar de novo, use o link do update mais recente em [Updates](https://expo.dev/accounts/trespaco/projects/campusshare/updates).
